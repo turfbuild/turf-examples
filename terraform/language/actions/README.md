@@ -48,14 +48,10 @@ action "tfcoremock_simple_resource" "gate" {                # the action definit
   `action` blocks and runs the invoke effects.
 - No cloud account, no credentials.
 
-> **Tooling note.** Actions are a Terraform 1.14 feature. Terraform ≥ 1.14 also understands
-> this config, but **OpenTofu has not shipped `action` support yet** (as of this writing), so
-> plain `tofu` will reject the `action`/`action_trigger` blocks. Run it with Turf.
-
-## Usage with Turf
+## Usage
 
 ```bash
-/up terraform/language/actions
+turf -C terraform/language/actions
 ```
 
 The planned invocations show up in the phase's plan (`action_invocations`), and each
@@ -96,8 +92,7 @@ action "local_command" "notify" {
 ## Cleanup
 
 ```bash
-/destroy terraform/language/actions
+turf -C terraform/language/actions destroy
 ```
 
-The mock provider persists nothing outside local state, so there's nothing to clean up
-beyond `terraform.tfstate`.
+The mock provider persists nothing, so there's nothing to clean up beyond local state.

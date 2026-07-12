@@ -14,12 +14,10 @@ happen in order, and each depends on the previous one existing:
 3. The **custom resource** — an instance of that kind — can only be planned once the
    CRD is live, because the kind doesn't exist in the cluster's API until then.
 
-- **Plain OpenTofu / Terraform** can't do this in one apply: the kubernetes provider's
-  connection is unknown until the cluster exists, and the CR's kind is unknown until the
-  CRD is applied. You need staged, targeted applies.
-- **Turf** converges it in a single `/up`: it defers the provider config and the CR,
-  applies the cluster then the CRD, reloads the provider so it re-discovers the new API,
-  and finishes the CR — no manual targeting.
+The kubernetes provider's connection is unknown until the cluster exists, and the CR's
+kind is unknown until the CRD is applied. Turf converges all three in a single run: it
+defers the provider config and the CR, applies the cluster then the CRD, reloads the
+provider so it re-discovers the new API, and finishes the CR — no manual targeting.
 
 ## Resources Created
 
@@ -31,25 +29,12 @@ happen in order, and each depends on the previous one existing:
 
 - Docker (kind runs the cluster as containers)
 - `kind` and `kubectl` on your PATH
-- For the plain-OpenTofu path: `tofu` (or `terraform`). For the Turf path: the Turf CLI
-  or any MCP client pointed at `turf-mcp-server`.
+- The Turf CLI, or any MCP client pointed at `turf-mcp-server`
 
-## Usage with Turf
-
-```bash
-/up terraform/kubernetes/kind-crd
-```
-
-## Usage with OpenTofu / Terraform
+## Usage
 
 ```bash
-cd terraform/kubernetes/kind-crd
-cp terraform.tfvars.example terraform.tfvars   # optional; defaults work
-
-tofu init
-tofu apply -target=kind_cluster.demo           # 1. create the cluster
-tofu apply -target=kubernetes_manifest.crd     # 2. register the CRD
-tofu apply                                      # 3. create the custom resource
+turf -C terraform/kubernetes/kind-crd
 ```
 
 ## Verify
@@ -62,6 +47,6 @@ kubectl --context kind-turf-crd-demo get turf example-turf -o yaml
 ## Cleanup
 
 ```bash
-tofu destroy          # or: /destroy terraform/kubernetes/kind-crd
+turf -C terraform/kubernetes/kind-crd destroy
 kind delete cluster --name turf-crd-demo   # if anything is left behind
 ```

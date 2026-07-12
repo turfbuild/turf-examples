@@ -29,14 +29,13 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
 
 ## Terraform examples
 
-Each `terraform/<...>` directory is a self-contained, ordinary Terraform/OpenTofu
-configuration that runs from its own directory. Drive it with Turf (`/up <dir>`, or
-the `config_plan` MCP tool) or with plain `tofu`/`terraform`. See each example's
-`README.md` for prerequisites, usage, and cleanup.
+Each `terraform/<...>` directory is a self-contained HCL configuration that runs from
+its own directory. Drive it with the Turf CLI (`turf -C <dir>`) or the `config_plan`
+MCP tool. See each example's `README.md` for prerequisites, usage, and cleanup.
 
 | Example                        | Providers                     | Local? | Notes                                              |
 |--------------------------------|-------------------------------|--------|----------------------------------------------------|
-| `kubernetes/kind-crd`          | tehcyx/kind, hashicorp/kubernetes | ✅ | CRD-then-CR convergence in one `/up`               |
+| `kubernetes/kind-crd`          | tehcyx/kind, hashicorp/kubernetes | ✅ | CRD-then-CR convergence in one run                 |
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |

@@ -13,23 +13,12 @@ This example creates a GKE Autopilot cluster with custom VPC networking.
 1. GCP project with billing enabled
 2. APIs enabled: Compute Engine, Kubernetes Engine
 3. Authentication configured (`gcloud auth application-default login`)
+4. Copy `terraform.tfvars.example` to `terraform.tfvars` and set your `project_id`
 
-## Usage with Turf
-
-```bash
-/up terraform/gcp/gke-demo
-```
-
-## Usage with OpenTofu/Terraform
+## Usage
 
 ```bash
-cd terraform/gcp/gke-demo
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your project ID
-
-tofu init
-tofu plan
-tofu apply
+turf -C terraform/gcp/gke-demo
 ```
 
 ## Outputs
@@ -41,5 +30,5 @@ tofu apply
 ## Cleanup
 
 ```bash
-tofu destroy
+turf -C terraform/gcp/gke-demo destroy
 ```

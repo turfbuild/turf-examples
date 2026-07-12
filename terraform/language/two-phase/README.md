@@ -37,21 +37,17 @@ the commit fails, the run stops rather than leaving downstream changes half-appl
   provider workflow — where a later step can't even be planned until an earlier one is
   applied, and Turf converges it automatically — see
   [`../../kubernetes/kind-crd`](../../kubernetes/kind-crd) (cluster → CRD → custom
-  resource in one `/up`).
+  resource in one run).
 
 ## Prerequisites
 
 - **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`).
 - No cloud account, no credentials.
 
-> **Tooling note.** This example uses Terraform 1.14 `action` blocks. Terraform ≥ 1.14 also
-> understands them, but **OpenTofu has not shipped `action` support yet** (as of this
-> writing), so plain `tofu` will reject the config. Run it with Turf.
-
-## Usage with Turf
+## Usage
 
 ```bash
-/up terraform/language/two-phase
+turf -C terraform/language/two-phase
 ```
 
 Then change `candidate_config` and re-run to see the `update` → `commit` sequence.
@@ -59,5 +55,5 @@ Then change `candidate_config` and re-run to see the `update` → `commit` seque
 ## Cleanup
 
 ```bash
-/destroy terraform/language/two-phase
+turf -C terraform/language/two-phase destroy
 ```

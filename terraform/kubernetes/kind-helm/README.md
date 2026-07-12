@@ -7,12 +7,9 @@ install a Helm chart onto it — entirely locally, no cloud account or credentia
 
 The Helm provider is configured from the kind cluster's **computed** connection
 details (`endpoint`, client certs). Those values don't exist until the cluster is
-created, which is the interesting part:
-
-- **Plain OpenTofu / Terraform** can't plan the `helm_release` before the cluster
-  exists, so it needs two applies (or `-target=kind_cluster.demo` first).
-- **Turf** converges it in a single `/up`: it defers the release to a later phase,
-  applies the cluster, then re-plans the release against the now-known connection.
+created, so the `helm_release` can't be planned up front. Turf converges it in a
+single run: it defers the release to a later phase, applies the cluster, then
+re-plans the release against the now-known connection.
 
 ## Resources Created
 
@@ -24,27 +21,15 @@ created, which is the interesting part:
 
 - Docker (kind runs the cluster as containers)
 - `kind` and `kubectl` on your PATH
-- For the plain-OpenTofu path: `tofu` (or `terraform`). For the Turf path: the
-  Turf CLI or any MCP client pointed at `turf-mcp-server`.
+- The Turf CLI, or any MCP client pointed at `turf-mcp-server`
 
-## Usage with Turf
+## Usage
 
 ```bash
-/up terraform/kubernetes/kind-helm
+turf -C terraform/kubernetes/kind-helm
 ```
 
 Turf plans, defers the release, applies the cluster, and re-converges — one command.
-
-## Usage with OpenTofu / Terraform
-
-```bash
-cd terraform/kubernetes/kind-helm
-cp terraform.tfvars.example terraform.tfvars   # optional; defaults work
-
-tofu init
-tofu apply -target=kind_cluster.demo           # create the cluster first
-tofu apply                                      # then the Helm release
-```
 
 ## Verify
 
@@ -57,7 +42,7 @@ kubectl --context kind-turf-helm-demo -n podinfo port-forward svc/podinfo 9898:9
 ## Cleanup
 
 ```bash
-tofu destroy          # or: /destroy terraform/kubernetes/kind-helm
+turf -C terraform/kubernetes/kind-helm destroy
 kind delete cluster --name turf-helm-demo   # if anything is left behind
 ```
 
