@@ -57,6 +57,10 @@ turf -C terraform/language/actions
 The planned invocations show up in the phase's plan (`action_invocations`), and each
 fires as an `invoke` effect in order.
 
+> Turf also ships its own **native** actions — `turf_confirm` (a human gate) and
+> `turf_action` (an agent step) — that need no provider. See
+> [`../turf-actions`](../turf-actions).
+
 ## Real providers with actions
 
 The mock provider keeps this example credential-free, but actions are a general

@@ -20,6 +20,7 @@ terraform/        HCL examples, grouped by provider/cloud + a language/ group
     gke-demo/       GKE Autopilot cluster with custom VPC networking
   language/         Terraform/Turf language & feature demos
     actions/        Terraform Actions — action blocks + lifecycle.action_trigger
+    turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
     two-phase/      staged-then-commit convergence (stretch/advanced)
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
@@ -40,6 +41,7 @@ MCP tool. See each example's `README.md` for prerequisites, usage, and cleanup.
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
 | `language/actions`             | hashicorp/tfcoremock, hashicorp/local | ✅ | Terraform Actions (gating invokes)          |
+| `language/turf-actions`        | hashicorp/tfcoremock          | ✅ | Turf-native `turf_confirm` + `turf_action` gates   |
 | `language/two-phase`           | hashicorp/tfcoremock          | ✅ | staged-then-commit via actions (advanced)          |
 
 ✅ = credential-free / local. ☁️ = needs a cloud account.
