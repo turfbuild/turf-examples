@@ -1,0 +1,11 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: opentofu-registry
+  namespace: kagent
+spec:
+  url: "https://mcp.opentofu.org/sse"
+  protocol: SSE
+  timeout: 30s
+  sseReadTimeout: 5m0s
+  description: "OpenTofu Registry MCP server for searching providers, modules, and resource documentation"

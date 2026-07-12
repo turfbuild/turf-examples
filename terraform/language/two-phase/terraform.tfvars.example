@@ -1,0 +1,4 @@
+# Copy this file to terraform.tfvars and customize values.
+
+device_id        = "edge-router-1"
+candidate_config = "interface eth0 { mtu = 9000 }"

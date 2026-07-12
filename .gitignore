@@ -1,0 +1,20 @@
+# Agent memory databases (runtime state, not source)
+memory.db*
+.turf-memory.db*
+
+# Terraform/OpenTofu working state and provider cache
+.terraform/
+.terraform.lock.hcl
+*.tfstate*
+
+# Real variable values (ship only *.tfvars.example)
+terraform.tfvars
+*.auto.tfvars
+
+# Editor/IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Local environment overrides
+.envrc.local

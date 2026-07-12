@@ -1,0 +1,10 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: turf-model-config
+  namespace: kagent
+spec:
+  provider: Gemini
+  model: gemini-pro-latest
+  apiKeySecret: kagent-gemini
+  apiKeySecretKey: GOOGLE_API_KEY

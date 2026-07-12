@@ -1,0 +1,32 @@
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: turf-mcp-server
+  namespace: kagent
+spec:
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+    path: /mcp
+  deployment:
+    image: turf-mcp-server:local
+    imagePullPolicy: Never
+    cmd: /docker-entrypoint.sh
+    args:
+      - --transport
+      - http
+      - --addr
+      - :3000
+      - --data-dir
+      - /data
+      - --tmp-dir
+      - /data/providers
+    secretRefs:
+      - name: kagent-azure
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: turf-data
+    volumeMounts:
+      - name: data
+        mountPath: /data

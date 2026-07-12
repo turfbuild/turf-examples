@@ -1,0 +1,8 @@
+# Copy this file to terraform.tfvars and customize values.
+
+cluster_name = "turf-crd-demo"
+namespace    = "default"
+cr_message   = "Hello from Turf"
+
+# Kubernetes version, via the kind node image:
+# node_image = "kindest/node:v1.29.7"

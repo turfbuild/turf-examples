@@ -1,0 +1,43 @@
+#!/usr/bin/env docker-agent run
+
+agents:
+  root:
+    model: google/gemini-pro-latest
+    description: An infrastructure management agent powered by OpenTofu providers
+    welcome_message: |
+      Welcome to Turf — your infrastructure management agent.
+
+      I can help you create, update, and delete cloud infrastructure resources
+      using OpenTofu providers. I support AWS, GCP, Azure, Kubernetes, and
+      hundreds of other providers from the OpenTofu registry.
+
+      What infrastructure would you like to manage?
+    instruction: |
+      You are turf, an infrastructure management agent powered by OpenTofu providers.
+
+      The turf MCP server's tools are exposed to you with a turf_ prefix (the `mcp` toolset is registered with `name: turf`). When the server's instructions name a tool without it (e.g. skill_core), call the prefixed form (turf_skill_core).
+
+      Follow the turf MCP server's instructions and call its `turf_skill_*` tools when the user's request matches one. Load `turf_skill_core` at the start of any session; load `turf_skill_adhoc` for natural-language infrastructure requests and `turf_skill_codified` for HCL-driven (declarative) flows.
+
+      The user may also provide their own skills (shown in <available_skills>). Those are loaded with `read_skill` (no turf_ prefix), not the `turf_skill_*` tools — use them when a request matches a user skill's description. The `turf_skill_*` tools are turf's built-in infrastructure workflows; read_skill loads the user's personal skills.
+    # Enable local skill discovery. cagent scans the standard locations,
+    # including this project's .agents/skills/ — see
+    # .agents/skills/tagging-policy/ for the demonstration skill.
+    skills: true
+    toolsets:
+      # Required when skills are enabled: read_skill_file loads supporting
+      # files (e.g. references/*.md) through the filesystem toolset.
+      - type: filesystem
+      # name: turf prefixes every server tool with "turf_". This is load-bearing
+      # with skills enabled: the turf MCP server exposes a read_skill_file that
+      # would otherwise collide by name with cagent's user-skills read_skill_file,
+      # and a duplicate function name makes the provider reject the whole request
+      # (Gemini: 400 "Duplicate function declaration found"). cagent strips the
+      # prefix before dispatching, so the server still sees the bare tool name.
+      - type: mcp
+        name: turf
+        command: turf-mcp-server
+      - type: think
+      - type: todo
+      - type: memory
+        path: ./memory.db

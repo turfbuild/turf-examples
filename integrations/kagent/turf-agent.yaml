@@ -1,0 +1,182 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: turf-agent
+  namespace: kagent
+spec:
+  description: Infrastructure management agent powered by OpenTofu providers. Creates, updates, and deletes cloud infrastructure resources using AWS, GCP, Azure, Kubernetes, and hundreds of other providers.
+  type: Declarative
+  declarative:
+    modelConfig: turf-model-config
+    systemMessage: |
+      You are turf, an infrastructure management agent powered by OpenTofu providers.
+
+      Follow the turf MCP server's instructions and call its skill_* tools when the user's request matches one. Load `skill_core` at the start of any session; load `skill_adhoc` for natural-language infrastructure requests and `skill_codified` for HCL-driven (declarative) flows.
+
+      ## Kubernetes State Backend (Default)
+
+      You are running in-cluster. Use the **Kubernetes state backend** to persist
+      state in Kubernetes Secrets with locking via Leases. This is the default
+      backend for ad-hoc infrastructure stacks.
+
+      Use a dedicated **workspace** per stack so that each stack has isolated state:
+
+      ```
+      workspace_open({
+        name: "<stack-name>",
+        backend_type: "kubernetes",
+        backend_config: {
+          secret_suffix:     "turf",
+          namespace:         "kagent",
+          in_cluster_config: true
+        }
+      })
+      ```
+
+      This stores state in a Secret named `tfstate-<stack-name>-turf` in the
+      `kagent` namespace. The lock is a Lease named
+      `lock-tfstate-<stack-name>-turf`.
+
+      When the user asks to create, manage, or tear down a stack, always ask for
+      or infer a meaningful stack name and use it as the workspace.
+
+      ## Azure Provider
+
+      Authentication credentials (client ID, client secret, tenant ID) are generally
+      pre-configured via environment variables — do NOT ask the user for these.
+      The subscription ID is likewise pre-configured.
+
+      ## Kubernetes Tools
+
+      You have access to Kubernetes tools for inspecting and modifying cluster state:
+      - Check what resources exist in the cluster (`k8s_get_resources`)
+      - Describe resources for debugging (`k8s_describe_resource`)
+      - View pod logs (`k8s_get_pod_logs`)
+      - Check events for troubleshooting (`k8s_get_events`)
+      - Delete resources from the cluster (`k8s_delete_resource`)
+      - Apply YAML manifests (`k8s_apply_manifest`)
+      - Patch resources (`k8s_patch_resource`)
+      - Create resources from YAML (`k8s_create_resource`)
+
+      ## Response Format
+
+      - ALWAYS format your response as Markdown
+      - Include a summary of actions taken and an explanation of the result
+    a2aConfig:
+      skills:
+        - id: plan-infrastructure
+          name: Plan Infrastructure
+          description: Plan infrastructure changes for an HCL configuration directory. Analyzes the configuration, compares with current state, and produces a detailed change plan showing resources to create, update, or delete.
+          tags:
+            - infrastructure
+            - opentofu
+            - planning
+          examples:
+            - Plan infrastructure changes for the ./infrastructure directory
+            - Show me what would change if I apply my Terraform config
+        - id: apply-infrastructure
+          name: Apply Infrastructure
+          description: Apply planned infrastructure changes from a workspace. Executes the changes in dependency order, creating, updating, or deleting resources as planned.
+          tags:
+            - infrastructure
+            - opentofu
+            - deployment
+          examples:
+            - Apply the planned changes
+            - Deploy the infrastructure changes
+        - id: manage-stack
+          name: Manage Infrastructure Stack
+          description: Create, update, or tear down a named infrastructure stack. Uses the Kubernetes state backend to persist state in-cluster, with each stack isolated by workspace name.
+          tags:
+            - infrastructure
+            - opentofu
+            - stacks
+            - kubernetes
+          examples:
+            - Create a stack called "demo" with an S3 bucket and a DynamoDB table
+            - Add a Redis instance to the "cache" stack
+            - Tear down the "staging" stack
+            - What stacks exist? What resources are in the "demo" stack?
+        - id: destroy-infrastructure
+          name: Destroy Infrastructure
+          description: Plan and destroy all infrastructure in a workspace. Tears down resources in reverse dependency order.
+          tags:
+            - infrastructure
+            - opentofu
+            - teardown
+          examples:
+            - Destroy all resources in the ./infrastructure workspace
+            - Tear down the staging environment
+    tools:
+      # --- Turf infrastructure tools (from turf-mcp-server) ---
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: MCPServer
+          name: turf-mcp-server
+          namespace: kagent
+          toolNames:
+            - workspace_open
+            - workspace_close
+            - workspace_show
+            - workspace_list
+            - workspace_delete
+            - provider-search
+            - provider-describe
+            - provider_load
+            - provider_configure
+            - config_init
+            - config_walk
+            - module_expand
+            - state_list
+            - datasource_read
+            - resource_plan
+            - resource_apply
+            - resource_rollback
+            - resource_refresh
+            - resource_import
+            - skill_core
+            - skill_adhoc
+            - skill_codified
+            - read_skill_file
+      # --- Kubernetes tools (from kagent-tool-server) ---
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          namespace: kagent
+          toolNames:
+            - k8s_get_resources
+            - k8s_describe_resource
+            - k8s_get_resource_yaml
+            - k8s_get_pod_logs
+            - k8s_get_events
+            - k8s_get_available_api_resources
+            - k8s_delete_resource
+            - k8s_apply_manifest
+            - k8s_patch_resource
+            - k8s_create_resource
+      # --- OpenTofu Registry (for provider/resource documentation) ---
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: opentofu-registry
+          namespace: kagent
+          toolNames:
+            - search-opentofu-registry
+            - get-provider-details
+            - get-module-details
+            - get-resource-docs
+            - get-datasource-docs
+      # --- Helm tools (from kagent-tool-server) ---
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          namespace: kagent
+          toolNames:
+            - helm_list_releases
+            - helm_get_release

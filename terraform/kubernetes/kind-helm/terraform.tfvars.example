@@ -1,0 +1,10 @@
+# Copy this file to terraform.tfvars and customize values.
+
+cluster_name = "turf-helm-demo"
+namespace    = "podinfo"
+
+# Pin a chart version for reproducibility (empty string / unset = latest):
+# chart_version = "6.9.0"
+
+# Kubernetes version, via the kind node image:
+# node_image = "kindest/node:v1.29.7"

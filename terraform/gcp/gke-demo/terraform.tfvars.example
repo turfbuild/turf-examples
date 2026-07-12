@@ -1,0 +1,4 @@
+# Copy this file to terraform.tfvars and fill in values
+project_id   = "your-gcp-project-id"
+region       = "us-central1"
+cluster_name = "turf-demo"
