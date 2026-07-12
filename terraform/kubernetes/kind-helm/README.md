@@ -26,7 +26,7 @@ re-plans the release against the now-known connection.
 ## Usage
 
 ```bash
-turf -C terraform/kubernetes/kind-helm
+turf -C terraform/kubernetes/kind-helm up
 ```
 
 Turf plans, defers the release, applies the cluster, and re-converges — one command.

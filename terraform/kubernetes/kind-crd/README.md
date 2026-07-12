@@ -34,7 +34,7 @@ provider so it re-discovers the new API, and finishes the CR — no manual targe
 ## Usage
 
 ```bash
-turf -C terraform/kubernetes/kind-crd
+turf -C terraform/kubernetes/kind-crd up
 ```
 
 ## Verify

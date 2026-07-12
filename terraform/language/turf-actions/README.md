@@ -48,7 +48,7 @@ Describe either action's schema with `provider_describe action_type=turf_confirm
 ## Usage
 
 ```bash
-turf -C terraform/language/turf-actions
+turf -C terraform/language/turf-actions up
 ```
 
 At apply, Turf asks you to approve the create, then asks the agent to run the

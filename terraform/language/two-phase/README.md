@@ -47,7 +47,7 @@ the commit fails, the run stops rather than leaving downstream changes half-appl
 ## Usage
 
 ```bash
-turf -C terraform/language/two-phase
+turf -C terraform/language/two-phase up
 ```
 
 Then change `candidate_config` and re-run to see the `update` → `commit` sequence.

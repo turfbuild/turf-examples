@@ -18,7 +18,7 @@ This example creates a GKE Autopilot cluster with custom VPC networking.
 ## Usage
 
 ```bash
-turf -C terraform/gcp/gke-demo
+turf -C terraform/gcp/gke-demo up
 ```
 
 ## Outputs

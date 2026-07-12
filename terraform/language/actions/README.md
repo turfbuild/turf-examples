@@ -51,7 +51,7 @@ action "tfcoremock_simple_resource" "gate" {                # the action definit
 ## Usage
 
 ```bash
-turf -C terraform/language/actions
+turf -C terraform/language/actions up
 ```
 
 The planned invocations show up in the phase's plan (`action_invocations`), and each
