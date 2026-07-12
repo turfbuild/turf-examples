@@ -31,8 +31,3 @@ The recommended layout is one directory per skill with a lean `SKILL.md` and the
 detail pushed into `references/*.md`, loaded only when needed. Drop more skills into
 `.turf/skills/<name>/`, or into `~/.turf/skills/<name>/` for skills you want in every
 project.
-
-> This is the same demonstration skill as
-> `integrations/cagent/.agents/skills/tagging-policy/`, placed in Turf's location
-> instead of docker-agent's — the two tools discover skills from different
-> directories (`.turf/skills/` for Turf, `.agents/skills/` for docker-agent).
