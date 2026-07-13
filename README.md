@@ -23,6 +23,7 @@ terraform/        HCL examples, grouped by provider/cloud + a language/ group
     actions/        Terraform Actions — action blocks + lifecycle.action_trigger
     turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
     two-phase/      staged-then-commit convergence (stretch/advanced)
+    replace-ordering/  replacement teardown ordering + infectious create-before-destroy
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
@@ -46,6 +47,7 @@ MCP tool. See each example's `README.md` for prerequisites, usage, and cleanup.
 | `language/actions`             | hashicorp/tfcoremock, hashicorp/local | ✅ | Terraform Actions (gating invokes)          |
 | `language/turf-actions`        | hashicorp/tfcoremock          | ✅ | Turf-native `turf_confirm` + `turf_action` gates   |
 | `language/two-phase`           | hashicorp/tfcoremock          | ✅ | staged-then-commit via actions (advanced)          |
+| `language/replace-ordering`    | hashicorp/random              | ✅ | replace teardown ordering + infectious CBD         |
 
 ✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
 Kubernetes cluster + kubeconfig.
