@@ -1,0 +1,9 @@
+# Copy this file to terraform.tfvars and customize values
+
+# kubeconfig_path    = "~/.kube/config"
+# kubeconfig_context = ""
+
+namespace              = "hpa-example"
+min_replicas           = 1
+max_replicas           = 10
+target_cpu_utilization = 50

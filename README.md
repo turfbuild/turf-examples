@@ -14,6 +14,7 @@ terraform/        HCL examples, grouped by provider/cloud + a language/ group
   kubernetes/
     kind-crd/       kind cluster → CustomResourceDefinition → custom resource
     kind-helm/      kind cluster → Helm release (podinfo)
+    hpa-walkthrough/  php-apache + HorizontalPodAutoscaler on an existing cluster
   azure/
     avm-resourcegroup/   multi-instance Azure resource groups via a published AVM module
   gcp/
@@ -24,8 +25,9 @@ terraform/        HCL examples, grouped by provider/cloud + a language/ group
     two-phase/      staged-then-commit convergence (stretch/advanced)
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
-  kagent/           Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
-  turf-cli/         Skill-discovery demo for the standalone Turf CLI (.turf/skills/)
+  kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
+  turf-cli/           Skill-discovery demo for the standalone Turf CLI (.turf/skills/)
+  kubernetes-backend/ Store Turf state in-cluster via the kubernetes state backend
 ```
 
 ## Terraform examples
@@ -38,13 +40,15 @@ MCP tool. See each example's `README.md` for prerequisites, usage, and cleanup.
 |--------------------------------|-------------------------------|--------|----------------------------------------------------|
 | `kubernetes/kind-crd`          | tehcyx/kind, hashicorp/kubernetes | ✅ | CRD-then-CR convergence in one run                 |
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
+| `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
 | `language/actions`             | hashicorp/tfcoremock, hashicorp/local | ✅ | Terraform Actions (gating invokes)          |
 | `language/turf-actions`        | hashicorp/tfcoremock          | ✅ | Turf-native `turf_confirm` + `turf_action` gates   |
 | `language/two-phase`           | hashicorp/tfcoremock          | ✅ | staged-then-commit via actions (advanced)          |
 
-✅ = credential-free / local. ☁️ = needs a cloud account.
+✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
+Kubernetes cluster + kubeconfig.
 
 ## Integrations
 
@@ -76,6 +80,17 @@ from turf-owned locations only — the working dir's `.turf/skills/` and the glo
 `~/.turf/skills/`. Run the CLI from this directory and it gains a `tagging-policy`
 skill (loadable with `read_skill`) on top of the server's built-in `skill_*`
 workflows. See `integrations/turf-cli/README.md`.
+
+### `integrations/kubernetes-backend/` — Kubernetes state backend
+
+An HCL config that swaps `backend "local"` for `backend "kubernetes"`, so Turf
+persists its state in a cluster Secret (`tfstate-<workspace>-demo`) with locking via
+a Coordination Lease, rather than a local file. Backend auth comes from the
+environment (`KUBE_CONFIG_PATH`, `KUBE_IN_CLUSTER_CONFIG`), independent of the
+`kubernetes` provider's own auth. Needs an existing cluster and a `turf-state`
+namespace. For the in-cluster (turf-in-a-pod) RBAC that this backend requires when
+Turf runs *inside* the cluster, see `integrations/kagent/`. See
+`integrations/kubernetes-backend/README.md`.
 
 ## License
 

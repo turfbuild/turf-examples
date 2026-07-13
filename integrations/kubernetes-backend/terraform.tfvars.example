@@ -1,0 +1,8 @@
+# Copy this file to terraform.tfvars and customize values
+
+# kubeconfig_path    = "~/.kube/config"
+# kubeconfig_context = ""
+
+app_namespace = "kubernetes-backend-example"
+greeting      = "Hello from turf!"
+environment   = "demo"
