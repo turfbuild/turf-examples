@@ -121,23 +121,37 @@ spec:
             - workspace_show
             - workspace_list
             - workspace_delete
-            - provider-search
-            - provider-describe
+            - provider_search
+            - provider_describe
             - provider_load
             - provider_configure
             - config_init
-            - config_walk
-            - module_expand
+            - config_show
+            - declare_backend
+            - declare_provider
+            - plan_new
+            - plan_cancel
+            - plan_approve
+            - replan
+            - declare_resource
+            - declare_module
+            - declare_var
+            - declare_outputs
+            - declare_action
+            - module_init
+            - module_outputs
+            - outputs
             - state_list
             - datasource_read
-            - resource_plan
-            - resource_apply
-            - resource_rollback
             - resource_refresh
             - resource_import
+            - effect_apply
+            - effect_cancel
+            - action_invoke
             - skill_core
             - skill_adhoc
             - skill_codified
+            - skill_demo
             - read_skill_file
       # --- Kubernetes tools (from kagent-tool-server) ---
       - type: McpServer

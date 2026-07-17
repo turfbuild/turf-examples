@@ -34,8 +34,8 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
 ## Terraform examples
 
 Each `terraform/<...>` directory is a self-contained HCL configuration that runs from
-its own directory. Drive it with the Turf CLI (`turf -C <dir> up`) or the `config_plan`
-MCP tool. See each example's `README.md` for prerequisites, usage, and cleanup.
+its own directory. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP tools
+(`config_init` against the directory, then `plan_new` — its initial walk plans the whole tree). See each example's `README.md` for prerequisites, usage, and cleanup.
 
 | Example                        | Providers                     | Local? | Notes                                              |
 |--------------------------------|-------------------------------|--------|----------------------------------------------------|
