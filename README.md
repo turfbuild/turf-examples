@@ -24,6 +24,7 @@ terraform/        HCL examples, grouped by provider/cloud + a language/ group
     turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
     two-phase/      staged-then-commit convergence (stretch/advanced)
     replace-ordering/  replacement teardown ordering + infectious create-before-destroy
+    plot-dialect/   plot units (*.tfplot.hcl) authored by declare_*, then config_promote
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
@@ -33,9 +34,15 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
 
 ## Terraform examples
 
-Each `terraform/<...>` directory is a self-contained HCL configuration that runs from
+Each `terraform/<...>` directory is a self-contained configuration that runs from
 its own directory. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP tools
 (`config_init` against the directory, then `plan_new` — its initial walk plans the whole tree). See each example's `README.md` for prerequisites, usage, and cleanup.
+
+**Two dialects.** A configuration directory is either a **tofu** configuration (plain
+hand-authored `.tf` files — every example below except one) or a **plot** (turf-authored
+`*.tfplot.hcl` units, one per address, written by the `declare_*` tools from an ad-hoc
+session). `config_init` reports which. `language/plot-dialect` is the plot showcase and
+walks through `config_promote`, the one-way graduation of a plot into a tofu configuration.
 
 | Example                        | Providers                     | Local? | Notes                                              |
 |--------------------------------|-------------------------------|--------|----------------------------------------------------|
@@ -48,6 +55,7 @@ its own directory. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP to
 | `language/turf-actions`        | hashicorp/tfcoremock          | ✅ | Turf-native `turf_confirm` + `turf_action` gates   |
 | `language/two-phase`           | hashicorp/tfcoremock          | ✅ | staged-then-commit via actions (advanced)          |
 | `language/replace-ordering`    | hashicorp/random              | ✅ | replace teardown ordering + infectious CBD         |
+| `language/plot-dialect`        | hashicorp/random              | ✅ | **plot** dialect — declare-authored `*.tfplot.hcl` + `config_promote` |
 
 ✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
 Kubernetes cluster + kubeconfig.
