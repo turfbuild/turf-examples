@@ -41,7 +41,7 @@ A plot like this is produced by an agent (or you, via the MCP tools), not typed 
 hand. The equivalent tool calls:
 
 ```
-config_init(path: "terraform/language/plot-dialect")   # empty dir → plot dialect
+config_init(path: "turf/language/plot-dialect")   # empty dir → plot dialect
 declare_backend(type: "local", config: { path: "terraform.tfstate" })
 workspace_open(backend_type: "local", ...)             # you carry the backend args
 provider_load(name: "random", source: "hashicorp/random", version: "~> 3.0")
@@ -60,7 +60,7 @@ into the open plan.
 Drive it with the Turf CLI — its initial walk plans the whole plot:
 
 ```bash
-turf -C terraform/language/plot-dialect up
+turf -C turf/language/plot-dialect up
 ```
 
 Or with the MCP tools directly: `config_init` against the directory (it reports
@@ -88,7 +88,7 @@ first (pass `force: true` to override).
 ## Cleanup
 
 ```bash
-turf -C terraform/language/plot-dialect destroy
+turf -C turf/language/plot-dialect destroy
 ```
 
 The `random` resources live only in local state; destroy removes them. The plot units
