@@ -5,6 +5,9 @@ resource "kind_cluster" "demo" {
   wait_for_ready = true
   # kubeconfig_path left unset: the provider manages the kubeconfig and merges a
   # context into your default kubeconfig for `kubectl --context kind-<name>`.
+  # A relative kubeconfig_path would be written under the configuration directory
+  # — turf runs each provider process with the config dir as its working
+  # directory — not your shell's current directory.
 }
 
 # podinfo — a tiny, reliable demo workload from a public Helm chart repo.

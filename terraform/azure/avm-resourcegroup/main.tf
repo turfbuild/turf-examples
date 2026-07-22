@@ -28,10 +28,11 @@ variable "resource_groups" {
 }
 
 # One AVM resource-group module instance per entry in var.resource_groups. This
-# is the *codified* (HCL) form of multi-instance composition: turf's config_plan
-# walks the for_each and emits module.resource_group["<key>"].* addresses. The
-# ad-hoc analogue — driving the same outcome through the module_plan tool's
-# for_each/count meta-args, no HCL — is in README.md.
+# is the *codified* (HCL) form of multi-instance composition: turf's full walk
+# (plan_new / replan) expands the for_each and emits
+# module.resource_group["<key>"].* addresses. The ad-hoc analogue — driving the
+# same outcome through the declare_module tool's for_each/count meta-args, no
+# hand-written HCL — is in README.md.
 module "resource_group" {
   source   = "Azure/avm-res-resources-resourcegroup/azurerm"
   version  = "~> 0.2"

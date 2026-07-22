@@ -8,11 +8,11 @@ description: Enforce the organization's resource tagging and naming standard. Us
 A guardrail skill: it does not create resources on its own — it shapes the
 configuration of whatever flow is already running (`skill_adhoc` for free-form
 requests, `skill_codified` for HCL) so every managed resource meets the org
-standard before `resource_apply`.
+standard before the plan is approved and applied.
 
 ## When to use
 
-- Any `resource_plan` / `resource_apply` for a billable cloud resource.
+- Any `declare_resource` / `effect_apply` for a billable cloud resource.
 - Importing or adopting existing resources — bring them up to standard on the
   first reconcile (a `~` update is expected and correct).
 
@@ -31,9 +31,9 @@ do not preload it.
 1. Confirm `env` and `owner` with the user if they are not already obvious from
    the request.
 2. Inject the tag block into each resource's configuration.
-3. `resource_plan` and review the diff. A first-time tag addition shows as `~`
+3. `declare_resource` and review the diff. A first-time tag addition shows as `~`
    (in-place update); a brand-new resource shows as `+`.
-4. `resource_apply` once the diff is clean and the user has approved it.
+4. `plan_approve` + `effect_apply` once the diff is clean and the user has approved it.
 
 If a provider exposes tags under a different key (e.g. AWS/azurerm/google use a
 `tags` map, azapi nests them in `body`, Kubernetes uses `metadata.labels`), map

@@ -1,7 +1,7 @@
 # Turf-native actions (`turf_confirm`, `turf_action`)
 
 Turf ships two built-in **actions** that put a human or the agent into the apply
-loop. Unlike provider actions (see [`../actions`](../actions)), action types
+loop. Unlike provider actions (see [the Terraform Actions example](../../../terraform/language/actions)), action types
 prefixed `turf_` dispatch **in-process — no provider required** — and carry the
 synthetic provider identity `turfbuild/turf`.
 
@@ -48,7 +48,7 @@ Describe either action's schema with `provider_describe action_type=turf_confirm
 ## Usage
 
 ```bash
-turf -C terraform/language/turf-actions up
+turf -C turf/language/turf-actions up
 ```
 
 At apply, Turf asks you to approve the create, then asks the agent to run the
@@ -57,5 +57,5 @@ post-create verification.
 ## Cleanup
 
 ```bash
-turf -C terraform/language/turf-actions destroy
+turf -C turf/language/turf-actions destroy
 ```

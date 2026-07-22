@@ -5,23 +5,25 @@ This example deploys **several** Azure resource groups from the published
 module, the same outcome reached two ways:
 
 - **Codified** — `main.tf` puts `for_each` on the `module` block (native HCL). Drive it with the
-  codified workflow (`config_plan` against this directory).
-- **Ad-hoc** — the `module_plan` tool's own `for_each`/`count` **meta-args** produce the same keyed
-  instances from a conversational request, with no HCL on disk (the walkthrough below).
+  codified workflow (`config_init` against this directory, then `plan_new`).
+- **Ad-hoc** — the `declare_module` tool's own `for_each`/`count` **meta-args** produce the same keyed
+  instances from a conversational request, with no hand-written HCL (the walkthrough below).
 
 Both emit native keyed addresses — `module.resource_group["eastus"]`, `module.resource_group["westus"]`.
 
 > Requires Azure credentials for the `azurerm` provider, so this is a showcase rather than a
-> CI-runnable config. The keyed `module_plan` mechanics themselves are exercised offline against
+> CI-runnable config. The keyed `declare_module` mechanics themselves are exercised offline against
 > a local `random`-provider module in Turf's own test suite.
 
-## Codified (`config_plan`)
+## Codified (`plan_new`)
 
 `main.tf` declares `var.resource_groups` (a map keyed by region) and a single `module "resource_group"`
-with `for_each = var.resource_groups`. Planning the directory expands it:
+with `for_each = var.resource_groups`. Opening a phase plans the directory and expands it:
 
 ```
-config_plan({ config_dir: "terraform/azure/avm-resourcegroup" })
+config_init({ path: "terraform/azure/avm-resourcegroup" })
+# workspace_open + provider_configure from the discovery payload, then:
+plan_new({})
 → module.resource_group["eastus"].azurerm_resource_group.this   + create
   module.resource_group["westus"].azurerm_resource_group.this   + create
 ```
@@ -29,15 +31,16 @@ config_plan({ config_dir: "terraform/azure/avm-resourcegroup" })
 Add or drop a region in `var.resource_groups` and only that instance is created/deleted; the others
 stay `noop`.
 
-## Ad-hoc (`module_plan` meta-args)
+## Ad-hoc (`declare_module` meta-args)
 
-Same module, no HCL file — pass `for_each` on the **unkeyed** address. `inputs` may reference
+Same module, no hand-written HCL — pass `for_each` on the **unkeyed** address (the declaration
+writes through into the configuration directory as a `.tf.json` file). `inputs` may reference
 `${each.key}` / `${each.value...}`:
 
 ```jsonc
 // (after workspace_open + provider_configure for azurerm)
 plan_new({})
-module_plan({
+declare_module({
   address: "module.resource_group",
   source:  "Azure/avm-res-resources-resourcegroup/azurerm",
   version: "~> 0.2",
@@ -63,7 +66,7 @@ When the instances are homogeneous, use `count` (int-keyed addresses `module.res
 and reference `${count.index}`:
 
 ```jsonc
-module_plan({
+declare_module({
   address: "module.resource_group",
   source:  "Azure/avm-res-resources-resourcegroup/azurerm",
   version: "~> 0.2",
@@ -77,9 +80,10 @@ not `module.resource_group["eastus"]`) — the keys come from the meta-arg.
 
 ### Day-2: shrink and destroy
 
-- **Shrink** — re-`module_plan` with a key removed from `for_each`; the dropped instance is detected as
+- **Shrink** — re-`declare_module` with a key removed from `for_each`; the dropped instance is detected as
   an orphan and planned `-` (delete), the rest stay `noop`.
-- **Destroy** — `module_plan({ ..., for_each: {...}, destroy: true })` tears down every keyed instance
-  (reverse-topological). Pass the same identity tuple, including the `for_each`/`count` meta-arg.
+- **Remove** — `declare_module({ address: "module.resource_group", remove: true })` un-declares the call
+  and plans every keyed instance's teardown (reverse-topological). For a whole-workspace teardown that
+  keeps the configuration, use `plan_new({ destroy: true })` instead.
 
 See `skill_adhoc` ("Multiple instances") for the full reference.

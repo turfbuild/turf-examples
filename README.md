@@ -10,7 +10,7 @@ through ordinary Terraform HCL — there are no Go imports of Turf internals.
 ## Layout
 
 ```
-terraform/        HCL examples, grouped by provider/cloud + a language/ group
+terraform/        Standard Terraform/HCL configurations (tofu dialect)
   kubernetes/
     kind-crd/       kind cluster → CustomResourceDefinition → custom resource
     kind-helm/      kind cluster → Helm release (podinfo)
@@ -19,11 +19,16 @@ terraform/        HCL examples, grouped by provider/cloud + a language/ group
     avm-resourcegroup/   multi-instance Azure resource groups via a published AVM module
   gcp/
     gke-demo/       GKE Autopilot cluster with custom VPC networking
-  language/         Terraform/Turf language & feature demos
+  language/         Terraform language & feature demos
     actions/        Terraform Actions — action blocks + lifecycle.action_trigger
-    turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
     two-phase/      staged-then-commit convergence (stretch/advanced)
     replace-ordering/  replacement teardown ordering + infectious create-before-destroy
+
+turf/             Turf-specific examples — the plot dialect + Turf-native features
+  language/
+    plot-dialect/   plot units (*.tfplot.hcl) authored by declare_*, then config_promote
+    local-module/   a plot that calls a local module by a portable relative source
+    turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
@@ -33,9 +38,10 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
 
 ## Terraform examples
 
-Each `terraform/<...>` directory is a self-contained HCL configuration that runs from
-its own directory. Drive it with the Turf CLI (`turf -C <dir> up`) or the `config_plan`
-MCP tool. See each example's `README.md` for prerequisites, usage, and cleanup.
+Each `terraform/<...>` directory is a self-contained **tofu** configuration — plain
+hand-authored `.tf` files. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP
+tools (`config_init` against the directory, then `plan_new` — its initial walk plans
+the whole tree). See each example's `README.md` for prerequisites, usage, and cleanup.
 
 | Example                        | Providers                     | Local? | Notes                                              |
 |--------------------------------|-------------------------------|--------|----------------------------------------------------|
@@ -45,12 +51,25 @@ MCP tool. See each example's `README.md` for prerequisites, usage, and cleanup.
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
 | `language/actions`             | hashicorp/tfcoremock, hashicorp/local | ✅ | Terraform Actions (gating invokes)          |
-| `language/turf-actions`        | hashicorp/tfcoremock          | ✅ | Turf-native `turf_confirm` + `turf_action` gates   |
 | `language/two-phase`           | hashicorp/tfcoremock          | ✅ | staged-then-commit via actions (advanced)          |
 | `language/replace-ordering`    | hashicorp/random              | ✅ | replace teardown ordering + infectious CBD         |
 
 ✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
 Kubernetes cluster + kubeconfig.
+
+## Turf examples
+
+The `turf/` tree exercises capabilities specific to Turf. Most are **plots** —
+turf-authored `*.tfplot.hcl` units, one per address, written by the `declare_*` tools
+from an ad-hoc session (`config_init` reports the dialect). `config_promote` graduates
+a plot into an ordinary tofu configuration — a one-way, walk-equivalent strip-fold-rename.
+Drive them the same way (`turf -C <dir> up`); all are credential-free.
+
+| Example                     | Providers            | Notes                                                              |
+|-----------------------------|----------------------|--------------------------------------------------------------------|
+| `language/plot-dialect`     | hashicorp/random     | **plot** dialect — declare-authored `*.tfplot.hcl` + `config_promote` |
+| `language/local-module`     | hashicorp/random     | a **plot** calling `./modules/greeting` by a portable relative `source` |
+| `language/turf-actions`     | hashicorp/tfcoremock | Turf-native `turf_confirm` + `turf_action` gates (no provider)     |
 
 ## Integrations
 
