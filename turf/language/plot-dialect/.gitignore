@@ -1,5 +1,3 @@
-# Turf runtime artifacts (lowered plot projection, provider cache, seals).
 .terraform/
-# Local backend state.
-terraform.tfstate
-terraform.tfstate.backup
+.turf/*
+!.turf/skills/
