@@ -29,6 +29,12 @@ resource "tfcoremock_simple_resource" "web" {
       # announcement is non-critical, so let the run continue if it fails.
       on_failure = continue
     }
+
+    # A pre-destroy gate: this action must succeed before the resource is destroyed.
+    action_trigger {
+      events  = [before_destroy]
+      actions = [action.tfcoremock_simple_resource.cleanup_gate]
+    }
   }
 }
 
@@ -44,5 +50,11 @@ action "tfcoremock_simple_resource" "preflight_gate" {
 action "tfcoremock_simple_resource" "announce" {
   config {
     string = "announce: web-server deployed"
+  }
+}
+
+action "tfcoremock_simple_resource" "cleanup_gate" {
+  config {
+    string = "cleanup: checking safe to delete"
   }
 }
