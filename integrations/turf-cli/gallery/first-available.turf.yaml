@@ -13,7 +13,7 @@ model: smart
 models:
   smart:
     first_available:
-      - anthropic/claude-sonnet-4-6   # ANTHROPIC_API_KEY
+      - anthropic/claude-sonnet-5   # ANTHROPIC_API_KEY
       - openai/gpt-5                  # OPENAI_API_KEY
       - google/gemini-pro-latest      # GOOGLE_API_KEY / GEMINI_API_KEY
       - dmr/ai/qwen3                  # keyless local fallback (Docker Model Runner)

@@ -38,7 +38,7 @@ turf merges two locations, **project overriding global**:
 ```
 
 - `--model` accepts a **named model** from `turf.yaml` (`--model fast`), an inline
-  **`provider/model`** (`--model anthropic/claude-sonnet-4-6`, keyless
+  **`provider/model`** (`--model anthropic/claude-sonnet-5`, keyless
   `--model dmr/ai/qwen3`), or **`auto`**.
 - `auto` (the default when nothing is set) picks the first provider whose
   credentials are present — zero-config "first available".

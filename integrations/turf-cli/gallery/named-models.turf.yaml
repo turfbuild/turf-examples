@@ -13,7 +13,7 @@ models:
   # A capable default for planning and applying real infrastructure changes.
   smart:
     provider: anthropic
-    model: claude-sonnet-4-6
+    model: claude-sonnet-5
     max_tokens: 64000
     temperature: 0.2
 

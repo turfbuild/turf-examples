@@ -19,6 +19,6 @@ models:
     # wins, at load time. Local providers (dmr) need no key, so a dmr entry last
     # is a guaranteed fallback. Set the key for ANY one candidate and it runs.
     first_available:
-      - anthropic/claude-sonnet-4-6   # needs ANTHROPIC_API_KEY
+      - anthropic/claude-sonnet-5   # needs ANTHROPIC_API_KEY
       - google/gemini-pro-latest      # needs GOOGLE_API_KEY (or GEMINI_API_KEY)
       - dmr/ai/qwen3                  # Docker Model Runner — no key, no cost
