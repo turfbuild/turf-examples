@@ -32,7 +32,8 @@ turf/             Turf-specific examples — the plot dialect + Turf-native feat
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
-  turf-cli/           Skill-discovery demo for the standalone Turf CLI (.turf/skills/)
+  turf-cli/           Configuring the standalone Turf CLI (.turf/): user skills
+                      + model config (turf.yaml — first-available, named, local)
   kubernetes-backend/ Store Turf state in-cluster via the kubernetes state backend
 ```
 

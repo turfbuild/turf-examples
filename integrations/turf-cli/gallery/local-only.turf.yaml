@@ -1,0 +1,20 @@
+# local-only.turf.yaml — keyless, offline via Docker Model Runner
+#
+# Copy to ./.turf/turf.yaml to use. No API keys, no cloud calls, no cost.
+# Requires Docker Model Runner (https://docs.docker.com/ai/model-runner/) and a
+# pulled chat model, e.g.:
+#
+#   docker model pull ai/qwen3
+#
+# The turf CLI equivalent without any config file is simply:  turf --model dmr/ai/qwen3
+
+model: local
+
+models:
+  local:
+    provider: dmr
+    model: ai/qwen3
+
+# Tip: `dmr` resolves its own local endpoint, so no base_url is needed. If you
+# run Model Runner on a non-default host, set MODEL_RUNNER_HOST in the
+# environment rather than in this file.

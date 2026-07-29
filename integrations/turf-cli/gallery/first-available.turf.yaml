@@ -1,0 +1,29 @@
+# first-available.turf.yaml — credential-based fallback ("First Available Models")
+#
+# Copy to ./.turf/turf.yaml (or ~/.turf/turf.yaml) to use.
+#
+# A single named model whose `first_available:` list is evaluated once, at
+# startup: turf selects the first candidate whose required environment
+# credentials are present. This lets one config be shared across machines —
+# it prefers a commercial API where a key exists and falls back to a keyless
+# local model everywhere else. You only need credentials for ONE candidate.
+
+model: smart
+
+models:
+  smart:
+    first_available:
+      - anthropic/claude-sonnet-5   # ANTHROPIC_API_KEY
+      - openai/gpt-5                  # OPENAI_API_KEY
+      - google/gemini-pro-latest      # GOOGLE_API_KEY / GEMINI_API_KEY
+      - dmr/ai/qwen3                  # keyless local fallback (Docker Model Runner)
+
+# Notes
+# - A `first_available` entry must contain ONLY the list — no provider/model,
+#   temperature, base_url, etc. alongside it. Put tuning on a separate named
+#   model (see named-models.turf.yaml).
+# - Candidates may be inline "provider/model" refs (as above) or the names of
+#   other models defined in this file.
+# - Selection happens at load time, not per request. To fail over on a live
+#   request error instead, that is cagent's per-agent `fallback` — not yet
+#   surfaced by the turf CLI.

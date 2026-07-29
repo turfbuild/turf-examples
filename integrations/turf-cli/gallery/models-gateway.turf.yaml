@@ -1,0 +1,22 @@
+# models-gateway.turf.yaml — route every model through a gateway
+#
+# Copy to ./.turf/turf.yaml to use. A models gateway is a single endpoint that
+# fronts multiple providers and supplies their credentials, so individual models
+# need no per-provider keys. When `models_gateway:` is set, a first_available
+# list selects its first candidate (the gateway handles auth).
+
+models_gateway: https://models-gateway.example.com
+
+model: default
+
+models:
+  default:
+    first_available:
+      - anthropic/claude-sonnet-5
+      - openai/gpt-5
+
+# Notes
+# - The gateway URL can also be supplied out-of-band; keeping it here versions it
+#   with the project so every collaborator routes the same way.
+# - Because the gateway provides credentials, you do NOT need ANTHROPIC_API_KEY /
+#   OPENAI_API_KEY locally for the candidates above.
