@@ -1,0 +1,24 @@
+# turf.yaml — the active model configuration for this directory.
+#
+# turf merges two files, project overriding global:
+#   ~/.turf/turf.yaml            (global — your personal defaults)
+#   ./.turf/turf.yaml            (project — this file, versioned with the config)
+#
+# Precedence for the model actually used:
+#   --model / TURF_MODEL  >  this file's `model:`  >  built-in default (auto)
+#
+# This example makes `turf chat` here work with whatever credentials you have:
+# it prefers Anthropic, then Google, then a keyless local model — the essence of
+# "first available".
+
+model: default
+
+models:
+  default:
+    # Tried top-to-bottom; the first candidate whose credentials are configured
+    # wins, at load time. Local providers (dmr) need no key, so a dmr entry last
+    # is a guaranteed fallback. Set the key for ANY one candidate and it runs.
+    first_available:
+      - anthropic/claude-sonnet-4-6   # needs ANTHROPIC_API_KEY
+      - google/gemini-pro-latest      # needs GOOGLE_API_KEY (or GEMINI_API_KEY)
+      - dmr/ai/qwen3                  # Docker Model Runner — no key, no cost

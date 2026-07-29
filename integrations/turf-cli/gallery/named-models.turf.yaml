@@ -1,0 +1,34 @@
+# named-models.turf.yaml — a small catalog of named models with tuning
+#
+# Copy to ./.turf/turf.yaml to use. Then switch between them with the flag
+# (`turf --model fast`) or interactively in the full TUI with `/model`.
+#
+# `model:` sets the default the agent starts with; each key under `models:` is a
+# named model you can select by name. Values reuse cagent's model schema, so
+# every tuning field is available (temperature, max_tokens, top_p, …).
+
+model: smart
+
+models:
+  # A capable default for planning and applying real infrastructure changes.
+  smart:
+    provider: anthropic
+    model: claude-sonnet-4-6
+    max_tokens: 64000
+    temperature: 0.2
+
+  # A cheaper, faster model for quick questions and read-only exploration.
+  fast:
+    provider: google
+    model: gemini-3.5-flash
+    max_tokens: 32000
+
+  # Fully local, no key, no cost — good offline or for cost-sensitive runs.
+  local:
+    provider: dmr
+    model: ai/qwen3
+
+# Try it:
+#   turf --model fast   chat      # start on the cheap model
+#   turf               chat       # start on `smart` (the default)
+#   # then, in the TUI:  /model    to switch live for the session

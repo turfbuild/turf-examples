@@ -1,6 +1,9 @@
-# Agent memory databases (runtime state, not source)
+# Agent runtime state (memory, session history, locks) — not source
 memory.db*
 .turf-memory.db*
+sessions.db
+sessions.db-*
+memory.lock
 
 # Terraform/OpenTofu working state and provider cache
 .terraform/

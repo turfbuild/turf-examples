@@ -1,0 +1,28 @@
+# openai-compatible.turf.yaml — a custom OpenAI-compatible endpoint
+#
+# Copy to ./.turf/turf.yaml to use. Point turf at any server that speaks the
+# OpenAI API — a self-hosted vLLM / LM Studio / Ollama endpoint, or a corporate
+# gateway — by defining a custom provider and referencing it from a model.
+#
+# A `providers:` entry names the endpoint (base_url) and which environment
+# variable holds its token (token_key); `provider: openai` selects the
+# OpenAI-compatible client. Models then reference the provider by its name.
+
+model: house
+
+providers:
+  house-llm:
+    provider: openai                    # speak the OpenAI API
+    base_url: https://llm.internal.example.com/v1
+    token_key: HOUSE_LLM_API_KEY        # env var holding the token
+
+models:
+  house:
+    provider: house-llm                 # references the custom provider above
+    model: meta-llama/Llama-3.3-70B-Instruct
+    max_tokens: 32000
+
+# Equivalent one-off without a config file:
+#   turf --model openai/meta-llama/Llama-3.3-70B-Instruct \
+#        --base-url https://llm.internal.example.com/v1
+#   # (with the token in the provider's default env var)
