@@ -4,6 +4,21 @@ Spin up a local Kubernetes cluster with [`kind`](https://kind.sigs.k8s.io/), reg
 a `CustomResourceDefinition`, and create an instance of it — all locally, no cloud
 account or credentials.
 
+## Demo
+
+[![turf up converging a kind cluster, a CRD, and a custom resource in one run](https://turf.build/demos/kind-crd-up-poster.png)](https://turf.build/demo/)
+
+▶ **[Watch the full walkthrough at turf.build/demo](https://turf.build/demo/)** — `turf up` converges
+the cluster, the CRD, and the custom resource in one governed run; `turf destroy` tears it down in
+reverse order.
+
+<!-- Prefer an inline, autoplaying video in this README instead of the poster above? Edit this file
+     on github.com and drag recordings/out/kind-crd-up.mp4 (from the internal headquarters repo)
+     into the editor; GitHub mints a https://github.com/user-attachments/assets/… URL. Replace the
+     image+link above with:
+       <video src="PASTE-THE-URL" controls muted playsinline width="100%"></video> -->
+
+
 ## What This Demonstrates
 
 This is the clearest showcase of **Turf's cross-phase convergence**. Three things must
