@@ -2,3 +2,4 @@
 .turf/*
 !.turf/skills/
 !.turf/turf.yaml
+turf-crd-demo-config
