@@ -35,6 +35,8 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
   turf-cli/           Configuring the standalone Turf CLI (.turf/): user skills
                       + model config (turf.yaml — first-available, named, local)
   kubernetes-backend/ Store Turf state in-cluster via the kubernetes state backend
+  scalr/              Turf tailored for Scalr: remote backend, setup-as-code,
+                      OPA policy, module registry, and MCP read-back
 ```
 
 ## Terraform examples
@@ -113,6 +115,18 @@ environment (`KUBE_CONFIG_PATH`, `KUBE_IN_CLUSTER_CONFIG`), independent of the
 namespace. For the in-cluster (turf-in-a-pod) RBAC that this backend requires when
 Turf runs *inside* the cluster, see `integrations/kagent/`. See
 `integrations/kubernetes-backend/README.md`.
+
+### `integrations/scalr/` — Turf tailored for Scalr
+
+Turf as the engine, [Scalr](https://scalr.io) as the control plane: Turf plans and
+applies locally while a Scalr workspace stores the state + variables and enforces
+policy, and the Scalr MCP server reads it all back into your assistant. A `setup/`
+config provisions the Scalr side as code with the `scalr` provider (environment,
+**state-storage-only** workspaces, a variable, and an OPA `scalr_policy_group` sourced
+from this repo). Two runnable, credential-free (`random`) examples then point their
+`backend "remote"` at those workspaces: a **coded** interop test (`state-backend/`) and
+a **plot** (`plot/`). A `scalr` skill under `.turf/` teaches the Turf agent the
+backend/registry/policy conventions. See `integrations/scalr/README.md`.
 
 ## License
 

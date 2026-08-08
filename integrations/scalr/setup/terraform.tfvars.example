@@ -1,0 +1,23 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is git-ignored (it holds account-specific / secret values).
+
+# Required: your Scalr account hostname.
+scalr_hostname = "example.scalr.io"
+
+# Your account ID (acc-...). For LOCAL provider runs Scalr can't always infer it, so
+# set it here (or export SCALR_ACCOUNT_ID). Leave commented only if a single-account
+# token makes inference unambiguous.
+# scalr_account_id = "acc-xxxxxxxxxx"
+
+# Optional: a GitHub token so Scalr can source the OPA policies in ../policies over
+# VCS. Leave commented to skip the VCS provider + policy group — the environment and
+# both workspaces are still created.
+# vcs_token = "ghp_xxxxxxxxxxxx"
+
+# The environment + workspace names default to turf-demo / turf-scalr-coded /
+# turf-scalr-plot. If you override them here, update the `organization` and
+# `workspaces { name }` literals in ../state-backend and ../plot to match — backend
+# blocks can't read variables.
+# environment_name     = "turf-demo"
+# coded_workspace_name = "turf-scalr-coded"
+# plot_workspace_name  = "turf-scalr-plot"
