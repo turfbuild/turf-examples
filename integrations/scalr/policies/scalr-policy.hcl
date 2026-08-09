@@ -13,7 +13,7 @@ policy "readable_pet_names" {
   enforcement_level = "advisory"
 }
 
-policy "require_name_tag" {
+policy "require_environment_tag" {
   enabled           = true
-  enforcement_level = "advisory"
+  enforcement_level = "hard-mandatory"
 }
