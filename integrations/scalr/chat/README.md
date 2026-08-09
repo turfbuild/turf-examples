@@ -23,6 +23,13 @@ sees three tool namespaces at once:
 The `scalr` skill in `.turf/skills/scalr/` teaches the agent the call sequences
 (`references/mcp.md`).
 
+The same file also carries a `branding:` section, giving this directory a Scalr look and
+voice: the `SCALR` banner (`.turf/scalr-banner.txt`), the `surf` theme, a Scalr welcome,
+and standing instructions to treat policy as a pre-approval gate. Branding is look and
+voice only — turf is not renamed (the binary, status bar, and agent badge still say
+`turf`), the tool namespace stays `turf_*`, and no approval gate is relaxed. Your own
+`/theme` pick still overrides the branded default.
+
 ## Prerequisites
 
 - **`../setup` applied** — creates the `region` variable, the published module, and the

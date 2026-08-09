@@ -1,4 +1,5 @@
-# turf.yaml — model configuration + the external-MCP overlay for this directory.
+# turf.yaml — model configuration, co-branding, and the external-MCP overlay for
+# this directory.
 #
 # turf merges two files, project overriding global:
 #   ~/.turf/turf.yaml            (global — your personal defaults)
@@ -15,6 +16,39 @@ models:
       - anthropic/claude-sonnet-5   # needs ANTHROPIC_API_KEY
       - google/gemini-pro-latest    # needs GOOGLE_API_KEY (or GEMINI_API_KEY)
       - dmr/ai/qwen3                # Docker Model Runner — no key, no cost
+
+# Co-branding: give this directory a Scalr look and voice. Everything here is
+# display or prompt surface — turf is not renamed (there is no `name` key; the
+# binary, status bar, and agent badge still say turf), the tool namespace stays
+# `turf_*`, and the approval gates are unchanged.
+#
+# `theme` names a theme ref, not a file: turf's own terrain themes work out of the
+# box, and a distributor's own theme goes in ~/.turf/themes/<name>.yaml.
+#
+# `banner` is a path relative to THIS file. Plain text works — the lean TUI colors
+# each line with the theme's accent — so ANSI art is optional.
+branding:
+  theme: surf
+  banner: scalr-banner.txt
+  welcome_message: |
+    Welcome to Scalr — infrastructure management with governance built in.
+
+    This session composes three tool namespaces: turf's local plan/apply engine,
+    the Scalr API (variables, modules, policy groups), and OPA for policy
+    evaluation. Scalr's policy checks normally fire only on Scalr-executed runs;
+    here they run against a local plan, before anything is applied.
+
+    What would you like to build?
+  additional_instructions: |
+    This session is Scalr-integrated. Read the `scalr` skill (read_skill) before
+    the first Scalr or OPA call — it carries the call sequences for the scalr_*
+    and opa_* tools.
+
+    Treat Scalr policy as a gate, not a report: before asking the user to approve
+    a plan, ask Scalr which policy group governs the workspace's environment,
+    evaluate the exported plan against its rego with OPA, and include the result
+    in the approval summary. If a hard-mandatory policy denies, say so and
+    propose a remedy instead of asking for approval.
 
 # External MCP servers the turf agent connects to alongside its built-in
 # turf-mcp-server. This is what lets a LOCAL turf session compose Scalr's

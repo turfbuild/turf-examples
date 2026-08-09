@@ -1,6 +1,8 @@
 .terraform/
 
-# turf per-directory state (session/memory dbs) — keep only the skill + turf.yaml
+# turf per-directory state (session/memory dbs) — keep only the committed assets:
+# the skill, turf.yaml, and the branding banner it references.
 chat/.turf/*
 !chat/.turf/skills/
 !chat/.turf/turf.yaml
+!chat/.turf/scalr-banner.txt
