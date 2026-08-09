@@ -12,3 +12,8 @@ policy "readable_pet_names" {
   enabled           = true
   enforcement_level = "advisory"
 }
+
+policy "require_name_tag" {
+  enabled           = true
+  enforcement_level = "advisory"
+}
