@@ -16,9 +16,10 @@ Scalr running the plan.
 
 1. **Resolve the workspace ID.** `scalr_list_workspaces` with
    `{ "filter_name": "<workspace-name>" }` → `resources[0].id` (a `ws-…` id) and its
-   `environment` (an `env-…` id — keep it for Playbook 2). **Default to
-   `turf-scalr-chat`** — the workspace `../setup` creates (`chat_workspace_name`) that
-   holds this demo's `region` variable — unless the user names another.
+   `environment` (an `env-…` id — keep it for Playbook 2). Take `<workspace-name>` from the
+   config's `backend "remote"` block / the workspace the session opened, or from the user —
+   don't assume a name. (In the `chat` demo it's the workspace `../setup` created, holding
+   this demo's `region` variable; its README names it.)
 2. **Find the value.** `scalr_list_variables` with
    `{ "filter_workspace": "<ws-id>", "filter_key": "region" }` returns
    `{ "resources": [ { key, value, sensitive, category, id, … } ] }`. Each

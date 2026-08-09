@@ -5,9 +5,13 @@ state-storage-only workspace (Turf's local model) gets none of them. Turf compos
 anyway — a local session reads the Scalr API through the **Scalr MCP server** and
 evaluates policy through an **OPA MCP server**, all inside the agent loop.
 
-This directory is nearly empty on purpose: only `main.tfplot.hcl` (plot name + a local,
-plan-only backend) is checked in. The agent declares the `aws` provider and the VPC
-module live, from your prompt.
+This directory ships **no plot at all** — only this README and `.turf/` (turf.yaml, the
+`scalr` skill, the banner). On your first prompt the agent `config_init`s a *fresh* plot
+here, `declare_backend`s a `remote` backend bound to the `turf-scalr-chat` workspace
+`../setup` created — a *state-storage-only* remote workspace, so Turf still plans/applies
+locally while Scalr holds the state — then authors the `aws` provider and the VPC module
+live, from your prompt. The generated `*.tfplot.hcl` units (and any local state) are
+git-ignored, so a run leaves your checkout clean — nothing to reset.
 
 ## How it works
 
@@ -25,10 +29,13 @@ The `scalr` skill in `.turf/skills/scalr/` teaches the agent the call sequences
 
 The same file also carries a `branding:` section, giving this directory a Scalr look and
 voice: the `SCALR` banner (`.turf/scalr-banner.txt`), the `surf` theme, a Scalr welcome,
-and standing instructions to treat policy as a pre-approval gate. Branding is look and
-voice only — turf is not renamed (the binary, status bar, and agent badge still say
-`turf`), the tool namespace stays `turf_*`, and no approval gate is relaxed. Your own
-`/theme` pick still overrides the branded default.
+and standing instructions to treat policy as a pre-approval gate. Because nothing is checked
+in as a plot, those `branding.additional_instructions` are also where the session is told to
+`config_init` a fresh plot, `declare_backend` a `remote` backend for the `turf-scalr-chat`
+workspace (state-storage-only), and open it — never a local backend. Branding is look and
+voice only — turf is not renamed (the binary, status bar, and agent badge still say `turf`),
+the tool namespace stays `turf_*`, and no approval gate is relaxed. Your own `/theme` pick
+still overrides the branded default.
 
 ## Prerequisites
 
@@ -42,8 +49,13 @@ voice only — turf is not renamed (the binary, status bar, and agent badge stil
   export SCALR_API_TOKEN="$SCALR_TOKEN"
   export SCALR_API_URL="https://<your-account>.scalr.io"
   ```
+- **A Scalr CLI token for the state backend** — the remote backend authenticates
+  separately from the MCP server. Run `turf login <your-account>.scalr.io` (writes
+  `~/.terraform.d/credentials.tfrc.json`) or export `TF_TOKEN_<host>` (dots → `_`, dashes →
+  `__`). State is written to the `turf-scalr-chat` workspace in Scalr.
 - **Local AWS credentials** — Turf plans locally, so the AWS provider authenticates from
-  your environment, not Scalr. This demo is **plan-only**; no AWS resources are created.
+  your environment, not Scalr. No AWS resources are created — the demo is plan-only for
+  cloud infra; only workspace *state* is stored in Scalr.
 
 ## Run it
 

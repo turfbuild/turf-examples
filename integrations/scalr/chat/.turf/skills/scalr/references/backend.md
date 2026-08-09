@@ -15,7 +15,7 @@ Set it on the `scalr_workspace` resource:
 
 ```hcl
 resource "scalr_workspace" "example" {
-  name           = "turf-scalr-chat"
+  name           = "my-workspace"
   environment_id = scalr_environment.demo.id
   execution_mode = "local"
   iac_platform   = "opentofu"
@@ -40,3 +40,9 @@ The `scalr` **provider** (used in the setup/bootstrap config, not the backend) r
 The config that *creates* the Scalr workspaces (`../setup`) can't itself use a Scalr
 workspace for state — it keeps `backend "local"`. Any *other* config that wants Scalr
 to hold its state points `backend "remote"` at a workspace setup created.
+
+A config may also declare **no** backend at all and instead open a state-storage-only
+remote workspace at runtime — carrying the same `hostname`/`environment`/`workspace`
+identity from its instructions into `workspace_open`. That keeps the config generic (no
+workspace pinned into the checked-in files) while still storing state in Scalr; the `chat`
+demo takes this approach.
