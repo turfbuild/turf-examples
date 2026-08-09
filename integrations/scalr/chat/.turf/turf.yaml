@@ -40,9 +40,32 @@ branding:
 
     What would you like to build?
   additional_instructions: |
-    This session is Scalr-integrated. Read the `scalr` skill (read_skill) before
-    the first Scalr or OPA call — it carries the call sequences for the scalr_*
-    and opa_* tools.
+    This session is Scalr-integrated. Read the `scalr` skill before the first Scalr
+    or OPA call — it carries the call sequences for the scalr_* and opa_* tools. Load
+    it and its reference files with the project-skill tools `read_skill` /
+    `read_skill_file` (NOT `turf_read_skill_file` / `turf_skill_*`, which are
+    turf-mcp-server's own built-in skills and don't know this project skill).
+
+    This directory ships NO plot. On the first request, stand one up and bind its
+    state to Scalr (state-storage-only REMOTE, the `turf-scalr-chat` workspace
+    `../setup` created) — Turf still plans/applies locally:
+
+    1. `turf_config_init` this directory (path = the config dir turf was launched with)
+       to scaffold a fresh plot, with an `intent` like "Compose Scalr's registry
+       variable and OPA policy in one local turf session; state lives in the Scalr
+       workspace ../setup created."
+    2. `turf_declare_backend` a `remote` backend — `organization` = `turf-demo`,
+       `workspaces.name` = `turf-scalr-chat` (the `../setup` defaults), `hostname` =
+       your Scalr account host: the host part of the exported `SCALR_API_URL`
+       (`https://<acct>.scalr.io` → `<acct>.scalr.io`), or your `turf login` host. Do
+       NOT open the `../setup` workspace to read its outputs — the identity is fixed,
+       and opening it just locks and rewrites setup state.
+    3. `turf_workspace_open` with the same `remote` backend args. The backend
+       authenticates with a Scalr CLI token (`turf login <acct>.scalr.io` or
+       `TF_TOKEN_<host>`), separate from the SCALR_API_TOKEN the MCP server uses.
+
+    Never declare or open a LOCAL backend here. The workspace must already exist — if
+    it doesn't, tell the user to apply `../setup` first rather than creating it by hand.
 
     Treat Scalr policy as a gate, not a report: before asking the user to approve
     a plan, ask Scalr which policy group governs the workspace's environment,

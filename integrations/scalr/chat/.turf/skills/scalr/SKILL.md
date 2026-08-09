@@ -61,8 +61,10 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
 - **Pull a variable → feed a module.** Read a non-sensitive workspace variable with
   `scalr_list_variables` / `scalr_get_variable`, then `turf_declare_module` a
   private-registry module using that value. (Sensitive values are write-once and never
-  returned — only non-sensitive vars are pullable.) The demo's workspace defaults to
-  **`turf-scalr-chat`** (created by `../setup`); use it unless the user names another.
+  returned — only non-sensitive vars are pullable.) Which workspace? The one this config
+  binds to — resolve it from the config's `backend "remote"` / the workspace the session
+  opened, or the name the user gives you. (This repo's `chat` demo targets the workspace
+  `../setup` created; its README names it.)
 - **Policy gate at approval.** Discover the Scalr policy group for the workspace's
   environment (`scalr_list_policy_groups` → `scalr_get_policy_group`) to learn each
   policy's `enforced-level` and its `vcs_repo`; fetch the matching `<name>.rego` from
@@ -75,9 +77,13 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
 
 - When adding state to a Scalr-backed dir, write the `backend "remote"` block with
   literal `hostname`/`organization`/`workspaces.name`; never try to parameterize a
-  backend with variables.
-- Keep the environment/workspace names in the backend blocks in sync with what
-  `../setup` creates.
+  backend with variables. (A config may instead declare **no** backend and open a
+  state-storage-only remote workspace at runtime — carrying the same
+  `hostname`/`environment`/`workspace` identity from its instructions — when it wants to
+  stay generic; the `chat` demo does this.)
+- Whether it lives in a backend block or is passed to `workspace_open`, keep the
+  environment/workspace names in sync with whatever provisioned that workspace.
 - Load `references/backend.md` for the state-only rationale and the token-env-var
   encoding rules; load `references/mcp.md` for the variable→module and policy-gate
-  call sequences.
+  call sequences. (Read these with `read_skill_file` — this is a project skill, not a
+  `turf_*` built-in, so `turf_read_skill_file` won't find it.)
