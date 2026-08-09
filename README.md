@@ -119,14 +119,15 @@ Turf runs *inside* the cluster, see `integrations/kagent/`. See
 ### `integrations/scalr/` — Turf tailored for Scalr
 
 Turf as the engine, [Scalr](https://scalr.io) as the control plane: Turf plans and
-applies locally while a Scalr workspace stores the state + variables and enforces
-policy, and the Scalr MCP server reads it all back into your assistant. A `setup/`
-config provisions the Scalr side as code with the `scalr` provider (environment,
-**state-storage-only** workspaces, a variable, and an OPA `scalr_policy_group` sourced
-from this repo). Two runnable, credential-free (`random`) examples then point their
-`backend "remote"` at those workspaces: a **coded** interop test (`state-backend/`) and
-a **plot** (`plot/`). A `scalr` skill under `.turf/` teaches the Turf agent the
-backend/registry/policy conventions. See `integrations/scalr/README.md`.
+applies locally while Scalr holds the variables and enforces policy. A `setup/` config
+provisions the Scalr side as code with the `scalr` provider (environment, a
+**state-storage-only** workspace, a `region` variable, a published registry module, and
+an OPA `scalr_policy_group` sourced from this repo). The headline demo, `chat/`,
+**composes Scalr's normally remote-only features in a local session**: via a
+`turf.yaml` `mcps:` overlay the agent talks to the Scalr and OPA MCP servers, pulling
+the workspace variable into the registry module and gating plan-approval on the OPA
+policy — governance in the local loop, not a remote run. A `scalr` skill under `.turf/`
+teaches the Turf agent these conventions. See `integrations/scalr/README.md`.
 
 ## License
 

@@ -1,0 +1,41 @@
+# turf.yaml — model configuration + the external-MCP overlay for this directory.
+#
+# turf merges two files, project overriding global:
+#   ~/.turf/turf.yaml            (global — your personal defaults)
+#   ./.turf/turf.yaml            (project — this file, versioned with the config)
+#
+# Precedence for the model actually used:
+#   --model / TURF_MODEL  >  this file's `model:`  >  built-in default (auto)
+
+model: default
+
+models:
+  default:
+    first_available:
+      - anthropic/claude-sonnet-5   # needs ANTHROPIC_API_KEY
+      - google/gemini-pro-latest    # needs GOOGLE_API_KEY (or GEMINI_API_KEY)
+      - dmr/ai/qwen3                # Docker Model Runner — no key, no cost
+
+# External MCP servers the turf agent connects to alongside its built-in
+# turf-mcp-server. This is what lets a LOCAL turf session compose Scalr's
+# otherwise remote-only features: read the Scalr API (variables, policy, modules)
+# and evaluate policy with OPA — all inside the agent loop. See the `scalr` skill
+# in .turf/skills/scalr for the playbooks that use these.
+#
+# cagent prefixes each server's tools with its name, so these appear as `scalr_*`
+# and `opa_*`, distinct from turf's own `turf_*`.
+#
+# Export these before launching turf (the `docker run --env NAME` form forwards
+# them from your shell into the container — no secret is written to this file):
+#   export SCALR_API_TOKEN="$SCALR_TOKEN"
+#   export SCALR_API_URL="https://<your-account>.scalr.io"
+mcps:
+  scalr:
+    command: docker
+    args: [run, --rm, -i, --env, SCALR_API_TOKEN, --env, SCALR_API_URL, scalr/mcp-server:latest]
+  opa:
+    command: docker
+    args: [run, --rm, -i, orygn/opa-mcp:latest]
+    # No Docker? Swap the two lines above for the keyless npm runner:
+    #   command: npx
+    #   args: [-y, "@orygn/opa-mcp"]

@@ -5,7 +5,7 @@ terraform {
       # its own registry — swap the source to "registry.scalr.io/scalr/scalr" if
       # you prefer that.
       source  = "scalr/scalr"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
   }
 
@@ -19,7 +19,7 @@ terraform {
 
 # Auth is out-of-band. The Scalr provider reads its token from the SCALR_TOKEN
 # environment variable (or a scalr.io entry in credentials.tfrc.json written by
-# `terraform login <acct>.scalr.io`). The hostname comes from a variable so the
+# `turf login <acct>.scalr.io`). The hostname comes from a variable so the
 # account name lives in one place.
 provider "scalr" {
   hostname = var.scalr_hostname

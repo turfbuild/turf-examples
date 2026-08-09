@@ -15,7 +15,7 @@ Set it on the `scalr_workspace` resource:
 
 ```hcl
 resource "scalr_workspace" "example" {
-  name           = "turf-scalr-coded"
+  name           = "turf-scalr-chat"
   environment_id = scalr_environment.demo.id
   execution_mode = "local"
   iac_platform   = "opentofu"
@@ -26,7 +26,7 @@ resource "scalr_workspace" "example" {
 
 The `remote` backend authenticates via a CLI credential, not the `scalr` provider:
 
-- `terraform login <acct>.scalr.io` — interactive; writes
+- `turf login <acct>.scalr.io` — interactive; writes
   `~/.terraform.d/credentials.tfrc.json`.
 - `TF_TOKEN_<host>` — the host with dots replaced by underscores and dashes by
   double underscores. For `my-acct.scalr.io` that is
@@ -38,5 +38,5 @@ The `scalr` **provider** (used in the setup/bootstrap config, not the backend) r
 ## Chicken-and-egg
 
 The config that *creates* the Scalr workspaces (`../setup`) can't itself use a Scalr
-workspace for state — it keeps `backend "local"`. Everything else points its
-`backend "remote"` at the workspaces that setup created.
+workspace for state — it keeps `backend "local"`. Any *other* config that wants Scalr
+to hold its state points `backend "remote"` at a workspace setup created.

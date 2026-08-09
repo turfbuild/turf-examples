@@ -13,17 +13,22 @@ output "environment_id" {
   value       = scalr_environment.demo.id
 }
 
-output "coded_workspace" {
-  description = "Workspace name for ../state-backend (its `workspaces { name = ... }`)."
-  value       = scalr_workspace.coded.name
-}
-
-output "plot_workspace" {
-  description = "Workspace name for ../plot."
-  value       = scalr_workspace.plot.name
+output "chat_workspace" {
+  description = "Workspace whose region/greeting variables the chat/ demo pulls via the Scalr MCP server."
+  value       = scalr_workspace.chat.name
 }
 
 output "policy_group_id" {
   description = "OPA policy group ID (null unless a vcs_token was supplied)."
   value       = one(scalr_policy_group.opa[*].id)
+}
+
+output "module_sources" {
+  description = "Four-part Scalr registry sources for the published modules, keyed by module_repos label (empty unless a vcs_token was supplied). Consume each with a pinned version."
+  value       = { for k, m in scalr_module.registry : k => "${var.scalr_hostname}/${m.source}" }
+}
+
+output "module_source" {
+  description = "Convenience alias for module_sources[\"vpc\"] — the region-consuming module the chat/ demo pulls (null unless published)."
+  value       = try("${var.scalr_hostname}/${scalr_module.registry["vpc"].source}", null)
 }
