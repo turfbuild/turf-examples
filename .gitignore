@@ -32,3 +32,6 @@ terraform.tfvars
 
 # Local environment overrides
 .envrc.local
+
+# Local MCP servers
+.mcp.json

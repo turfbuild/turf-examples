@@ -1,0 +1,6 @@
+.terraform/
+
+# turf per-directory state (session/memory dbs) — keep only the skill + turf.yaml
+chat/.turf/*
+!chat/.turf/skills/
+!chat/.turf/turf.yaml
