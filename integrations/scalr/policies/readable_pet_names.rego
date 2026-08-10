@@ -4,10 +4,11 @@
 # `deny` set of human-readable strings — that is Scalr's OPA contract. The plan is
 # provided at `input.tfplan` (the standard `tofu show -json` document).
 #
-# This one is advisory (see scalr-policy.hcl): it encourages `random_pet` names to
-# keep length >= 2 so generated identifiers stay readable. It is deliberately keyed
-# to the random workload the examples create, so a policy check evaluates against a
-# real plan.
+# This one is hard-mandatory (see scalr-policy.hcl): `random_pet` names must keep
+# length >= 2 so generated identifiers stay readable. It is deliberately keyed to
+# the random workload the examples create, so a policy check evaluates against a
+# real plan — and at hard-mandatory a violation blocks the apply, so the agent has
+# to remedy the plan (raise the length) rather than approve past the gate.
 package terraform
 
 import rego.v1

@@ -10,7 +10,7 @@ version = "v1"
 
 policy "readable_pet_names" {
   enabled           = true
-  enforcement_level = "advisory"
+  enforcement_level = "hard-mandatory"
 }
 
 policy "require_environment_tag" {
