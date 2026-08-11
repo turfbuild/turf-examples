@@ -5,6 +5,8 @@ state-storage-only workspace (Turf's local model) gets none of them. Turf compos
 anyway — a local session reads the Scalr API through the **Scalr MCP server** and
 evaluates policy through an **OPA MCP server**, all inside the agent loop.
 
+A walkthrough of a real run, with screenshots: **[turf.build/demo/scalr](https://turf.build/demo/scalr/)**
+
 This directory ships **no plot at all** — only this README and `.turf/` (turf.yaml, the
 `scalr` skill, the banner). On your first prompt the agent `config_init`s a *fresh* plot
 here, `declare_backend`s a `remote` backend bound to the `turf-scalr-chat` workspace

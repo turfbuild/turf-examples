@@ -1,6 +1,6 @@
 ---
 name: scalr
-description: Working with Scalr from a local Turf session — the remote backend + state-storage-only workspaces, and composing Scalr's otherwise remote-only features locally via MCP: pull a workspace variable and feed a registry module, and gate plan approval on an OPA policy. Load when a config targets a *.scalr.io host or the turf.yaml wires the scalr/opa MCP servers.
+description: Working with Scalr from a Turf session — the remote backend + state-storage-only workspaces, and composing features Scalr normally fires only on its own runs (workspace variables, OPA policy) inside the session via MCP: pull a workspace variable and feed a registry module, and gate plan approval on an OPA policy. Load when a config targets a *.scalr.io host or the turf.yaml wires the scalr/opa MCP servers.
 ---
 
 ## When to use

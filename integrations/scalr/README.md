@@ -5,6 +5,14 @@ integration runs **Turf as the engine and Scalr as the control plane**: Turf pla
 applies locally while Scalr holds the variables and defines policy. The Scalr side is
 provisioned as code with the Scalr Terraform provider.
 
+## See it in action
+
+[![Scalr's hard-mandatory readable_pet_names policy denying a plan, and Turf proposing the remedy](https://turf.build/demos/scalr/04-gate.png)](https://turf.build/demo/scalr/)
+
+A walkthrough of a real run of [`chat/`](chat) — binding state to the workspace, reading
+the workspace variables, and a **hard-mandatory** OPA policy blocking the plan before the
+apply: **[turf.build/demo/scalr](https://turf.build/demo/scalr/)**
+
 ## What's here
 
 | Path | What it shows |
