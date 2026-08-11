@@ -97,3 +97,8 @@ The module doesn't inject an `Environment` tag, and `require_environment_tag` is
 One `tags` input, propagated by the module's `merge(var.tags, …)`, fixes all four
 resources; OPA returns an empty `deny` and the gate clears — governance caught at the
 local plan and remediated pre-apply, in the same session.
+
+---
+
+Scalr is a trademark of Scalr, Inc.; Turf is not affiliated with, endorsed by, or
+sponsored by Scalr, Inc. See [Trademarks](../README.md#trademarks).

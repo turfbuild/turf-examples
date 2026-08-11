@@ -49,3 +49,12 @@ Tear down with `turf -C integrations/scalr/setup destroy`.
 - Private module registry — https://docs.scalr.io/docs/private-module-registry
 - OPA policy as code — https://docs.scalr.io/docs/policy-as-code
 - Scalr Terraform provider — https://registry.terraform.io/providers/Scalr/scalr/latest/docs
+
+## Trademarks
+
+Scalr is a trademark of [Scalr, Inc.](https://scalr.com), referred to throughout this
+directory only to describe interoperability. Turf is not affiliated with, endorsed by, or
+sponsored by Scalr, Inc. The screenshot above is Turf's own terminal output, and the
+`SCALR` banner in [`chat/.turf/`](chat/.turf/scalr-banner.txt) is ASCII lettering written
+for this demo, not a Scalr brand asset. Use of the Scalr service is governed by
+[Scalr's terms and conditions](https://scalr.com/legal/terms-and-conditions).
