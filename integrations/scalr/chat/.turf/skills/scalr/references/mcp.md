@@ -64,10 +64,12 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
 2. **Fetch each policy's rego** from the group's `vcs_repo.path`, matching by name:
    read `<path>/<name>.rego` with the filesystem tool (e.g.
    `../policies/require_environment_tag.rego`). The policies dir sits outside the plot —
-   one level up from `chat/` — so launch turf with `--allow-path ../policies` (resolved
-   against the `-C` config dir) or the read fails as *"outside the allowed
-   directories."* (No local checkout? Fetch the file from the repo over the network —
-   creds permitting.)
+   one level up from `chat/` — so launch turf with `--allow-path ..` (resolved against the
+   `-C` config dir) or the read fails as *"outside the allowed directories."* Grant the
+   parent, not just `../policies`: getting your bearings by listing the directory the
+   policies sit in otherwise fails the same way. A `chat/policies` symlink does not help —
+   the file tools resolve symlinks on both sides of the check. (No local checkout? Fetch
+   the file from the repo over the network — creds permitting.)
 3. **Export the plan.** `turf_plan_export` → the standard `tofu show -json` document
    (`resource_changes[].change.after`, …).
 4. **Evaluate** each policy against the plan. **Pass BOTH the rego and the plan

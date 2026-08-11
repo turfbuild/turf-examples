@@ -59,12 +59,18 @@ still overrides the branded default.
 
 ## Run it
 
-`--allow-path ../policies` lets the file tools read the shared policy repo
+`--allow-path ..` lets the file tools read the shared policy repo
 (`integrations/scalr/policies/`) so the agent can fetch the rego the policy group points
 at; OPA evaluates it inline, so it never needs host-file access itself.
 
+Grant the parent rather than just `../policies`: the agent gets its bearings by listing the
+directory the policies live beside, and the narrower grant makes that fail with
+*"outside the allowed directories"* before it ever reaches the rego. Note a
+`chat/policies` symlink is not a way around this — the file tools resolve symlinks on both
+sides of the check precisely so a link can't reach outside the allowed roots.
+
 ```bash
-turf -C integrations/scalr/chat --allow-path ../policies chat
+turf -C integrations/scalr/chat --allow-path .. chat
 ```
 
 ### Prompt 1 — pull a variable, add a module, gate the plan

@@ -30,7 +30,7 @@ turf -C integrations/scalr/setup up
 
 # 2. The interactive demo — see chat/README.md for the session prompts.
 export SCALR_API_TOKEN="$SCALR_TOKEN"  SCALR_API_URL="https://example.scalr.io"
-turf -C integrations/scalr/chat --allow-path ../policies up
+turf -C integrations/scalr/chat --allow-path .. up
 ```
 
 Tear down with `turf -C integrations/scalr/setup destroy`.
