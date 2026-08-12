@@ -24,9 +24,15 @@ models:
     max_tokens: 32000
 
   # Fully local, no key, no cost — good offline or for cost-sensitive runs.
+  # context_size is required for a local model: turf's prompt is ~27k tokens
+  # before you type anything, and Docker Model Runner's default window is far
+  # smaller, so an unconfigured local model rejects the first message. Memory
+  # use scales with the window — lower it if the model won't fit.
   local:
     provider: dmr
     model: ai/qwen3
+    provider_opts:
+      context_size: 65536
 
 # Try it:
 #   turf --model fast   chat      # start on the cheap model

@@ -12,10 +12,22 @@ model: default
 
 models:
   default:
+    # A candidate is either an inline provider/model OR the name of another
+    # entry in this map — which is how `local` below keeps its provider_opts.
     first_available:
       - anthropic/claude-sonnet-5   # needs ANTHROPIC_API_KEY
       - google/gemini-pro-latest    # needs GOOGLE_API_KEY (or GEMINI_API_KEY)
-      - dmr/ai/qwen3                # Docker Model Runner — no key, no cost
+      - local                       # Docker Model Runner — no key, no cost
+
+  # Docker Model Runner (`docker model pull ai/qwen3`). context_size is required:
+  # turf's prompt is ~27k tokens before you type anything, and the runner's
+  # default window is far smaller, so an unconfigured local model rejects the
+  # first message. Memory use scales with this number — lower it if it won't fit.
+  local:
+    provider: dmr
+    model: ai/qwen3
+    provider_opts:
+      context_size: 65536
 
 # Co-branding: give this directory a Scalr look and voice. Everything here is
 # display or prompt surface — turf is not renamed (there is no `name` key; the

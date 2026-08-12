@@ -6,7 +6,9 @@
 #
 #   docker model pull ai/qwen3
 #
-# The turf CLI equivalent without any config file is simply:  turf --model dmr/ai/qwen3
+# There is no config-free equivalent of this file: `turf --model dmr/ai/qwen3`
+# cannot carry provider_opts, and without the context_size below the model runs
+# in its default window and rejects turf's very first message.
 
 model: local
 
@@ -14,6 +16,17 @@ models:
   local:
     provider: dmr
     model: ai/qwen3
+    provider_opts:
+      # Required. turf's prompt is ~27k tokens before you type anything (~40
+      # infrastructure tools plus their workflow instructions, sent on every
+      # request), and Model Runner's default window is far smaller — the first
+      # message comes back as "exceeds the available context size". 64k leaves
+      # working room for plan and state tool results.
+      #
+      # Lower it if the model won't fit in memory: the engine reserves cache for
+      # the whole window up front, so memory use scales with this number. 32768
+      # is about the floor, given turf's own prompt.
+      context_size: 65536
 
 # Tip: `dmr` resolves its own local endpoint, so no base_url is needed. If you
 # run Model Runner on a non-default host, set MODEL_RUNNER_HOST in the
