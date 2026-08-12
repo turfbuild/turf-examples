@@ -16,9 +16,31 @@ model: default
 models:
   default:
     # Tried top-to-bottom; the first candidate whose credentials are configured
-    # wins, at load time. Local providers (dmr) need no key, so a dmr entry last
-    # is a guaranteed fallback. Set the key for ANY one candidate and it runs.
+    # wins, at load time. Local providers (dmr) need no key, so a local entry
+    # last is a guaranteed fallback. Set the key for ANY one candidate and it
+    # runs.
+    #
+    # A candidate is either an inline provider/model OR the name of another
+    # entry in this map — which is how `local` below keeps its provider_opts.
     first_available:
       - anthropic/claude-sonnet-5   # needs ANTHROPIC_API_KEY
       - google/gemini-pro-latest      # needs GOOGLE_API_KEY (or GEMINI_API_KEY)
-      - dmr/ai/qwen3                  # Docker Model Runner — no key, no cost
+      - local                         # Docker Model Runner — no key, no cost
+
+  # Docker Model Runner. Pull it first: `docker model pull ai/qwen3`.
+  #
+  # context_size is not optional for a local model. turf's prompt is ~27k tokens
+  # before you type anything (~40 infrastructure tools plus their workflow
+  # instructions, sent every request), and Model Runner's default window is far
+  # smaller — it would reject turf's very first message with "exceeds the
+  # available context size". 64k leaves working room for plan and state tool
+  # results. Lower it if the model won't fit in memory: the engine reserves
+  # cache for the whole window up front, so memory use scales with this number.
+  #
+  # This is also why the fallback above names `local` rather than writing
+  # `dmr/ai/qwen3` inline: an inline reference cannot carry provider_opts.
+  local:
+    provider: dmr
+    model: ai/qwen3
+    provider_opts:
+      context_size: 65536

@@ -38,8 +38,11 @@ turf merges two locations, **project overriding global**:
 ```
 
 - `--model` accepts a **named model** from `turf.yaml` (`--model fast`), an inline
-  **`provider/model`** (`--model anthropic/claude-sonnet-5`, keyless
-  `--model dmr/ai/qwen3`), or **`auto`**.
+  **`provider/model`** (`--model anthropic/claude-sonnet-5`), or **`auto`**.
+- A **local model must be a named entry**, not an inline ref: it needs
+  `provider_opts.context_size` (turf's prompt is ~27k tokens, far past Docker
+  Model Runner's default window), and an inline `provider/model` carries no
+  per-model options.
 - `auto` (the default when nothing is set) picks the first provider whose
   credentials are present — zero-config "first available".
 - Env wins over the file, so `unset TURF_MODEL` if you want this directory's
@@ -57,7 +60,7 @@ works with whatever credentials you have — set a key for any one candidate.
 |------|-------|
 | [`gallery/first-available.turf.yaml`](gallery/first-available.turf.yaml) | Credential-based fallback across several providers, keyless local last. |
 | [`gallery/named-models.turf.yaml`](gallery/named-models.turf.yaml) | A `smart`/`fast`/`local` catalog with tuning; switch via `--model` or `/model`. |
-| [`gallery/local-only.turf.yaml`](gallery/local-only.turf.yaml) | Fully local, keyless, offline via Docker Model Runner. |
+| [`gallery/local-only.turf.yaml`](gallery/local-only.turf.yaml) | Fully local, keyless, offline via Docker Model Runner — including the `context_size` a local model needs. |
 | [`gallery/openai-compatible.turf.yaml`](gallery/openai-compatible.turf.yaml) | A custom OpenAI-compatible endpoint (vLLM / LM Studio / gateway) via `providers:`. |
 | [`gallery/models-gateway.turf.yaml`](gallery/models-gateway.turf.yaml) | Route every model through a gateway that supplies credentials. |
 

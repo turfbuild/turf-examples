@@ -16,14 +16,27 @@ models:
       - anthropic/claude-sonnet-5   # ANTHROPIC_API_KEY
       - openai/gpt-5                  # OPENAI_API_KEY
       - google/gemini-pro-latest      # GOOGLE_API_KEY / GEMINI_API_KEY
-      - dmr/ai/qwen3                  # keyless local fallback (Docker Model Runner)
+      - local                         # keyless local fallback (defined below)
+
+  # Docker Model Runner (`docker model pull ai/qwen3`). The fallback above names
+  # this entry rather than writing `dmr/ai/qwen3` inline, because an inline ref
+  # cannot carry provider_opts — and a local model needs context_size: turf's
+  # prompt is ~27k tokens before you type anything, and the runner's default
+  # window is far smaller, so an unconfigured local model rejects the first
+  # message. Memory use scales with the window — lower it if it won't fit.
+  local:
+    provider: dmr
+    model: ai/qwen3
+    provider_opts:
+      context_size: 65536
 
 # Notes
 # - A `first_available` entry must contain ONLY the list — no provider/model,
 #   temperature, base_url, etc. alongside it. Put tuning on a separate named
 #   model (see named-models.turf.yaml).
 # - Candidates may be inline "provider/model" refs (as above) or the names of
-#   other models defined in this file.
+#   other models defined in this file — which is the only way a candidate can
+#   carry per-model settings like provider_opts.
 # - Selection happens at load time, not per request. To fail over on a live
 #   request error instead, that is cagent's per-agent `fallback` — not yet
 #   surfaced by the turf CLI.
