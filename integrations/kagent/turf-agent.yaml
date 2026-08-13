@@ -133,12 +133,14 @@ spec:
             - plan_new
             - plan_cancel
             - plan_approve
+            - plan_export
             - replan
             - declare_resource
             - declare_module
             - declare_var
             - declare_outputs
             - declare_action
+            - declare_datasource
             - module_init
             - module_outputs
             - outputs
