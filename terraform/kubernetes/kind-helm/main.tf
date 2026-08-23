@@ -31,4 +31,22 @@ resource "helm_release" "podinfo" {
   # surfaces fast instead of hanging.
   wait    = true
   timeout = 120
+
+  # The release lives INSIDE kind_cluster.demo. Replacing the cluster would
+  # annihilate it with no provider RPC at all — helm would never run its
+  # uninstall, no hooks would fire — leaving a state entry pointing at nothing.
+  # Declaring the containment is what lets the release be uninstalled gracefully
+  # through the OLD cluster's endpoint, before the cluster comes down, and
+  # re-installed afterwards.
+  #
+  # The containment has to be declared because the graph cannot infer it: a
+  # provider whose config merely *references* a resource does not necessarily
+  # manage objects that live inside it.
+  #
+  # Reference the endpoint rather than the bare resource. A bare reference fires
+  # on any update to the cluster, so changing an unrelated attribute would
+  # uninstall the release for nothing.
+  lifecycle {
+    replace_triggered_by = [kind_cluster.demo.endpoint]
+  }
 }
