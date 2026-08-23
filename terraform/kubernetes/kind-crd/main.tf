@@ -12,6 +12,23 @@ resource "kind_cluster" "demo" {
 
 # A CustomResourceDefinition registering a new API kind, demo.local/v1 Turf.
 resource "kubernetes_manifest" "crd" {
+  # This object lives INSIDE kind_cluster.demo. Replacing the cluster would
+  # annihilate it with no provider RPC at all — no delete in the plan, no chance
+  # to run a finalizer — leaving a state entry pointing at nothing. Declaring the
+  # containment is what lets the CRD be deleted gracefully through the OLD
+  # cluster's endpoint, before the cluster comes down, and re-created afterwards.
+  #
+  # The containment has to be declared because the graph cannot infer it: a
+  # provider whose config merely *references* a resource does not necessarily
+  # manage objects that live inside it.
+  #
+  # Reference the endpoint rather than the bare resource. A bare reference fires
+  # on any update to the cluster, so changing an unrelated attribute would tear
+  # down the cluster's contents for nothing.
+  lifecycle {
+    replace_triggered_by = [kind_cluster.demo.endpoint]
+  }
+
   manifest = {
     apiVersion = "apiextensions.k8s.io/v1"
     kind       = "CustomResourceDefinition"
@@ -59,6 +76,13 @@ resource "kubernetes_manifest" "crd" {
 # OpenTofu needs a targeted apply of the CRD first.
 resource "kubernetes_manifest" "instance" {
   depends_on = [kubernetes_manifest.crd]
+
+  # Contained by the cluster, same as the CRD above. Both deletes are ordered in
+  # reverse dependency, so the custom resource goes before the CRD that defines
+  # its kind — which is the order you would use by hand.
+  lifecycle {
+    replace_triggered_by = [kind_cluster.demo.endpoint]
+  }
 
   manifest = {
     apiVersion = "demo.local/v1"

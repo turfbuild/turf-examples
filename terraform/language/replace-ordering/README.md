@@ -21,7 +21,7 @@ Then force-replace all three and inspect the compiled DAG via the MCP tools:
 
 ```text
 config_init({ path: "terraform/language/replace-ordering" })
-# workspace_open + provider_configure from the discovery payload, then:
+# workspace_open (the walk configures each provider from the configuration), then:
 plan_new({ replace: ["random_integer.port", "random_password.secret", "random_pet.server"] })
 # plan_new's initial walk plans the whole tree in the same call
 plan_approve({})

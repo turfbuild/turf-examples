@@ -22,7 +22,7 @@ with `for_each = var.resource_groups`. Opening a phase plans the directory and e
 
 ```
 config_init({ path: "terraform/azure/avm-resourcegroup" })
-# workspace_open + provider_configure from the discovery payload, then:
+# workspace_open (the provider {} block in the directory configures itself), then:
 plan_new({})
 → module.resource_group["eastus"].azurerm_resource_group.this   + create
   module.resource_group["westus"].azurerm_resource_group.this   + create
@@ -38,7 +38,7 @@ writes through into the configuration directory as a `.tf.json` file). `inputs` 
 `${each.key}` / `${each.value...}`:
 
 ```jsonc
-// (after workspace_open + provider_configure for azurerm)
+// (after workspace_open — the walk configures azurerm from its own block)
 plan_new({})
 declare_module({
   address: "module.resource_group",

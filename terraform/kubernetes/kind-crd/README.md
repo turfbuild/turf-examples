@@ -34,6 +34,45 @@ kind is unknown until the CRD is applied. Turf converges all three in a single r
 defers the provider config and the CR, applies the cluster then the CRD, reloads the
 provider so it re-discovers the new API, and finishes the CR — no manual targeting.
 
+## Replacing the cluster
+
+Both manifests declare what their replacement follows from:
+
+```hcl
+lifecycle {
+  replace_triggered_by = [kind_cluster.demo.endpoint]
+}
+```
+
+Without it, replacing the cluster destroys the CRD and the custom resource as a side
+effect of the container going away — no provider RPC, no `delete` in the plan, no
+chance to run a finalizer — and their state entries survive pointing at objects that
+no longer exist. With it, replacing the cluster plans the graceful sequence instead:
+
+```
+delete kubernetes_manifest.instance   (through the OLD cluster's endpoint)
+delete kubernetes_manifest.crd        (through the OLD cluster's endpoint)
+destroy kind_cluster.demo
+create  kind_cluster.demo
+… next phase: create crd, create instance
+```
+
+The deletes are ordered in reverse dependency, so the custom resource goes before the
+CRD that defines its kind. Turf reports the forced replacement as `replace_by_triggers`,
+so an approver reading a replacement they did not ask for can see what it followed from.
+
+Two things are worth knowing about the declaration:
+
+- **It has to be declared** — the graph cannot infer it. A provider whose configuration
+  *references* a resource does not necessarily manage objects that live *inside* it
+  (`provider "aws" { assume_role { role_arn = aws_iam_role.deployer.arn } }` is the
+  counterexample: replace that role and nothing ceases to exist).
+- **Reference `.endpoint`, not the bare resource.** A whole-resource reference fires on
+  any update to the cluster, so an unrelated attribute change would tear down the
+  cluster's contents for nothing.
+
+Try it with `plan_new(replace: ["kind_cluster.demo"])`.
+
 ## Resources Created
 
 - `kind_cluster.demo` — a local Kubernetes cluster running as Docker containers.
