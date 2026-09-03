@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and edit, or pass the same values with --var.
+# Every variable has a default; nothing here is required.
+
+# aws_region  = "us-west-2"
+# name_prefix = "turf-hello"
+
+# How many functions to deploy. Idle Lambdas are free — AWS bills invocations
+# and duration, not existence — so a larger fleet costs nothing at rest.
+# fleet_size = 5
+
+# Change this and re-run to patch every function in the fleet in place.
+# greeting = "Hello, World!"
+
+# runtime = "nodejs22.x"

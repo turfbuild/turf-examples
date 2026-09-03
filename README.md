@@ -15,6 +15,8 @@ terraform/        Standard Terraform/HCL configurations (tofu dialect)
     kind-crd/       kind cluster → CustomResourceDefinition → custom resource
     kind-helm/      kind cluster → Helm release (podinfo)
     hpa-walkthrough/  php-apache + HorizontalPodAutoscaler on an existing cluster
+  aws/
+    lambda-fleet/   a fleet of Lambda functions, patched in place by one variable
   azure/
     avm-resourcegroup/   multi-instance Azure resource groups via a published AVM module
   gcp/
@@ -51,6 +53,7 @@ the whole tree). See each example's `README.md` for prerequisites, usage, and cl
 | `kubernetes/kind-crd`          | tehcyx/kind, hashicorp/kubernetes | ✅ | CRD-then-CR convergence in one run                 |
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
+| `aws/lambda-fleet`             | hashicorp/aws, hashicorp/archive | ☁️ AWS | fleet of Lambdas patched in place (`count`)        |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
 | `language/actions`             | hashicorp/tfcoremock, hashicorp/local | ✅ | Terraform Actions (gating invokes)          |
