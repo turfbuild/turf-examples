@@ -1,6 +1,15 @@
 # A local Kubernetes cluster running as Docker containers via kind.
+#
+# The name carries a generation suffix so that a replacement can stand the new
+# cluster up BEFORE the old one comes down: kind cluster names are unique, so
+# two generations cannot share one. Changing var.generation is what triggers
+# the rollover — see "Replacing the cluster" in the README.
+#
+# There is deliberately no lifecycle block here. The contents below declare
+# create_before_destroy, and Turf forces it onto the cluster that holds them —
+# declaring it by hand would hide whether that happened.
 resource "kind_cluster" "demo" {
-  name           = var.cluster_name
+  name           = "${var.cluster_name}-${var.generation}"
   node_image     = var.node_image
   wait_for_ready = true
   # kubeconfig_path left unset: the provider manages the kubeconfig and merges a
@@ -25,8 +34,12 @@ resource "kubernetes_manifest" "crd" {
   # Reference the endpoint rather than the bare resource. A bare reference fires
   # on any update to the cluster, so changing an unrelated attribute would tear
   # down the cluster's contents for nothing.
+  #
+  # create_before_destroy is what keeps the old CRD serving on the old cluster
+  # until its replacement exists on the new one, instead of leaving a gap.
   lifecycle {
-    replace_triggered_by = [kind_cluster.demo.endpoint]
+    create_before_destroy = true
+    replace_triggered_by  = [kind_cluster.demo.endpoint]
   }
 
   manifest = {
@@ -77,11 +90,13 @@ resource "kubernetes_manifest" "crd" {
 resource "kubernetes_manifest" "instance" {
   depends_on = [kubernetes_manifest.crd]
 
-  # Contained by the cluster, same as the CRD above. Both deletes are ordered in
-  # reverse dependency, so the custom resource goes before the CRD that defines
-  # its kind — which is the order you would use by hand.
+  # Contained by the cluster, same as the CRD above. Both old objects keep
+  # serving until their replacements exist, and the old ones are torn down in
+  # reverse dependency — the custom resource before the CRD that defines its
+  # kind, which is the order you would use by hand.
   lifecycle {
-    replace_triggered_by = [kind_cluster.demo.endpoint]
+    create_before_destroy = true
+    replace_triggered_by  = [kind_cluster.demo.endpoint]
   }
 
   manifest = {

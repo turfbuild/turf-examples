@@ -1,3 +1,8 @@
+output "cluster_name" {
+  description = "Full name of the kind cluster; the kubectl context is kind-<this>"
+  value       = kind_cluster.demo.name
+}
+
 output "cluster_endpoint" {
   description = "API server endpoint of the kind cluster"
   value       = kind_cluster.demo.endpoint
