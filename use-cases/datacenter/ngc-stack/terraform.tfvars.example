@@ -1,0 +1,28 @@
+# Copy to terraform.tfvars and edit. Every value below is already the default —
+# the stack runs with no tfvars at all.
+
+# cluster_name = "turf-datacenter"
+# node_image   = "kindest/node:v1.36.1"
+
+# Bump to roll the cluster and everything inside it.
+# generation = "2"
+
+# Chart pins. All four are public; none needs a credential.
+# gpu_operator_version = "v26.7.0"
+# nim_operator_version = "3.1.2"
+# cert_manager_version = "v1.21.2"
+# external_dns_version = "1.22.0"
+
+# The NIM validating webhook, and therefore cert-manager. Turning this off
+# removes both.
+# enable_admission_controller = true
+
+# ExternalDNS. `inmemory` is a real controller against a fake zone.
+# enable_external_dns = true
+# dns_provider        = "inmemory"
+# domain_filters      = ["datacenter.local"]
+
+# --- Pointing this at real GPUs -------------------------------------------
+# On a node pool whose image ships no driver or container runtime config:
+# gpu_driver_enabled  = true
+# gpu_toolkit_enabled = true

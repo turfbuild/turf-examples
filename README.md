@@ -32,6 +32,11 @@ turf/             Turf-specific examples — the plot dialect + Turf-native feat
     local-module/   a plot that calls a local module by a portable relative source
     turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
 
+use-cases/        End-to-end stacks for a real domain, composed from local modules
+  datacenter/
+    ngc-stack/      NVIDIA GPU Cloud — GPU Operator + NIM Operator + cert-manager
+                    + ExternalDNS on a kind cluster with no GPU
+
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
   turf-cli/           Configuring the standalone Turf CLI (.turf/): user skills
@@ -76,6 +81,23 @@ Drive them the same way (`turf -C <dir> up`); all are credential-free.
 | `language/plot-dialect`     | hashicorp/random     | **plot** dialect — declare-authored `*.tfplot.hcl` + `config_promote` |
 | `language/local-module`     | hashicorp/random     | a **plot** calling `./modules/greeting` by a portable relative `source` |
 | `language/turf-actions`     | hashicorp/tfcoremock | Turf-native `turf_confirm` + `turf_action` gates (no provider)     |
+
+## Use cases
+
+The `use-cases/` tree holds end-to-end stacks for a particular domain: a **tofu**
+configuration that composes several local modules under `modules/`, rather than a
+single-idea example. Drive them the same way (`turf -C <dir> up`).
+
+| Example                  | Providers                                | Local? | Notes                                                        |
+|--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
+| `datacenter/ngc-stack`   | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | NVIDIA NGC operators on a GPU-less cluster — four charts, four modules, zero credentials |
+
+The NGC stack is worth reading for what it proves about NVIDIA's operators: the
+GPU Operator and the NIM Operator both install and reach a healthy state with no
+NVIDIA GPU and **no NGC API key**, and both then wait on the same Node Feature
+Discovery label (`feature.node.kubernetes.io/pci-10de.present`). Only NIM *model*
+content needs a credential. See
+[`use-cases/datacenter/ngc-stack/README.md`](use-cases/datacenter/ngc-stack/README.md).
 
 ## Integrations
 
