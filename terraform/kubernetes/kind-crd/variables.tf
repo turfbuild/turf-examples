@@ -1,7 +1,13 @@
 variable "cluster_name" {
-  description = "Name of the kind cluster"
+  description = "Base name of the kind cluster; the generation suffix is appended"
   type        = string
   default     = "turf-crd-demo"
+}
+
+variable "generation" {
+  description = "Cluster generation; change it to roll the cluster and everything inside it"
+  type        = string
+  default     = "1"
 }
 
 variable "node_image" {

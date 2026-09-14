@@ -1,6 +1,15 @@
 # A local Kubernetes cluster running as Docker containers via kind.
+#
+# The name carries a generation suffix so that a replacement can stand the new
+# cluster up BEFORE the old one comes down: kind cluster names are unique, so
+# two generations cannot share one. Changing var.generation is what triggers
+# the rollover — see "Replacing the cluster" in the README.
+#
+# There is deliberately no lifecycle block here. The release below declares
+# create_before_destroy, and Turf forces it onto the cluster that holds it —
+# declaring it by hand would hide whether that happened.
 resource "kind_cluster" "demo" {
-  name           = var.cluster_name
+  name           = "${var.cluster_name}-${var.generation}"
   node_image     = var.node_image
   wait_for_ready = true
   # kubeconfig_path left unset: the provider manages the kubeconfig and merges a
@@ -46,7 +55,12 @@ resource "helm_release" "podinfo" {
   # Reference the endpoint rather than the bare resource. A bare reference fires
   # on any update to the cluster, so changing an unrelated attribute would
   # uninstall the release for nothing.
+  #
+  # create_before_destroy is what keeps the old release serving on the old
+  # cluster until the new one is deployed and its pods are Ready, instead of
+  # leaving a gap where podinfo answers nowhere.
   lifecycle {
-    replace_triggered_by = [kind_cluster.demo.endpoint]
+    create_before_destroy = true
+    replace_triggered_by  = [kind_cluster.demo.endpoint]
   }
 }
