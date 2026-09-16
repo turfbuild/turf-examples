@@ -56,8 +56,14 @@ worth carrying.
 Which matters, because most of AICR's renderers cannot carry it. `helm` emits a
 line of sixteen. `argocd` emits sync-waves 1/5/9/13 and `helmfile` emits nested
 `level-0…3.yaml` — both of which are *barriers*, not edges. Only `flux` and this
-deployer emit the real per-release graph, and Flux is an in-cluster reconciler
-that cannot create the cluster it reconciles into.
+deployer emit the real graph, and Flux is an in-cluster reconciler that cannot
+create the cluster it reconciles into.
+
+The 16 edges above are between *components*. A component that ships
+pre-manifests, post-manifests or a readiness gate expands into several Helm
+releases — 16 releases here for 14 components — and those chain **inside** the
+component's module. So `depends_on = [module.agentgateway_crds]` covers that
+component's post-manifest release too, without naming it.
 
 The two that keep the graph agree on it exactly: rendering this recipe through
 `--deployer flux` and `--deployer terraform` produces the same eighteen edges,
@@ -128,39 +134,49 @@ error.
 
 ## What it does when you run it
 
-Measured on the **Restate engine** (`turf-engine` at `0a94e62`, driven by
+Measured on the **Restate engine** (`turf-engine` at `0076f5d`, driven by
 `turf-driver up --converge`), from empty state. Unlike
 [`../ngc-stack`](../ngc-stack/README.md), this example has **not** been run on
 the shipping MCP engine.
 
-Round one plans 22 addresses — the cluster, and the five containment shims that
-do not sit behind an order-only edge. Everything else defers, and eleven of the
-sixteen components defer **whole**:
+Round one can plan and apply exactly six addresses — the cluster and the five
+containment shims that sit behind no order-only edge. Everything else defers,
+and nine of the fourteen components defer **whole**:
 
 ```
-plan for phase p-2084d101 (22 of 22 address(es) change):
+plan for phase p-3251d18f (30 of 30 address(es) change):
   create    kind_cluster.dc
   create    module.stack.module.cert_manager.null_resource.cluster
   unspecified module.stack.module.cert_manager.helm_release.this  (deferred)
+  unspecified module.stack.module.cert_manager.helm_release.post  (deferred)
+  unspecified module.stack.module.cert_manager.helm_release.readiness  (deferred)
   ...
   unspecified module.stack.module.gpu_operator  (whole module deferred: absent_prereq)
   unspecified module.stack.module.nvsentinel    (whole module deferred: absent_prereq)
 
-round 1 deferred 16 entry(ies); planning again against the committed state
-plan for phase p-b4613709 (27 of 33 address(es) change):
-phase p-b4613709: applied (applied 27, failed 0, cancelled 0)
+phase p-3251d18f: applied (applied 6, failed 0, cancelled 0)
+round 1 deferred 24 entry(ies); planning again against the committed state
+plan for phase p-c914e200 (25 of 31 address(es) change):
+phase p-c914e200: applied (applied 25, failed 0, cancelled 0)
 converged in 2 round(s)
 ```
 
 `absent_prereq` is the engine saying a module is deferred because it depends —
 transitively, over an edge that carries no value — on something else that is
-deferred. Round two plans the 27 remaining addresses at once and applies them.
-Note that the DAG is four deep but converging costs **two** rounds, not four:
-deferral is about unknown *values*, not about graph depth. Once the cluster
-exists, the helm provider's configuration is known and the whole graph is
-plannable; ordering is then just the graph, inside one apply.
+deferred. Note that the DAG is four deep but converging costs **two** rounds, not
+four: deferral is about unknown *values*, not graph depth. Once the cluster
+exists the helm provider's configuration is known, the whole graph is plannable,
+and ordering is then just the graph inside one apply.
 
-`turf -C use-cases/datacenter/aicr-stack destroy` removes all 33 addresses in a
+`cert-manager` has no post-manifests and no readiness gate, yet its `post` and
+`readiness` slots appear in that first plan. A slot is `count = 0` when the
+bundle emitted no such folder, but a resource whose dependency is deferred is
+deferred *before* its count is evaluated — and both slots depend on
+`helm_release.this`. They collapse to zero instances in round two. The cost is a
+noisier first plan: 30 entries rather than the 16 releases plus 14 shims plus the
+cluster that actually exist.
+
+`turf -C use-cases/datacenter/aicr-stack destroy` removes all 31 addresses in a
 single phase.
 
 **No wall-clock figure is quoted here on purpose.** Two clean runs of this exact
@@ -242,9 +258,27 @@ it is no longer something a consumer has to rediscover.
 is a workload gate, which is all `helm_release`'s `wait` can offer. AICR's answer
 for status-level readiness is a chainsaw gate Job, and `--deployer terraform`
 supports it: `aicr bundle --readiness-hooks` adds a `<component>-readiness`
-release to the end of that component's chain and re-points every dependent at it.
+release as the last slot in that component's module, so every dependent already
+waits for it. The slot ignores the bundle-wide `wait` variable — an async
+component may skip waiting on its own workloads, never on its gate.
+
 No component in *this* recipe ships a `readiness.yaml`, so the bundle here has
 none — but `network-operator` plus `gpu-operator` with RDMA would.
+
+**A gate verifies once, at creation.** Measured on kind with a stand-in gate
+chart: re-applying with nothing changed produces no diff and no helm call;
+changing the release's values does run `helm upgrade`, but the Job keeps its
+UID and start time, because a Job's `spec.template` is immutable and an
+identical manifest is a no-op patch. `deploy.sh` reinstalls unconditionally and
+argocd replaces the Job on every sync, so both re-verify where this does not.
+
+The same measurement turned up something wider: `helm_release` tracks a local
+chart's **path, chart version and values** — not its rendered manifests. Editing
+a template under `NNN-<component>/templates/` produces *no* Terraform diff.
+Every wrapper chart here carries `version:` = the AICR build version, so within
+one AICR build a regenerated bundle with changed post-manifest or gate content
+applies as a no-op. Bumping the chart version does diff, and then a renamed Job
+is deleted and recreated — which is the shape any fix has to take.
 
 **`helm uninstall` leaves CRDs behind**, as always. `down` removes the cluster, so
 it does not matter here; it would on a cluster you keep.
@@ -257,10 +291,10 @@ main.tf                  kind_cluster.dc, and the one module call for the bundle
 variables.tf             cluster name, generation, node image
 outputs.tf               passthrough of the bundle's own outputs
 bundle/                  ALL generated by `aicr bundle --deployer terraform`
-  main.tf                  one module call per release, carrying the graph
+  main.tf                  one module call per component, carrying the graph
   versions.tf              required_providers; no provider block (child module)
   variables.tf outputs.tf
-  modules/component/       one AICR component = one helm_release + the shim
+  modules/component/       one component: its chart, plus pre/post/gate slots
   NNN-<component>/         values.yaml, cluster-values.yaml, and either
                            upstream.env or a local chart
   recipe.yaml              the resolved recipe this was generated from
