@@ -92,3 +92,5 @@ rules:
       resources:
         namespaced: false
       seriesQuery: DCGM_FI_DEV_POWER_USAGE
+tolerations:
+  - operator: Exists

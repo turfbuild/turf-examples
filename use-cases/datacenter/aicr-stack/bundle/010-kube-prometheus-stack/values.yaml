@@ -9,6 +9,8 @@ alertmanager:
       requests:
         cpu: 50m
         memory: 64Mi
+    tolerations:
+      - operator: Exists
   enabled: true
 crds:
   enabled: false
@@ -26,8 +28,12 @@ grafana:
     requests:
       cpu: 100m
       memory: 128Mi
+  tolerations:
+    - operator: Exists
 kube-state-metrics:
   fullnameOverride: kube-state-metrics
+  tolerations:
+    - operator: Exists
 nodeExporter:
   enabled: true
 prometheus:
@@ -46,9 +52,17 @@ prometheus:
       emptyDir:
         medium: ""
         sizeLimit: 5Gi
+    tolerations:
+      - operator: Exists
 prometheus-node-exporter:
   fullnameOverride: prometheus-node-exporter
+  tolerations:
+    - operator: Exists
 prometheusOperator:
+  admissionWebhooks:
+    patch:
+      tolerations:
+        - operator: Exists
   alertmanagerConfigNamespaces:
     - monitoring
   alertmanagerInstanceNamespaces:
@@ -70,3 +84,9 @@ prometheusOperator:
       memory: 256Mi
   thanosRulerInstanceNamespaces:
     - monitoring
+  tolerations:
+    - operator: Exists
+thanosRuler:
+  thanosRulerSpec:
+    tolerations:
+      - operator: Exists

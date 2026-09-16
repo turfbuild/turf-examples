@@ -2,6 +2,8 @@
 ---
 fullnameOverride: nvsentinel
 global:
+  systemNodeTolerations:
+    - operator: Exists
   tolerations:
     - operator: Exists
 janitor-provider:

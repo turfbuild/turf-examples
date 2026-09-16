@@ -2,8 +2,12 @@
 ---
 gc:
   enable: true
+  tolerations:
+    - operator: Exists
 master:
   enable: true
+  tolerations:
+    - operator: Exists
 topologyUpdater:
   createCRDs: true
   enable: false
@@ -14,5 +18,9 @@ topologyUpdater:
     requests:
       cpu: 50m
       memory: 128Mi
+  tolerations:
+    - operator: Exists
 worker:
   enable: true
+  tolerations:
+    - operator: Exists

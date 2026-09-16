@@ -9,6 +9,8 @@ controllerManager:
       requests:
         cpu: 250m
         memory: 512Mi
+  tolerations:
+    - operator: Exists
 fullnameOverride: skyhook-operator
 limitRange:
   default:

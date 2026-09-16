@@ -58,6 +58,8 @@ spec:
             # label, not just the Deployment.
             app.kubernetes.io/managed-by: aicr
         spec:
+          tolerations:
+            - operator: Exists
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway

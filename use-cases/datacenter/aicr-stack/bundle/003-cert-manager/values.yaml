@@ -8,6 +8,8 @@ cainjector:
     requests:
       cpu: 50m
       memory: 320Mi
+  tolerations:
+    - operator: Exists
 crds:
   enabled: true
 fullnameOverride: cert-manager
@@ -23,6 +25,10 @@ resources:
     memory: 90Mi
 startupapicheck:
   enabled: true
+  tolerations:
+    - operator: Exists
+tolerations:
+  - operator: Exists
 webhook:
   resources:
     limits:
@@ -31,3 +37,5 @@ webhook:
     requests:
       cpu: 50m
       memory: 40Mi
+  tolerations:
+    - operator: Exists

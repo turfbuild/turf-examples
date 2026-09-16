@@ -1,8 +1,9 @@
 # An AICR recipe, deployed as the graph it actually is
 
-Nothing in this directory was written by hand. The `.tf` files below were
-**generated** from a single [NVIDIA AI Cluster Runtime](https://github.com/NVIDIA/aicr)
-(AICR) recipe, and that is the point of the example.
+Almost nothing in this directory was written by hand. Everything under
+`bundle/` was **generated** from a single [NVIDIA AI Cluster Runtime](https://github.com/NVIDIA/aicr)
+(AICR) recipe by `aicr bundle --deployer terraform`, and that is the point of
+the example.
 
 AICR publishes validated, version-locked combinations of GPU drivers, operators
 and system configuration as *recipes*, and renders them for Helm, Argo CD, Flux
@@ -11,9 +12,10 @@ your GPU-accelerated Kubernetes cluster and your deployment tooling." That
 boundary is a hard edge in everything it emits: the cluster is a precondition,
 never a node in the graph.
 
-Terraform is the one consumer that can put the cluster *in* the graph. This stack
-creates a kind cluster and installs sixteen Helm releases behind it, from nothing,
-in one command.
+Terraform is the one consumer that can put the cluster *in* the graph. The two
+hand-written files here — `main.tf` and `versions.tf`, about forty lines
+together — create a kind cluster and hand it to the generated bundle. Sixteen
+Helm releases come up behind it, from nothing, in one command.
 
 ```
 turf -C use-cases/datacenter/aicr-stack up
@@ -31,31 +33,39 @@ level 2  gpu-operator  k8s-ephemeral-storage-metrics  prometheus-adapter
 level 3  kai-scheduler  nvidia-dra-driver-gpu  nvsentinel
 ```
 
-Each component carries a `dependencyRefs` list. The generator turns that list —
+Each component carries a `dependencyRefs` list. The deployer turns that list —
 and nothing else — into `depends_on` between module calls:
 
 ```hcl
 module "gpu_operator" {
   source = "./modules/component"
   ...
-  depends_on = [module.cert_manager, module.kube_prometheus_stack, module.nfd]
+  depends_on = [
+    module.cert_manager,
+    module.kube_prometheus_stack,
+    module.nfd,
+  ]
 }
 ```
 
-A recipe also ships a precomputed flat `deploymentOrder`. **The generator ignores
+A recipe also ships a precomputed flat `deploymentOrder`. **The deployer ignores
 it.** That field is a linearisation of the graph above, and handing a
 linearisation to an engine built to schedule graphs throws away the only thing
 worth carrying.
 
-Which matters, because most of AICR's own renderers cannot carry it. `helm` emits
-a line of sixteen. `argocd` emits sync-waves 1/5/9/13 and `helmfile` emits nested
-`level-0…3.yaml` — both of which are *barriers*, not edges. Only `flux` emits the
-real per-release `dependsOn`, and Flux is an in-cluster reconciler that cannot
-create the cluster it reconciles into.
+Which matters, because most of AICR's renderers cannot carry it. `helm` emits a
+line of sixteen. `argocd` emits sync-waves 1/5/9/13 and `helmfile` emits nested
+`level-0…3.yaml` — both of which are *barriers*, not edges. Only `flux` and this
+deployer emit the real per-release graph, and Flux is an in-cluster reconciler
+that cannot create the cluster it reconciles into.
+
+The two that keep the graph agree on it exactly: rendering this recipe through
+`--deployer flux` and `--deployer terraform` produces the same eighteen edges,
+release for release.
 
 ### What a barrier costs
 
-Measured, on one `helmfile sync` of this very bundle. helmfile reports a
+Measured, on one `helmfile sync` of this same recipe. helmfile reports a
 per-release `DURATION`, so both scheduling models can be computed from a single
 run's own numbers — there is no second run here, and so nothing to be noisy.
 
@@ -74,7 +84,8 @@ level-1 component pays for it. Under the DAG nobody does.
 
 (This assumes unlimited parallelism — as the observed wave run had *within* a
 level — and that a release's duration does not change with scheduling. It is a
-comparison of scheduling models over measured durations, not a measured race.)
+comparison of scheduling models over measured durations, not a measured race.
+Reproduce the helmfile side with `--deployer helmfile` against `bundle/recipe.yaml`.)
 
 ## Everything here is credential-free
 
@@ -92,7 +103,6 @@ On a kind node with no NVIDIA hardware:
 
 ```
 ClusterPolicy: ready   reason=NoGPUNodes
-               "No GPU node found, watching for new nodes to join the cluster."
 no feature.node.kubernetes.io/pci-* labels on the node
 ```
 
@@ -101,11 +111,10 @@ that are new here relative to the NGC stack both land cleanly rather than
 crashlooping — they create DaemonSets that sit at zero:
 
 ```
-nvidia-dra-driver  nvidia-dra-driver-gpu-kubelet-plugin  desired=0 ready=0
-nvsentinel         gpu-health-monitor-dcgm-{3,4}.x       desired=0 ready=0
-nvsentinel         metadata-collector                    desired=0 ready=0
-nvsentinel         syslog-health-monitor-{kata,regular}  desired=0 ready=0
-nvsentinel         platform-connectors                   desired=1 ready=1
+nvidia-dra-driver  nvidia-dra-driver-gpu-kubelet-plugin  desired=0
+nvsentinel         gpu-health-monitor-dcgm-{3,4}.x       desired=0
+nvsentinel         metadata-collector                    desired=0
+nvsentinel         syslog-health-monitor-{kata,regular}  desired=0
 ```
 
 One Node Feature Discovery label is still the entire seam between this laptop and
@@ -119,35 +128,33 @@ error.
 
 ## What it does when you run it
 
-Measured on the **Restate engine** (`turf-engine` at `259dbca`, driven by
+Measured on the **Restate engine** (`turf-engine` at `0a94e62`, driven by
 `turf-driver up --converge`), from empty state. Unlike
 [`../ngc-stack`](../ngc-stack/README.md), this example has **not** been run on
-the shipping MCP engine — every engine number below is from the Restate engine
-only.
+the shipping MCP engine.
+
+Round one plans 22 addresses — the cluster, and the five containment shims that
+do not sit behind an order-only edge. Everything else defers, and eleven of the
+sixteen components defer **whole**:
 
 ```
-round 1: reconcile 415ms | plan 7.6s  | apply 44.1s  | total 52.9s
-round 2: reconcile 414ms | plan 24.5s | apply 2m9.5s | total 2m34.8s
-converged in 2 round(s)
-```
-
-Round one can only build the cluster and the five containment shims that do not
-sit behind an order-only edge. Everything else defers, and eleven of the sixteen
-modules defer **whole**:
-
-```
-plan for phase p-47829b94 (22 of 22 address(es) change):
+plan for phase p-2084d101 (22 of 22 address(es) change):
   create    kind_cluster.dc
-  create    module.cert_manager.null_resource.cluster
-  unspecified module.cert_manager.helm_release.this  (deferred)
+  create    module.stack.module.cert_manager.null_resource.cluster
+  unspecified module.stack.module.cert_manager.helm_release.this  (deferred)
   ...
-  unspecified module.gpu_operator  (whole module deferred: absent_prereq)
-  unspecified module.nvsentinel    (whole module deferred: absent_prereq)
+  unspecified module.stack.module.gpu_operator  (whole module deferred: absent_prereq)
+  unspecified module.stack.module.nvsentinel    (whole module deferred: absent_prereq)
+
+round 1 deferred 16 entry(ies); planning again against the committed state
+plan for phase p-b4613709 (27 of 33 address(es) change):
+phase p-b4613709: applied (applied 27, failed 0, cancelled 0)
+converged in 2 round(s)
 ```
 
 `absent_prereq` is the engine saying a module is deferred because it depends —
 transitively, over an edge that carries no value — on something else that is
-deferred. Round two plans all 27 remaining addresses at once and applies them.
+deferred. Round two plans the 27 remaining addresses at once and applies them.
 Note that the DAG is four deep but converging costs **two** rounds, not four:
 deferral is about unknown *values*, not about graph depth. Once the cluster
 exists, the helm provider's configuration is known and the whole graph is
@@ -156,15 +163,42 @@ plannable; ordering is then just the graph, inside one apply.
 `turf -C use-cases/datacenter/aicr-stack destroy` removes all 33 addresses in a
 single phase.
 
+**No wall-clock figure is quoted here on purpose.** Two clean runs of this exact
+tree differed by a factor of three, and the difference is where you would expect:
+round two is dominated by pulling sixteen charts' worth of images into a cluster
+that was created seconds earlier. That number measures a laptop's network and
+container runtime, not the engine and not the graph. The DAG-vs-waves figure
+above is comparable precisely because it is derived from one run's own durations.
+
 Ordering is observable in the cluster, not only in the plan — the five level-0
-releases install within four seconds of each other, `gpu-operator` only after all
+releases install within a few seconds of each other, `gpu-operator` only after all
 three of its prerequisites, and `nvsentinel` / `nvidia-dra-driver-gpu` /
 `kai-scheduler` last.
 
 ## The honest failure list
 
-**Stock Terraform cannot plan this configuration.** Every module here carries the
-usual containment shim —
+**A module that configures its own provider cannot be composed.** The default
+`--deployer terraform` bundle is a *root* module: it declares `provider "helm"`
+and takes the cluster connection as variables, which is right for applying
+against a cluster that already exists. Calling that as a child module is a
+different matter. Terraform accepts it but then forbids `depends_on`, `count`
+and `for_each` on the call, and the Restate engine refuses it outright:
+
+```
+this engine milestone does not walk provider blocks in child modules
+(a legacy module shape; declare configuration_aliases and pass configurations
+from the caller instead) (found: [helm]); the construct is refused rather than
+skipped so a run cannot look complete while ignoring it
+```
+
+That refusal is the reason `bundle/` here is generated with
+`--terraform-child-module`: no provider block, no connection variables, and the
+root's `provider "helm"` — bound to `kind_cluster.dc` — is inherited. Which is
+also what makes the cluster-in-the-graph story work at all.
+
+**Stock Terraform cannot plan this configuration, because of the containment
+shim.** `bundle/` is generated with `--terraform-cluster-rollover`, so every
+component module carries
 
 ```hcl
 lifecycle {
@@ -181,9 +215,9 @@ with deferral, Terraform's experimental deferred-actions path fails:
 $ terraform plan -allow-deferral
 Plan: 6 to add, 0 to change, 0 to destroy.
 
-Error: no change found for null_resource.cluster in module.kube_prometheus_stack
-Error: no change found for null_resource.cluster in module.agentgateway_crds_post
-Error: no change found for null_resource.cluster in module.network_operator
+Error: no change found for null_resource.cluster in module.stack.module.kube_prometheus_stack
+Error: no change found for null_resource.cluster in module.stack.module.agentgateway_crds_post
+Error: no change found for null_resource.cluster in module.stack.module.network_operator
 ```
 
 Reproduced on `v1.17.0-alpha20260827` and on a source build of `main`. It needs
@@ -191,22 +225,26 @@ both halves — a `replace_triggered_by` *and* a referent that is itself deferre
 drop either and the plan succeeds. Terraform's transitive deferral is otherwise
 correct, and its two reasons read almost exactly like the engine's
 (`because the provider configuration is unknown`,
-`because a prerequisite for this resource is deferred`). Deleting the `lifecycle`
-block from `modules/component/main.tf` makes this tree converge on Terraform in
-two rounds as well — at the cost of the containment the block exists to provide.
+`because a prerequisite for this resource is deferred`). **Regenerate without
+`--terraform-cluster-rollover` and experimental Terraform converges this tree
+too** — at the cost of the containment the shim exists to provide. That is why
+the flag is off by default upstream.
 
-**`kai-scheduler` returns before its pods are up.** It is the one component the
-generator marks `wait = false`, because AICR lists it as asynchronous: `helm
---wait` times out on its custom-resource readiness even though every pod started.
-Expect a handful of `ContainerCreating` pods for ~30s after `up` returns. AICR
-keeps that list in a shell template rather than in the recipe schema, so every
-consumer that is not `deploy.sh` has to hardcode it; the generator does.
+**`kai-scheduler` returns before its pods are up.** AICR lists it as
+asynchronous — `helm --wait` times out on its custom-resource readiness even
+though every pod started — so the deployer emits `wait = false` and
+`timeout = 1200` on that one module call, with the reason inline. Expect a
+handful of `ContainerCreating` pods for ~30s after `up` returns. AICR keeps that
+list in one table shared by `deploy.sh`, the helmfile deployer and this one, so
+it is no longer something a consumer has to rediscover.
 
 **Helm's `--wait` is not a readiness gate for custom resources.** Every edge here
-is a workload gate, which is all `helm_release`'s `wait` can offer. AICR's own
-answer for status-level readiness is a chainsaw gate Job (`--readiness-hooks`),
-and no component in *this* recipe needs one — but `network-operator` plus
-`gpu-operator` with RDMA would.
+is a workload gate, which is all `helm_release`'s `wait` can offer. AICR's answer
+for status-level readiness is a chainsaw gate Job, and `--deployer terraform`
+supports it: `aicr bundle --readiness-hooks` adds a `<component>-readiness`
+release to the end of that component's chain and re-points every dependent at it.
+No component in *this* recipe ships a `readiness.yaml`, so the bundle here has
+none — but `network-operator` plus `gpu-operator` with RDMA would.
 
 **`helm uninstall` leaves CRDs behind**, as always. `down` removes the cluster, so
 it does not matter here; it would on a cluster you keep.
@@ -214,37 +252,37 @@ it does not matter here; it would on a cluster you keep.
 ## Layout
 
 ```
-versions.tf              providers + the helm provider bound to kind's outputs
-main.tf                  kind_cluster.dc, then 16 module calls with depends_on
+versions.tf              the kind + helm providers; helm bound to kind's outputs
+main.tf                  kind_cluster.dc, and the one module call for the bundle
 variables.tf             cluster name, generation, node image
-outputs.tf               every release id
-modules/component/       one AICR component = one helm_release + a containment shim
-bundle/                  the AICR bundle: per-component values.yaml, upstream.env
-                         or a local chart, plus recipe.yaml and the helmfile the
-                         DAG-vs-waves numbers above came from
+outputs.tf               passthrough of the bundle's own outputs
+bundle/                  ALL generated by `aicr bundle --deployer terraform`
+  main.tf                  one module call per release, carrying the graph
+  versions.tf              required_providers; no provider block (child module)
+  variables.tf outputs.tf
+  modules/component/       one AICR component = one helm_release + the shim
+  NNN-<component>/         values.yaml, cluster-values.yaml, and either
+                           upstream.env or a local chart
+  recipe.yaml              the resolved recipe this was generated from
+  checksums.txt README.md
 ```
 
-`bundle/` is generated output, committed so the example runs without an `aicr`
-binary on your PATH. `bundle/002-agentgateway-crds-post/templates/` is the bulk
-of it — vendored Gateway API CRDs that belong to the upstream chart, not to this
-repository.
+`bundle/` is committed so the example runs without an `aicr` binary on your PATH.
+`bundle/002-agentgateway-crds-post/templates/` is the bulk of it — vendored
+Gateway API CRDs that belong to the upstream chart, not to this repository.
 
 ## Regenerating
 
-The generator is a ~250-line Go program against AICR's integrator surface
-(`pkg/client/v1`): `ResolveRecipeFromCriteria` → `MakeBundle` → emit HCL. It does
-not live in this repository yet. What it needs from the SDK, and the two places
-the SDK could not supply it:
+```sh
+aicr bundle --recipe bundle/recipe.yaml --output bundle \
+  --deployer terraform --terraform-child-module --terraform-cluster-rollover
+```
 
-- `aicr.ComponentRef` does **not** carry `DependencyRefs`. A generator whose whole
-  subject is the dependency graph has to call `RecipeResult.Resolved()` and reach
-  into `pkg/recipe`, which AICR's own roadmap (#2016) says an integrator should
-  not have to do.
-- `BundleOptions.Deployer` is typed `config.DeployerType`, so naming a deployer
-  means importing `pkg/bundler/config` as well.
+That is the whole thing. `--deployer terraform` is not in NVIDIA's AICR yet — it
+is [turfbuild/aicr#1](https://github.com/turfbuild/aicr/pull/1), a fork branch
+written against the same `Deployer` interface the other five renderers implement,
+pending a decision on proposing it upstream.
 
-The natural home for this is upstream as `--deployer terraform`, alongside the
-five renderers AICR already ships. The `Deployer` interface is a single method.
-
-The `.tf` files here have been run through `terraform fmt`; the generator's raw
-output is not yet fmt-clean.
+The generated `.tf` is emitted already `terraform fmt`-clean, so the command
+above reproduces the committed bytes exactly — regenerate and `git diff` to check
+this directory is current.
