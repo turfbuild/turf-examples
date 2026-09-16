@@ -2,3 +2,7 @@
 .turf/*
 !.turf/skills/
 !.turf/turf.yaml
+
+# The kind provider writes <cluster_name>-<generation>-config here. The
+# generation moves, so this is a glob rather than a name.
+*-config

@@ -78,23 +78,6 @@ variable "cluster_endpoint" {
   type        = string
 }
 
-variable "upstream" {
-  description = <<-EOT
-    Release ids this operator must be installed after. Pass
-    `module.cert_manager[0].release_id` — the chart renders a cert-manager
-    Issuer and Certificate, so those CRDs must already exist — and
-    `module.gpu_operator.release_id`, which is the soft half of the ordering.
-
-    Referencing them from the release rather than naming them in a
-    `depends_on` is deliberate twice over: Turf's Restate engine refuses
-    `depends_on` on a module call, and a re-created cert-manager genuinely
-    should re-run this release, because the webhook's serving certificate and
-    the caBundle injected into the webhook configuration are re-minted with it.
-  EOT
-  type        = list(string)
-  default     = []
-}
-
 resource "null_resource" "cluster" {
   triggers = {
     endpoint = var.cluster_endpoint
@@ -128,15 +111,7 @@ resource "helm_release" "this" {
   wait    = true
   timeout = var.timeout
 
-  # Recording the upstream releases in the Helm release description is what
-  # creates the dependency edge — a reference, not a depends_on. It has to land
-  # on the release rather than on null_resource.cluster above: the upstream
-  # releases are themselves deferred until the cluster exists, and Turf's
-  # Restate engine will not apply a resource that is ordered after a deferred
-  # one. Both releases deferred, both converge in the same later phase.
-  #
-  # It is also just true, and `helm list` shows it.
-  description = "NVIDIA NIM Operator${length(var.upstream) == 0 ? "" : " — installed after ${join(", ", var.upstream)}"}"
+  description = "NVIDIA NIM Operator"
 
   lifecycle {
     create_before_destroy = true

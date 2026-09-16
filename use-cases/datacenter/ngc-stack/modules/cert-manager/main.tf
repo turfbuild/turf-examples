@@ -98,11 +98,10 @@ output "chart_version" {
 
 output "release_id" {
   description = <<-EOT
-    The Helm release id. Its only purpose is to be consumed by a dependent
-    module's `upstream` list: a value reference is how one module says it must
-    be installed after another. `depends_on` on a module call would read more
-    directly, but Turf's Restate engine refuses that construct outright, and a
-    value edge is the stronger statement anyway.
+    The Helm release id (namespace/name). Nothing in this stack consumes it —
+    the NIM module orders itself after this one with `depends_on`, which needs
+    no value — but it is what a caller would bind if it wanted a dependency
+    that also *re-runs* when this release is replaced.
   EOT
   value       = helm_release.this.id
 }

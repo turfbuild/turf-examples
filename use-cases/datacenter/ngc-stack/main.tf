@@ -41,10 +41,11 @@ module "gpu_operator" {
 
 # The NIM Operator.
 #
-# `upstream` names both of the others, for two different reasons:
+# `depends_on` names both of the others, for two different reasons:
 #
-#   cert_manager — hard. The release does not render without the Issuer and
-#   Certificate CRDs.
+#   cert_manager — hard. The chart renders a cert-manager Issuer and
+#   Certificate to mint the webhook's serving cert, so those kinds have to
+#   exist before this release is rendered.
 #
 #   gpu_operator — soft, and honest about being soft. The NIM controller starts
 #   perfectly well with no GPU Operator present; NVIDIA lists it as a
@@ -52,11 +53,11 @@ module "gpu_operator" {
 #   labels and device plugin the GPU Operator provides. Ordering the installs
 #   costs nothing and matches the documented dependency.
 #
-# This is a list of release ids rather than `depends_on = [module.cert_manager,
-# module.gpu_operator]` because Turf's Restate engine refuses depends_on on a
-# module call — loudly, rather than silently ignoring it. Binding the values is
-# the portable spelling, and it says more: these releases are not merely earlier,
-# they are what this one is built on.
+# Neither module exports a value this one consumes, so ordering is all there is
+# to say — which is exactly what depends_on is for. Note what it asks of the
+# engine: both of those modules are deferred until the cluster exists, so this
+# one has to be deferred too, on the strength of an order-only edge into a
+# module whose contents are not planned yet.
 module "nim_operator" {
   source = "./modules/nim-operator"
 
@@ -64,10 +65,7 @@ module "nim_operator" {
   admission_controller_enabled = var.enable_admission_controller
   cluster_endpoint             = kind_cluster.dc.endpoint
 
-  upstream = concat(
-    module.cert_manager[*].release_id,
-    [module.gpu_operator.release_id],
-  )
+  depends_on = [module.cert_manager, module.gpu_operator]
 }
 
 # ExternalDNS — what would publish a NIMService's hostname on a real cluster.

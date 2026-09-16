@@ -277,24 +277,55 @@ moment a labelled node joins; it is already watching.
 
 ## Notes on Turf's Restate engine
 
-This example runs on both Turf engines, but the Restate engine constrains the
-HCL in two ways worth knowing if you write your own:
+This example runs on both Turf engines. One constraint on the HCL is worth
+knowing if you write your own, and one behaviour is worth watching for, because
+it is what lets the stack converge in two rounds rather than failing in one.
 
 - **Modules must live under the configuration directory.** `source =
   "../modules/cert-manager"` is refused — *"this engine walks the directory a
   user names and what lives under it"* — which is why `modules/` sits inside
   `ngc-stack/` rather than being shared across the `use-cases/datacenter/` tree.
-- **`depends_on` on a module call is refused**, loudly rather than silently
-  ignored. The NIM module therefore takes an `upstream` list of release ids and
-  references it, which is a stronger statement anyway: those releases are not
-  merely earlier, they are what this one is built on. The reference has to land
-  on the `helm_release` rather than on the module's `null_resource`, because the
-  upstream releases are themselves deferred and the engine will not apply a
-  resource ordered after a deferred one.
+- **A deferral travels over `depends_on`.** `module.nim_operator` names two
+  modules it takes no value from. Those modules are themselves unplannable on
+  the first walk, because the `helm` provider is configured from the cluster's
+  computed endpoint. So the NIM module is ordered after something that does not
+  exist yet *and* reads nothing from it — and the engine defers the whole
+  subtree on that basis alone:
 
-The edge is visible in the cluster, which is a nice side effect:
+  ```
+  plan for phase p-f168bc75 (8 of 8 address(es) change):
+    create    kind_cluster.dc
+    create    module.cert_manager[0].null_resource.cluster
+    unspecified module.cert_manager[0].helm_release.this  (deferred)
+    ...
+    unspecified module.nim_operator  (whole module deferred: absent_prereq)
+  ```
+
+  One row for the call rather than a row per resource inside it: nothing in
+  that module is planned this round, not even its `null_resource`, which has
+  everything it needs. `absent_prereq` is the engine's word for *waiting on
+  something that is itself waiting*. Round two plans the subtree for real and
+  applies all four releases in one phase.
+
+The ordering is visible in the cluster while it happens. cert-manager,
+gpu-operator and external-dns install in parallel — ExternalDNS names no
+prerequisite, so nothing holds it back — and the `nim-operator` namespace does
+not exist at all until the other two report `deployed`:
 
 ```
-$ helm -n nim-operator history nim-operator
-1  deployed  k8s-nim-operator-3.1.2  NVIDIA NIM Operator — installed after cert-manager, gpu-operator
+$ kubectl get ns          # mid-apply
+cert-manager   Active   12s
+external-dns   Active   10s
+gpu-operator   Active   11s      # ...and no nim-operator
+
+$ helm list -A            # moments later
+cert-manager   deployed          gpu-operator   deployed
+external-dns   deployed          nim-operator   pending-install
 ```
+
+Worth stating precisely, because `depends_on` is the weakest edge there is: no
+value crosses it, nothing in the NIM module's configuration mentions
+cert-manager, and the whole claim rests on the engine ordering an apply it could
+otherwise have run in parallel. The webhook's populated `caBundle` is the
+independent check — cert-manager's cainjector must have been running before that
+object existed.
