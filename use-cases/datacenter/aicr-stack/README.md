@@ -277,20 +277,22 @@ that can emit both the terraform bundle and a pullable gate. Committing the flag
 on would ship a bundle that `ImagePullBackOff`s on any machine but the one that
 built it — so it stays off until the deployer lands in a release.
 
-**A gate verifies once, at creation.** Measured on kind with a stand-in gate
-chart: re-applying with nothing changed produces no diff and no helm call;
-changing the release's values does run `helm upgrade`, but the Job keeps its
-UID and start time, because a Job's `spec.template` is immutable and an
-identical manifest is a no-op patch. `deploy.sh` reinstalls unconditionally and
-argocd replaces the Job on every sync, so both re-verify where this does not.
+It has been run, though, on a build of this tree with the gate image loaded by
+hand: the gate polls `gpu-operator`'s `ClusterPolicy` through a stability window
+and passes at `T+30s`, and its three dependents wait for it.
 
-The same measurement turned up something wider: `helm_release` tracks a local
-chart's **path, chart version and values** — not its rendered manifests. Editing
-a template under `NNN-<component>/templates/` produces *no* Terraform diff.
-Every wrapper chart here carries `version:` = the AICR build version, so within
-one AICR build a regenerated bundle with changed post-manifest or gate content
-applies as a no-op. Bumping the chart version does diff, and then a renamed Job
-is deleted and recreated — which is the shape any fix has to take.
+**A gate re-runs when, and only when, its component changes.** Nothing reaches the
+Job by accident: a Job's `spec.template` is immutable, so a values change runs
+`helm upgrade` but leaves the Job with its original UID; and `helm_release` tracks
+a local chart's **path, version and values**, not its rendered manifests, so
+editing a template under `NNN-<component>/templates/` produces no plan at all.
+The gate slot is therefore `replace_triggered_by` the component's own release —
+uninstall plus install, which creates a new Job.
+
+Measured here with the flag on: re-applying unchanged is `0 of 32 address(es)
+change`; changing `gpu-operator`'s values is `2 of 32` — `helm_release.this`
+updated and `helm_release.readiness[0]` replaced — and the gate re-runs while the
+other thirteen components' gates stay put.
 
 **`helm uninstall` leaves CRDs behind**, as always. `down` removes the cluster, so
 it does not matter here; it would on a cluster you keep.
