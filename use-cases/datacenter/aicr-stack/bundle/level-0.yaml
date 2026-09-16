@@ -1,0 +1,55 @@
+repositories:
+  - name: charts-jetstack-io
+    url: https://charts.jetstack.io
+  - name: cr-agentgateway-dev-charts
+    url: cr.agentgateway.dev/charts
+    oci: true
+  - name: ghcr-io-nvidia-nodewright-charts
+    url: ghcr.io/nvidia/nodewright/charts
+    oci: true
+  - name: kubernetes-sigs-github-io-node-feature-discovery-charts
+    url: https://kubernetes-sigs.github.io/node-feature-discovery/charts
+  - name: prometheus-community-github-io-helm-charts
+    url: https://prometheus-community.github.io/helm-charts
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+releases:
+  - name: agentgateway-crds
+    namespace: agentgateway-system
+    chart: cr-agentgateway-dev-charts/agentgateway-crds
+    version: v1.5.0
+    values:
+      - ./001-agentgateway-crds/values.yaml
+  - name: agentgateway-crds-post
+    namespace: agentgateway-system
+    chart: ./002-agentgateway-crds-post
+    values:
+      - ./002-agentgateway-crds-post/values.yaml
+    needs:
+      - agentgateway-crds
+  - name: cert-manager
+    namespace: cert-manager
+    chart: charts-jetstack-io/cert-manager
+    version: v1.20.2
+    values:
+      - ./003-cert-manager/values.yaml
+  - name: nfd
+    namespace: node-feature-discovery
+    chart: kubernetes-sigs-github-io-node-feature-discovery-charts/node-feature-discovery
+    version: 0.19.0
+    values:
+      - ./006-nfd/values.yaml
+  - name: nodewright-operator
+    namespace: skyhook
+    chart: ghcr-io-nvidia-nodewright-charts/nodewright
+    version: v0.17.1
+    values:
+      - ./008-nodewright-operator/values.yaml
+  - name: prometheus-operator-crds
+    namespace: monitoring
+    chart: prometheus-community-github-io-helm-charts/prometheus-operator-crds
+    version: 28.0.1
+    values:
+      - ./009-prometheus-operator-crds/values.yaml

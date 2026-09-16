@@ -1,0 +1,36 @@
+repositories:
+  - name: ghcr-io-kai-scheduler-kai-scheduler
+    url: ghcr.io/kai-scheduler/kai-scheduler
+    oci: true
+  - name: ghcr-io-nvidia
+    url: ghcr.io/nvidia
+    oci: true
+  - name: registry-k8s-io-dra-driver-nvidia-charts
+    url: registry.k8s.io/dra-driver-nvidia/charts
+    oci: true
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+releases:
+  - name: kai-scheduler
+    namespace: kai-scheduler
+    chart: ghcr-io-kai-scheduler-kai-scheduler/kai-scheduler
+    version: v0.16.9
+    values:
+      - ./013-kai-scheduler/values.yaml
+    wait: false
+    timeout: 1200
+    disableValidation: true
+  - name: nvidia-dra-driver-gpu
+    namespace: nvidia-dra-driver
+    chart: registry-k8s-io-dra-driver-nvidia-charts/dra-driver-nvidia-gpu
+    version: 0.5.0
+    values:
+      - ./014-nvidia-dra-driver-gpu/values.yaml
+  - name: nvsentinel
+    namespace: nvsentinel
+    chart: ghcr-io-nvidia/nvsentinel
+    version: v1.20.0
+    values:
+      - ./015-nvsentinel/values.yaml

@@ -1,0 +1,81 @@
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Inference Gateway — provides external access to inference services
+# via the Kubernetes Gateway API. Any inference workload (dynamo, vLLM,
+# TGI, etc.) can route through this gateway using HTTPRoute backendRefs
+# to InferencePool resources or plain Service backends.
+# AgentgatewayParameters configures the proxy pod scheduling to match the
+# system node tolerations/nodeSelector injected by the bundler into the
+# agentgateway controller. Without this, proxy pods land on any untainted
+# node instead of system infrastructure nodes. The new API uses a
+# strategic-merge-patch into the generated Deployment spec.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: system-proxy
+  namespace: agentgateway-system
+  annotations: {}
+spec:
+  # Restrict the controller-generated LoadBalancer Service to trusted source
+  # CIDRs. Without this the agentgateway controller provisions an internet-facing
+  # load balancer open to 0.0.0.0/0, exposing the (plaintext, unauthenticated)
+  # inference endpoint to the entire internet. spec.service.spec is merged onto
+  # the generated Service, and loadBalancerSourceRanges is a portable Service
+  # field honored by the AWS, GCP, Azure, and OCI cloud load balancers — so this
+  # single setting locks the gateway down on every platform. Through `aicr
+  # bundle`, allowedSourceRanges is never empty here: the bundler injects the
+  # private RFC1918 ranges by default (see #1373). A literally-empty value (e.g.
+  # rendering this chart standalone, outside the bundler) leaves the Service
+  # unrestricted (0.0.0.0/0).
+  service:
+    spec:
+      loadBalancerSourceRanges:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+  deployment:
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: aicr
+    spec:
+      template:
+        metadata:
+          labels:
+            # Mirrors the old kgateway GatewayParameters podTemplate.extraLabels
+            # behavior so the proxy pods themselves carry the AICR ownership
+            # label, not just the Deployment.
+            app.kubernetes.io/managed-by: aicr
+        spec:
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: inference-gateway
+  namespace: agentgateway-system
+  annotations: {}
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef:
+      group: agentgateway.dev
+      kind: AgentgatewayParameters
+      name: system-proxy
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
