@@ -262,8 +262,20 @@ release as the last slot in that component's module, so every dependent already
 waits for it. The slot ignores the bundle-wide `wait` variable — an async
 component may skip waiting on its own workloads, never on its gate.
 
-No component in *this* recipe ships a `readiness.yaml`, so the bundle here has
-none — but `network-operator` plus `gpu-operator` with RDMA would.
+The committed bundle is generated **without** the flag. Not for lack of a gate to
+run: `gpu-operator` in this very recipe ships a `readiness.yaml` asserting
+`ClusterPolicy` `status.state: ready`, and regenerating with `--readiness-hooks`
+yields a seventeenth folder, `012-gpu-operator-readiness`, as a slot on
+`module.gpu_operator` — which its three dependents already wait for.
+
+The reason is the gate's own image. AICR tags it with the bundler version, and
+publishes it **only on release tags**; a build from source stamps `dev` and falls
+back to `ghcr.io/nvidia/aicr-gate:dev`, which is a local-only tag you are expected
+to build and `kind load` yourself (`ghcr.io/nvidia/aicr-gate:dev` → HTTP 404). Since
+`--deployer terraform` exists only on a fork branch, there is no released `aicr`
+that can emit both the terraform bundle and a pullable gate. Committing the flag
+on would ship a bundle that `ImagePullBackOff`s on any machine but the one that
+built it — so it stays off until the deployer lands in a release.
 
 **A gate verifies once, at creation.** Measured on kind with a stand-in gate
 chart: re-applying with nothing changed produces no diff and no helm call;
