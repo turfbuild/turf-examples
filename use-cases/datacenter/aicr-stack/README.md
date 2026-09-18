@@ -281,18 +281,36 @@ It has been run, though, on a build of this tree with the gate image loaded by
 hand: the gate polls `gpu-operator`'s `ClusterPolicy` through a stability window
 and passes at `T+30s`, and its three dependents wait for it.
 
-**A gate re-runs when, and only when, its component changes.** Nothing reaches the
-Job by accident: a Job's `spec.template` is immutable, so a values change runs
-`helm upgrade` but leaves the Job with its original UID; and `helm_release` tracks
-a local chart's **path, version and values**, not its rendered manifests, so
-editing a template under `NNN-<component>/templates/` produces no plan at all.
-The gate slot is therefore `replace_triggered_by` the component's own release —
-uninstall plus install, which creates a new Job.
+**A gate re-runs when, and only when, its component changes** — and it does so
+without the release ever being replaced. Two facts make that hard. A Job's
+`spec.template` is immutable, so an upgrade rendering the same Job patches
+nothing and leaves the original UID; and `helm_release` tracks a local chart's
+**path, version and values**, not its rendered manifests, so editing a template
+under `NNN-<component>/templates/` produces no plan at all.
 
-Measured here with the flag on: re-applying unchanged is `0 of 32 address(es)
-change`; changing `gpu-operator`'s values is `2 of 32` — `helm_release.this`
-updated and `helm_release.readiness[0]` replaced — and the gate re-runs while the
-other thirteen components' gates stay put.
+So the gate Job is a Helm `post-install,post-upgrade` hook with
+`hook-delete-policy: before-hook-creation`: Helm deletes the previous Job, runs a
+fresh one, and blocks until it finishes. And the gate release carries two signals
+that make it *upgrade* in the first place — a digest of its own rendered content
+in `description`, and the component's `metadata.revision` in `values`.
+
+Replacement was the obvious mechanism and it is the wrong one: this slot inherits
+`create_before_destroy` from its siblings under `--terraform-cluster-rollover` and
+cannot decline it, so a replacement installs the new release while the old one
+still holds the name, in the same cluster, and Helm refuses it.
+
+Measured here with the flag on (2026-09-18, Terraform v1.16.2): re-applying
+unchanged is `No changes`; changing `gpu-operator`'s values is `0 to add, 2 to
+change, 0 to destroy` — `helm_release.this` and `helm_release.readiness[0]` both
+**updated in place** — the gate's Job comes back with a new UID, and the other
+thirteen components' gates stay put.
+
+**Content changes reach the plan at all** because of those digests, which is a
+property of every bundled chart and not only of gates. Add a manifest to a
+`-post` wrapper's `templates/` and re-plan: `No changes`. Regenerate, so the
+`post_digest` argument moves with it, and the same edit is
+`helm_release.post[0] will be updated in-place` — and the object lands in the
+cluster.
 
 **`helm uninstall` leaves CRDs behind**, as always. `down` removes the cluster, so
 it does not matter here; it would on a cluster you keep.

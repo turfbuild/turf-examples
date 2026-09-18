@@ -78,7 +78,33 @@ is a CR condition — `ClusterPolicy.status.state=ready`,
 `NicClusterPolicy.status.state=ready` — will report applied while that
 condition is still pending. Regenerate with `--readiness-hooks` to get an
 explicit gate: each gated component grows a `-readiness` release whose Job
-blocks the dependents, and `wait_for_jobs` makes Terraform honor it.
+asserts the real signal and blocks the dependents. The Job is a Helm
+`post-install,post-upgrade` hook, so Helm runs it to completion before the
+release succeeds — and re-runs it on every upgrade of that release, which a
+plain Job could not do (a Job's `spec.template` is immutable).
+
+## Content digests
+
+`helm_release` records a bundled chart's **path, version and values — never its
+rendered manifests**. Edit a template under `NNN-<component>-post/` and a plain
+`terraform plan` would report no diff at all, so an apply says `No changes`
+while the bundle on disk differs from what is deployed.
+
+Each slot installing a chart from this bundle therefore passes a digest of that
+folder's bytes, which rides in the release's `description`:
+
+```hcl
+description = "aicr content ab12cd34"
+```
+
+Regenerate after editing a manifest and the change is an ordinary in-place
+upgrade. `helm status <release>` shows which content is deployed. A slot
+installing an upstream chart has no digest — its repository and version already
+name its content.
+
+The gate's description carries one more thing, the component's own release
+revision, so the gate re-verifies when the component it asserts about is
+upgraded, not only when the gate itself changes.
 
 ## Layout
 

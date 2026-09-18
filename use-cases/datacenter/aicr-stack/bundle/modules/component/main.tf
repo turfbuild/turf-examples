@@ -8,6 +8,12 @@
 # The recipe's edges sit on the module CALL in ../../main.tf, not on a resource
 # in here: a depends_on on the call is a fact about everything the component
 # expands into.
+#
+# Every slot's description carries a content digest, because helm_release sees a
+# local chart's PATH, version and values but never its rendered manifests —
+# editing a template in a bundled folder otherwise produces no plan diff at all.
+# The digest makes that content an ordinary in-place upgrade. A slot installing
+# an upstream chart has none: repository and version already name its content.
 
 terraform {
   required_providers {
@@ -40,6 +46,8 @@ resource "helm_release" "pre" {
   namespace        = var.namespace
   create_namespace = var.create_namespace
 
+  description = var.pre_digest == null ? null : "aicr content ${var.pre_digest}"
+
   chart = var.pre_chart
 
   wait          = var.wait
@@ -61,6 +69,8 @@ resource "helm_release" "this" {
   # The head slot owns the namespace. If pre ran it exists already, and Helm 3
   # refuses to adopt a namespace another release created out-of-band.
   create_namespace = var.pre_chart == null ? var.create_namespace : false
+
+  description = var.chart_digest == null ? null : "aicr content ${var.chart_digest}"
 
   chart      = var.chart
   repository = var.repository
@@ -97,6 +107,8 @@ resource "helm_release" "post" {
   name      = "${var.release_name}-post"
   namespace = var.namespace
 
+  description = var.post_digest == null ? null : "aicr content ${var.post_digest}"
+
   chart = var.post_chart
 
   wait          = var.wait
@@ -122,28 +134,41 @@ resource "helm_release" "readiness" {
   name      = "${var.release_name}-readiness"
   namespace = var.namespace
 
+  # An assertion is only true of the thing it was made about, so the gate has to
+  # re-run when either half moves: its own content, and the component it is
+  # about. metadata.revision increments on every upgrade of that component and
+  # at no other time, so a re-apply with nothing changed produces no diff here.
+  #
+  # Both signals ride in description, which is an ordinary updatable attribute.
+  # That matters: the Job inside is re-run by the helm hook on upgrade, so the
+  # release never has to be REPLACED — and replacement is what this slot cannot
+  # survive, since it inherits create_before_destroy from its siblings under
+  # --terraform-cluster-rollover and two releases sharing a name in one cluster
+  # collide.
+  description = "aicr gate content=${var.readiness_digest} component-rev=${helm_release.this.metadata.revision}"
+
   chart = var.readiness_chart
 
   # Hardcoded, not var.wait: the waiting IS the gate. An async component may
   # skip waiting on its own workloads, never on the gate that asserts it came
-  # up. wait_for_jobs is what blocks on the Job completing rather than being
-  # submitted. No atomic — a rollback would delete the Job and its logs, which
-  # are the diagnosis.
+  # up.
+  #
+  # What blocks on the gate is HELM, not these flags: the Job is a
+  # post-install,post-upgrade hook, and helm runs a Job hook to completion
+  # before the release reports success, failing the release if it fails. A hook
+  # is not a release resource, so wait_for_jobs never sees it; wait is here for
+  # the ServiceAccount, RBAC and ConfigMap the chart does install. No atomic —
+  # a rollback would delete the Job and its logs, which are the diagnosis.
   wait          = true
   wait_for_jobs = true
   timeout       = var.timeout
 
   depends_on = [helm_release.this, helm_release.post]
 
-  # An assertion is only true of the thing it was made about. Replacing the gate
-  # when the component's release changes re-runs the Job — a Job cannot be
-  # re-run in place, its spec.template is immutable. No create_before_destroy:
-  # the replacement targets the same cluster and would collide on the release
-  # name, and there is nothing here worth keeping alive across the swap.
+  # Same containment as every other slot: a completed gate describes objects in
+  # one cluster, and a replaced cluster makes that assertion false.
   lifecycle {
-    replace_triggered_by = [
-      helm_release.this.metadata,
-      null_resource.cluster,
-    ]
+    create_before_destroy = true
+    replace_triggered_by  = [null_resource.cluster]
   }
 }
