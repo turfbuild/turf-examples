@@ -26,8 +26,7 @@ module "stack" {
 }
 ```
 
-Then `terraform init && terraform apply` in the calling configuration. OpenTofu
-works identically — substitute `tofu` for `terraform`.
+Then `terraform init && terraform apply` in the calling configuration.
 
 Regenerate without `--terraform-child-module` to get a standalone root module
 that reads a kubeconfig instead.
@@ -35,18 +34,15 @@ that reads a kubeconfig instead.
 ## When the cluster is in the same configuration
 
 Wiring the provider to a cluster resource, as above, means its attributes are
-unknown until the cluster exists — so on the first pass **no release in this
-bundle can be planned**. What happens next depends on the engine:
-
-| Engine | Result |
-| --- | --- |
-| `terraform apply` / `tofu apply` | Refuses: the provider configuration is unknown. Create the cluster first (`-target`), then apply. |
-| `terraform plan -allow-deferral` (experimental) | Defers the releases, applies the cluster, converges on the next round. |
-| Turf | Same, as the normal path: the releases come back `deferred`, and the converge loop replans against the committed state. |
+unknown until the cluster exists. That is fine: `helm_release` does not contact
+the API server during planning, so an unknown provider configuration does not
+block the plan. One `terraform apply` creates the cluster and installs the
+whole bundle behind it.
 
 This is why the bundle is a child module rather than a root module with its own
 provider block. A module carrying a provider block cannot take `depends_on`,
-`count` or `for_each`, and some engines refuse to walk one at all.
+`count` or `for_each`, which is exactly what a caller needs to sequence the
+bundle behind the cluster that hosts it.
 
 ## The dependency graph
 
@@ -78,33 +74,8 @@ is a CR condition — `ClusterPolicy.status.state=ready`,
 `NicClusterPolicy.status.state=ready` — will report applied while that
 condition is still pending. Regenerate with `--readiness-hooks` to get an
 explicit gate: each gated component grows a `-readiness` release whose Job
-asserts the real signal and blocks the dependents. The Job is a Helm
-`post-install,post-upgrade` hook, so Helm runs it to completion before the
-release succeeds — and re-runs it on every upgrade of that release, which a
-plain Job could not do (a Job's `spec.template` is immutable).
-
-## Content digests
-
-`helm_release` records a bundled chart's **path, version and values — never its
-rendered manifests**. Edit a template under `NNN-<component>-post/` and a plain
-`terraform plan` would report no diff at all, so an apply says `No changes`
-while the bundle on disk differs from what is deployed.
-
-Each slot installing a chart from this bundle therefore passes a digest of that
-folder's bytes, which rides in the release's `description`:
-
-```hcl
-description = "aicr content ab12cd34"
-```
-
-Regenerate after editing a manifest and the change is an ordinary in-place
-upgrade. `helm status <release>` shows which content is deployed. A slot
-installing an upstream chart has no digest — its repository and version already
-name its content.
-
-The gate's description carries one more thing, the component's own release
-revision, so the gate re-verifies when the component it asserts about is
-upgraded, not only when the gate itself changes.
+blocks the dependents until the signal actually passes, and which re-runs
+whenever that release is upgraded.
 
 ## Layout
 
@@ -113,7 +84,8 @@ main.tf                     # the module calls, and the graph
 versions.tf                 # required_providers
 variables.tf                # wait/timeout/atomic
 outputs.tf
-modules/component/          # the generic one-release module, shared by all calls
+modules/component/          # the shared module every call resolves to; holds the
+                            #   component's pre / chart / post / readiness releases
 NNN-<component>/            # values.yaml, cluster-values.yaml, and either
                             #   upstream.env (upstream chart) or
                             #   Chart.yaml + templates/ (bundled chart)

@@ -51,37 +51,6 @@ variable "readiness_chart" {
   default     = null
 }
 
-# Content digests. helm_release records a local chart's path, version and
-# values — never its rendered manifests — so an edited template in a bundled
-# chart is invisible to a plan. Each digest fingerprints the bytes AICR wrote
-# into that chart's folder and rides along in the release's description, which
-# makes a content change an ordinary in-place update. A slot installing from an
-# upstream repository has no digest: chart and version already name its content.
-
-variable "chart_digest" {
-  description = "Fingerprint of the component's chart folder, when the chart is bundled rather than upstream."
-  type        = string
-  default     = null
-}
-
-variable "pre_digest" {
-  description = "Fingerprint of the pre-manifest wrapper chart's folder."
-  type        = string
-  default     = null
-}
-
-variable "post_digest" {
-  description = "Fingerprint of the post-manifest wrapper chart's folder."
-  type        = string
-  default     = null
-}
-
-variable "readiness_digest" {
-  description = "Fingerprint of the readiness-gate wrapper chart's folder."
-  type        = string
-  default     = null
-}
-
 variable "values_files" {
   description = "Values files to layer, in order."
   type        = list(string)
@@ -113,7 +82,11 @@ variable "disable_openapi_validation" {
 }
 
 variable "cluster_endpoint" {
-  description = "Cluster API endpoint. Replacing the cluster changes this, which replaces the release."
+  description = <<-EOT
+    Cluster API endpoint. Nothing connects with it; it is the cluster's
+    identity. A change replaces terraform_data.cluster, which replaces every
+    release in this module.
+  EOT
   type        = string
   default     = ""
 }

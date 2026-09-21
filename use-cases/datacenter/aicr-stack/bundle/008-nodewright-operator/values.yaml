@@ -19,5 +19,3 @@ limitRange:
   defaultRequest:
     cpu: 500m
     memory: 512Mi
-webhook:
-  removalImage: docker.io/alpine/kubectl

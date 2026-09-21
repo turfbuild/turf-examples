@@ -8,10 +8,6 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 3.0"
     }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.0"
-    }
   }
 }
 
@@ -34,6 +30,7 @@ terraform {
 #     source = "./bundle"
 #   }
 #
-# Those attributes are unknown until the cluster is created, so on the first
-# pass every release here is unplannable. An engine with deferred actions
-# converges that in two rounds; stock `terraform apply` needs the cluster first.
+# Those attributes are unknown until the cluster is created. That is fine:
+# helm_release does not contact the API server during planning, so an unknown
+# provider configuration does not block the plan — one `terraform apply`
+# creates the cluster and installs the whole bundle behind it.

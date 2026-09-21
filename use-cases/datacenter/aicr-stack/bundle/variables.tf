@@ -6,6 +6,9 @@ variable "cluster_endpoint" {
     the provider comes from the caller. It exists so each release is contained
     by the cluster: replace the cluster and every release is replaced with it,
     rather than being adopted by a cluster that has never seen it.
+
+    Pass the cluster resource's own endpoint attribute. A value that does not
+    change when the cluster is replaced leaves the releases uncontained.
   EOT
   type        = string
 }
