@@ -38,6 +38,8 @@ use-cases/        End-to-end stacks for a real domain, composed from local modul
                     + ExternalDNS on a kind cluster with no GPU
     aicr-stack/     NVIDIA AI Cluster Runtime — 16 Helm releases generated from
                     one AICR recipe, deployed as the dependency graph it declares
+    aicr-eks-certification/  spec: EKS (ported from mchmarny/cluster) + the AICR
+                    stack + an NVCRE certification, waits as Terraform actions
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
@@ -94,6 +96,7 @@ single-idea example. Drive them the same way (`turf -C <dir> up`).
 |--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
 | `datacenter/ngc-stack`   | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | NVIDIA NGC operators on a GPU-less cluster — four charts, four modules, zero credentials |
 | `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
+| `datacenter/aicr-eks-certification` | hashicorp/aws, hashicorp/kubernetes, hashicorp/helm (v3+) | 📐 | Target-state spec: a real GPU cluster, its stack and its NVCRE certification as one graph; the waits are a specified action |
 
 The NGC stack is worth reading for what it proves about NVIDIA's operators: the
 GPU Operator and the NIM Operator both install and reach a healthy state with no
@@ -111,6 +114,16 @@ renderers only Flux carries the full graph; Argo CD and Helmfile flatten it to
 barriers. Terraform is the one consumer that can hold the graph *and* create the
 cluster underneath it. See
 [`use-cases/datacenter/aicr-stack/README.md`](use-cases/datacenter/aicr-stack/README.md).
+
+📐 = a **spec**: it validates and its mocked `terraform test` suite passes, but
+it depends on features no engine has yet, so it is not runnable. The EKS
+certification example is one. It takes the Terraform AICR's own UAT uses for
+EKS test clusters (ported from `mchmarny/cluster`), the same AICR stack, and an
+NVCRE certification of the GPU pools, and writes them as one configuration.
+The waits that live in CI shell today become a Terraform action
+(`kubewait_condition`, specified in the example), and teardown is the graph in
+reverse. See
+[`use-cases/datacenter/aicr-eks-certification/README.md`](use-cases/datacenter/aicr-eks-certification/README.md).
 
 ## Integrations
 

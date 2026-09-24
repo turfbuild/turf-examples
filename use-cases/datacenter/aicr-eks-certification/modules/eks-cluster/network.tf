@@ -1,0 +1,306 @@
+# Ported from github.com/mchmarny/cluster provider/eks/terraform/network.tf @ 0ac8457
+# (MIT, Copyright (c) 2025 Mark Chmarny; see LICENSE in this directory).
+# Changes: account precondition -> provider allowed_account_ids;
+#   ENIConfig (local_file + local-exec kubectl) moved to ../cluster-prereqs.
+
+locals {
+  # Define subnets by type for easier processing in the VPC module
+  subnets_by_type = {
+    for name, group in local.effective_subnets :
+    name => {
+      for _, cfg in group :
+      "${local.prefix}-${name}-${cfg.zone}" => {
+        availability_zone       = cfg.zone
+        cidr_block              = cfg.cidr
+        map_public_ip_on_launch = name == "public" ? true : false
+      }
+    }
+  }
+
+  subnet_ids_by_type = {
+    for name, group in local.effective_subnets :
+    name => [
+      for i, cfg in group :
+      aws_subnet.main["${local.prefix}-${name}-${cfg.zone}"].id
+    ]
+  }
+
+  system_subnet_ids = [
+    for i, cfg in local.effective_subnets.system :
+    aws_subnet.main["${local.prefix}-system-${cfg.zone}"].id
+  ]
+
+  # #15: Split endpoints into gateway (S3 — free) and interface (ENI-based)
+  gateway_endpoints   = toset([for e in local.vpc_endpoints : e if e == "s3"])
+  interface_endpoints = toset([for e in local.vpc_endpoints : e if e != "s3"])
+}
+
+# VPC
+resource "aws_vpc" "main" {
+  cidr_block           = local.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = { Name = "${local.prefix}-vpc" }
+
+  # #8 (upstream): the account precondition that lived here is now the root
+  # provider's `allowed_account_ids`. Same check, and neither Turf engine models
+  # resource preconditions.
+}
+
+# CloudWatch Log Group for VPC Flow Logs
+# #6: Removed null_resource cleanup hack — Terraform manages the lifecycle
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  name              = "/aws/vpc/${local.prefix}-flow-logs"
+  retention_in_days = local.vpc_flow_log_retention_days
+  kms_key_id        = aws_kms_key.eks.arn
+
+  tags = { Name = "${local.prefix}-vpc-flow-logs" }
+}
+
+# IAM Role for VPC Flow Logs
+resource "aws_iam_role" "vpc_flow_logs" {
+  name               = "${local.prefix}-vpc-flow-logs"
+  assume_role_policy = data.aws_iam_policy_document.vpc_flow_logs_assume_role.json
+
+  tags = { Name = "${local.prefix}-vpc-flow-logs" }
+}
+
+data "aws_iam_policy_document" "vpc_flow_logs_assume_role" {
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_flow_logs" {
+  policy_arn = aws_iam_policy.flow_log.arn
+  role       = aws_iam_role.vpc_flow_logs.name
+}
+
+# VPC Flow Log
+resource "aws_flow_log" "main" {
+  iam_role_arn    = aws_iam_role.vpc_flow_logs.arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  traffic_type    = "ALL"
+  vpc_id          = aws_vpc.main.id
+
+  tags = { Name = "${local.prefix}-vpc-flow-log" }
+}
+
+resource "aws_vpc_ipv4_cidr_block_association" "secondary_cidr" {
+  count = local.vpc_cni_enabled ? 1 : 0
+
+  vpc_id     = aws_vpc.main.id
+  cidr_block = local.pod_cidr
+}
+
+# Subnets
+resource "aws_subnet" "main" {
+  for_each = merge(values(local.subnets_by_type)...)
+
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = each.value.availability_zone
+  cidr_block              = each.value.cidr_block
+  map_public_ip_on_launch = each.value.map_public_ip_on_launch
+
+  tags = merge({
+    Name = "${each.key}-subnet"
+    # AWS Load Balancer Controller tags
+    "kubernetes.io/role/elb"                      = contains(split("-", each.key), "public") ? "1" : null
+    "kubernetes.io/role/internal-elb"             = contains(split("-", each.key), "system") || contains(split("-", each.key), "worker") ? "1" : null
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+  })
+
+  depends_on = [aws_vpc_ipv4_cidr_block_association.secondary_cidr]
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = { Name = "${local.prefix}-igw" }
+}
+
+# Elastic IPs for NAT Gateways
+resource "aws_eip" "nat" {
+  for_each = {
+    for i, subnet in local.effective_subnets.public :
+    "${local.prefix}-eip-${i}" => subnet
+  }
+
+  domain = "vpc"
+
+  tags = { Name = each.key }
+}
+
+# NAT Gateways
+resource "aws_nat_gateway" "main" {
+  for_each = {
+    for i, subnet in local.effective_subnets.public :
+    "${local.prefix}-nat-${i}" => {
+      subnet_id     = aws_subnet.main["${local.prefix}-public-${subnet.zone}"].id
+      allocation_id = aws_eip.nat["${local.prefix}-eip-${i}"].id
+    }
+  }
+
+  subnet_id     = each.value.subnet_id
+  allocation_id = each.value.allocation_id
+
+  tags = { Name = each.key }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+# Route Tables
+resource "aws_route_table" "public" {
+  for_each = {
+    for i, subnet in local.effective_subnets.public :
+    "${local.prefix}-public-rt-${i}" => subnet
+  }
+
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = { Name = each.key }
+}
+
+resource "aws_route_table" "private_system" {
+  for_each = {
+    for i, subnet in local.effective_subnets.system :
+    "${local.prefix}-system-rt-${i}" => {
+      subnet         = subnet
+      nat_gateway_id = aws_nat_gateway.main["${local.prefix}-nat-${i}"].id
+    }
+  }
+
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = each.value.nat_gateway_id
+  }
+
+  tags = { Name = each.key }
+}
+
+resource "aws_route_table" "private_worker" {
+  for_each = {
+    for i, subnet in local.effective_subnets.worker :
+    "${local.prefix}-worker-rt-${i}" => {
+      subnet         = subnet
+      nat_gateway_id = aws_nat_gateway.main["${local.prefix}-nat-${i}"].id
+    }
+  }
+
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = each.value.nat_gateway_id
+  }
+
+  tags = { Name = each.key }
+}
+
+# Route Table Associations
+resource "aws_route_table_association" "public" {
+  for_each = {
+    for i, subnet in local.effective_subnets.public :
+    "${local.prefix}-public-${subnet.zone}" => {
+      subnet_id      = aws_subnet.main["${local.prefix}-public-${subnet.zone}"].id
+      route_table_id = aws_route_table.public["${local.prefix}-public-rt-${i}"].id
+    }
+  }
+
+  subnet_id      = each.value.subnet_id
+  route_table_id = each.value.route_table_id
+}
+
+resource "aws_route_table_association" "system" {
+  for_each = {
+    for i, subnet in local.effective_subnets.system :
+    "${local.prefix}-system-${subnet.zone}" => {
+      subnet_id      = aws_subnet.main["${local.prefix}-system-${subnet.zone}"].id
+      route_table_id = aws_route_table.private_system["${local.prefix}-system-rt-${i}"].id
+    }
+  }
+
+  subnet_id      = each.value.subnet_id
+  route_table_id = each.value.route_table_id
+}
+
+resource "aws_route_table_association" "worker" {
+  for_each = {
+    for i, subnet in local.effective_subnets.worker :
+    "${local.prefix}-worker-${subnet.zone}" => {
+      subnet_id      = aws_subnet.main["${local.prefix}-worker-${subnet.zone}"].id
+      route_table_id = aws_route_table.private_worker["${local.prefix}-worker-rt-${i}"].id
+    }
+  }
+
+  subnet_id      = each.value.subnet_id
+  route_table_id = each.value.route_table_id
+}
+
+# Ensure traffic for these services resolves to an endpoint in the VPC
+# VPC endpoints can only have one subnet per AZ, so use system subnets only
+locals {
+  endpoint_subnets = [
+    for cfg in local.effective_subnets.system :
+    "${local.prefix}-system-${cfg.zone}"
+  ]
+}
+
+# #15: Gateway endpoints (S3) — free, uses route tables
+resource "aws_vpc_endpoint" "gateway" {
+  for_each = local.gateway_endpoints
+
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${local.region}.${each.value}"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = concat(
+    [for k, rt in aws_route_table.private_system : rt.id],
+    [for k, rt in aws_route_table.private_worker : rt.id],
+  )
+
+  tags = { Name = "${local.prefix}-vpce-${each.value}" }
+}
+
+# #15: Interface endpoints (everything except S3) — ENI-based with private DNS
+resource "aws_vpc_endpoint" "interface" {
+  for_each = local.interface_endpoints
+
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${local.region}.${each.value}"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  dns_options {
+    dns_record_ip_type = "ipv4"
+  }
+
+  subnet_ids = [
+    for name in local.endpoint_subnets :
+    aws_subnet.main[name].id
+  ]
+
+  security_group_ids = [
+    aws_security_group.main["${local.prefix}-system"].id,
+    aws_security_group.main["${local.prefix}-worker"].id,
+  ]
+
+  tags = { Name = "${local.prefix}-vpce-${each.value}" }
+}
+
+# local_file.eniconfig and its `kubectl apply` provisioner moved to
+# ../cluster-prereqs as kubernetes_manifest resources.

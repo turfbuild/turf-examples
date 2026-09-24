@@ -1,0 +1,3 @@
+apiVersion: aicr.run/v1beta1
+kind: ComponentRegistry
+components: []
