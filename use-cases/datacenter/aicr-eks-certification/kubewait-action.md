@@ -271,11 +271,14 @@ follows. "Measured" means observed in the provider's tests or under Terraform
   starts a new cycle; it is not an error.
 
 **Connection**
-- **No implicit cluster, and no implicit namespace.** With nothing configured,
-  or a provider configuration that was unknown when the provider was
-  configured, a wait fails. It never falls back to localhost, `~/.kube/config`
-  or in-cluster credentials, because a drain against the wrong cluster passes.
-  Once discovery tells it the kind's scope, the wait also fails at once on:
+- **No localhost, and no implicit namespace.** With nothing configured, a wait
+  uses in-cluster credentials when it runs in a pod, as the kubernetes provider
+  does, and otherwise fails. A provider configuration that was unknown when the
+  provider was configured is always an error. From a pod, an empty
+  configuration observes the pod's own cluster, where a drain of a kind or
+  namespace that cluster lacks passes, so configure destroy-event drains
+  explicitly. Once discovery tells it the kind's scope, the wait also fails at
+  once on:
   - `namespace` set on a cluster-scoped kind;
   - single-object mode on a namespaced kind without `namespace`.
 

@@ -300,8 +300,10 @@ make mirror                              # builds 0.1.0 into .mirror/ and writes
 export TF_CLI_CONFIG_FILE=$PWD/dev.tfrc  # serves turfbuild/kubewait from .mirror/
 ```
 
-Then run `terraform init -backend=false -upgrade` here. Repeat the `-upgrade`
-after every `make mirror`: a rebuilt 0.1.0 has a new checksum.
+Then run `terraform init -backend=false` here. A rebuilt 0.1.0 has a new
+checksum, and `init` rejects it even with `-upgrade`. After each rebuild, run
+the `terraform providers lock` command that `make mirror` prints, here, then
+`init` again.
 
 **What `validate` checks in the waits.** The provider's schema is the one the
 spec defines, so a misspelled attribute or a string where a count belongs is an

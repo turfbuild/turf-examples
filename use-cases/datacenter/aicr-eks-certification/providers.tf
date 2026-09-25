@@ -46,9 +46,8 @@ provider "helm" {
   }
 }
 
-# The waits take the kubernetes provider's connection schema. They only read
-# (get, list, watch), and a wait with no cluster configured fails instead of
-# falling back to localhost or a local kubeconfig.
+# The waits take the kubernetes provider's connection schema and only read
+# (get, list, watch).
 provider "kubewait" {
   host                   = module.eks_cluster.endpoint
   cluster_ca_certificate = base64decode(module.eks_cluster.certificate_authority_data)
