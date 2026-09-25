@@ -36,6 +36,8 @@ use-cases/        End-to-end stacks for a real domain, composed from local modul
   datacenter/
     ngc-stack/      NVIDIA GPU Cloud — GPU Operator + NIM Operator + cert-manager
                     + ExternalDNS on a kind cluster with no GPU
+    aicr-stack/     NVIDIA AI Cluster Runtime — 16 Helm releases generated from
+                    one AICR recipe, deployed as the dependency graph it declares
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
@@ -91,6 +93,7 @@ single-idea example. Drive them the same way (`turf -C <dir> up`).
 | Example                  | Providers                                | Local? | Notes                                                        |
 |--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
 | `datacenter/ngc-stack`   | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | NVIDIA NGC operators on a GPU-less cluster — four charts, four modules, zero credentials |
+| `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
 
 The NGC stack is worth reading for what it proves about NVIDIA's operators: the
 GPU Operator and the NIM Operator both install and reach a healthy state with no
@@ -98,6 +101,16 @@ NVIDIA GPU and **no NGC API key**, and both then wait on the same Node Feature
 Discovery label (`feature.node.kubernetes.io/pci-10de.present`). Only NIM *model*
 content needs a credential. See
 [`use-cases/datacenter/ngc-stack/README.md`](use-cases/datacenter/ngc-stack/README.md).
+
+The AICR stack is the same subject one order of magnitude up, and nothing in it
+was written by hand: a recipe from [NVIDIA AI Cluster Runtime](https://github.com/NVIDIA/aicr)
+is generated into sixteen module calls whose `depends_on` edges are the recipe's
+own `dependencyRefs`. AICR is explicit that it does not provision clusters, so
+every renderer it ships treats the cluster as a precondition — and of those
+renderers only Flux carries the full graph; Argo CD and Helmfile flatten it to
+barriers. Terraform is the one consumer that can hold the graph *and* create the
+cluster underneath it. See
+[`use-cases/datacenter/aicr-stack/README.md`](use-cases/datacenter/aicr-stack/README.md).
 
 ## Integrations
 
