@@ -1,0 +1,96 @@
+# AICR's aws-h100 UAT lane (NVIDIA/aicr tests/uat/aws/cluster-config.yaml @
+# 54a352d) rendered as variables. Account, reservation, AMI, admin role and
+# CIDRs are placeholders: substitute your own.
+
+deployment = {
+  id       = "aicr-uat-1234567890"
+  tenancy  = "123456789012"
+  location = "us-east-1"
+  tags     = { env = "dev" }
+}
+
+cluster = {
+  version       = "1.35"
+  admin_roles   = ["AWSReservedSSO_Admin_0123456789abcdef"]
+  allowed_cidrs = ["203.0.113.0/30"]
+  add_ons = {
+    core_dns   = ""
+    kube_proxy = ""
+    vpc_cni    = "" # custom networking: ENIConfigs + secondary pod CIDR
+    # ebs_csi is left unset: the AICR stack installs aws-ebs-csi-driver itself.
+  }
+}
+
+network = {
+  host_cidr = "10.0.0.0/16"
+  pod_cidr  = "100.65.0.0/16"
+  subnets = {
+    public = [
+      { cidr = "10.0.1.0/27", zone = "us-east-1a" },
+      { cidr = "10.0.2.0/27", zone = "us-east-1c" },
+    ]
+    system = [
+      { cidr = "10.0.4.0/22", zone = "us-east-1a" },
+      { cidr = "10.0.8.0/22", zone = "us-east-1c" },
+    ]
+    worker = [{ cidr = "10.0.128.0/17", zone = "us-east-1e" }]
+    pod    = [{ cidr = "100.65.0.0/16", zone = "us-east-1e" }]
+  }
+}
+
+system_pool = {
+  instance_type = "m7i.xlarge"
+  capacity      = { desired = 3 }
+  labels        = { nodeGroup = "system-worker", dedicated = "system-workload" }
+}
+
+worker_pools = {
+  gpu-worker = {
+    instance_type = "p5.48xlarge"
+    image_id      = "ami-0123456789abcdef0" # pin it: the default lookup drifts
+    capacity = {
+      desired = 2
+      reservation = {
+        preference = "capacity-reservations-only"
+        target     = "cr-0123456789abcdef0"
+      }
+    }
+    labels = { nodeGroup = "gpu-worker", dedicated = "user-workload" }
+    # Removed by nodewright once the node runtime is tuned; the GPU census
+    # waits for that.
+    taints = [{ key = "skyhook.nvidia.com", value = "runtime-required", effect = "NoSchedule" }]
+  }
+
+  # AICR's GB200 lane (tests/uat/aws/cluster-config-gb200.yaml), for comparison.
+  # Its committed reservation target is "" since the capacity block was
+  # retired; the typed surface rejects that (upstream rendered it as the
+  # resource-group ARN ".../group/").
+  #
+  # gpu-worker-gb200 = {
+  #   instance_type = "p6e-gb200.36xlarge"
+  #   architecture  = "arm64"
+  #   image_id      = "ami-0123456789abcdef1"
+  #   accelerator   = "gb200"
+  #   capacity = {
+  #     desired = 2
+  #     reservation = {
+  #       preference  = "capacity-reservations-only"
+  #       target      = "cr-0123456789abcdef1"
+  #       market_type = "capacity-block"
+  #     }
+  #   }
+  #   labels = { nodeGroup = "gpu-worker", dedicated = "user-workload" }
+  #   taints = [{ key = "skyhook.nvidia.com", value = "runtime-required", effect = "NoSchedule" }]
+  # }
+}
+
+certification = {
+  pools = ["gpu-worker"]
+  categories = [
+    { domain = "communication", variant = "nccl-all-reduce" },
+  ]
+  options = {
+    thresholds = { busBandwidthGBps = "value >= 300" }
+  }
+  gang_scheduler = { scheduler_name = "kai-scheduler" }
+}
