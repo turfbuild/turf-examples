@@ -11,7 +11,7 @@
 #   confirm TrainJobs and pods are gone         → the after_destroy drains
 #
 # kubewait_condition is the generic wait action specified in
-# ../../kubewait-action.md. It is not implemented; see the root versions.tf.
+# ../../kubewait-action.md and implemented by turfbuild/kubewait.
 
 # Containment shim, the same pattern the generated bundle uses per component: a
 # replaced cluster replaces what lived in the old one.

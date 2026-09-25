@@ -1,9 +1,9 @@
 # The whole graph, applied and destroyed with every provider mocked. The
-# kubewait actions are tfcoremock echoes here, so this proves the wiring, not
-# the waits: every trigger (the census gate, the terminal hook, the TrainJob
-# hook, and on teardown the after_destroy drains and the LoadBalancer gate) is
-# planned and invoked in graph order, and the destroy walks the graph in
-# reverse. The engine-level claims in README.md are not tested here.
+# kubewait actions are mocked too, so this proves the wiring, not the waits:
+# every trigger (the census gate, the terminal hook, the TrainJob hook, and on
+# teardown the after_destroy drains and the LoadBalancer gate) is planned and
+# invoked in graph order, and the destroy walks the graph in reverse. The
+# engine-level claims in README.md are not tested here.
 
 mock_provider "aws" {
   mock_data "aws_iam_policy_document" {

@@ -17,7 +17,7 @@ provider "aws" {
   }
 }
 
-# Both in-cluster providers are configured from the cluster module's outputs,
+# The in-cluster providers are configured from the cluster module's outputs,
 # which are unknown until the cluster exists. The engine defers everything that
 # uses them (provider_config_unknown) instead of failing the plan.
 #
@@ -46,18 +46,16 @@ provider "helm" {
   }
 }
 
-# STAND-IN configuration (see versions.tf). The real provider takes the
-# kubernetes provider's connection schema:
-#
-#   provider "kubewait" {
-#     host                   = module.eks_cluster.endpoint
-#     cluster_ca_certificate = base64decode(module.eks_cluster.certificate_authority_data)
-#     exec {
-#       api_version = "client.authentication.k8s.io/v1beta1"
-#       command     = "aws"
-#       args        = ["eks", "get-token", "--cluster-name", module.eks_cluster.cluster_name]
-#     }
-#   }
+# The waits take the kubernetes provider's connection schema. They only read
+# (get, list, watch), and a wait with no cluster configured fails instead of
+# falling back to localhost or a local kubeconfig.
 provider "kubewait" {
-  use_only_state = true
+  host                   = module.eks_cluster.endpoint
+  cluster_ca_certificate = base64decode(module.eks_cluster.certificate_authority_data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks_cluster.cluster_name, "--region", var.deployment.location]
+  }
 }

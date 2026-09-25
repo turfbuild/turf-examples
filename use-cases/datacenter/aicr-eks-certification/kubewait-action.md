@@ -1,11 +1,14 @@
 # `kubewait_condition`: a Terraform action that waits on Kubernetes state
 
-**Status: specified, not implemented.** This example declares five of these
-actions, and `terraform validate` type-checks each against the schema below.
-That works because the local provider name `kubewait` is bound to
-`hashicorp/tfcoremock` 0.6.0-beta2, which serves `dynamic_resources.json` as an
-action type (see `versions.tf`). tfcoremock only echoes the config back, so
-everything here about *behaviour* is specification.
+**Status: implemented, not on a registry yet.**
+[`turfbuild/kubewait`](https://github.com/turfbuild/terraform-provider-kubewait)
+0.1.0 implements this spec, and this example uses it (installed locally; see
+README.md §Validating and testing). Its waits are tested against a real API server
+(envtest, Kubernetes 1.37), with the NVCRE v0.2.0 Certification and Kubeflow
+Trainer v2.2.0 TrainJob CRDs, and under Terraform 1.16.2. None of the five
+waits here has run against this example's cluster. Where this spec left a
+choice open, [Implementation decisions](#implementation-decisions) records what
+the provider does.
 
 ## Why an action
 
@@ -31,10 +34,10 @@ happened (`after_destroy`). The same primitive covers bring-up and teardown.
 
 ## Provider
 
-`turfbuild/kubewait` (placeholder address). The provider configuration is the
-kubernetes provider's connection schema: `host`, `cluster_ca_certificate`,
-`exec {}`, `config_path`, `config_context`, and so on. `providers.tf` shows it
-commented beside the stand-in.
+`turfbuild/kubewait`. The provider configuration is the kubernetes provider's
+connection schema: `host`, `cluster_ca_certificate`, `exec {}`, `config_path`,
+`config_context`, and so on, with the same `KUBE_*` environment variables.
+`providers.tf` configures it the way it configures the kubernetes provider.
 
 The action is read-only. It never creates, patches or deletes anything.
 
@@ -121,6 +124,13 @@ invocations today.
 Keep destroy-event configs to literals and variables: Terraform restricts what a
 destroy-time action config may reference.
 
+**The Terraform CLI does not honour these gates at full teardown (measured,
+1.16.2).** In a `terraform destroy` walk, Terraform turns a failed destroy-event
+action into a warning whatever `on_failure` says ("a full destroy walk must
+never be blocked"), and the delete proceeds. A failed `before_destroy` gate
+halts only a destroy inside an ordinary apply, such as a replace. The table
+above is what an engine has to provide for uses 3 and 5 to hold at teardown.
+
 ## Progress
 
 The wait streams progress through `InvokeAction`'s `SendProgress`:
@@ -203,6 +213,107 @@ already deleted every Service it created (helm uninstall). The drain can only
 see Services something *else* created, for example a test workload. It fails
 closed and names them. It does not delete them, so the leak in AICR #1617
 becomes a halted teardown with a list, not a fixed one.
+
+## Implementation decisions
+
+Where this spec left a choice open, `turfbuild/kubewait` 0.1.0 decides as
+follows. "Measured" means observed in the provider's tests or under Terraform
+1.16.2.
+
+**Evaluation**
+- **CEL runtime errors pin the verdict at pending.** An error, such as a missing
+  field without a `has()` guard, never counts as success or failure by itself.
+  Progress names it. A failure proven on another object still wins. A
+  persistent error ends in the timeout failure, which names the error. This
+  fails closed: a `filter` error cannot let a drain pass with objects still
+  present.
+- **CEL is type-checked when the config is validated, and evaluated
+  dynamically.** `object` is a `map(string, dyn)`. cel-go's checker narrows an
+  index on `dyn` to the type of whatever consumes it, so
+  `int(object.status.allocatable["nvidia.com/gpu"])`, as in the census, would
+  fail at runtime with "no such overload" (measured on cel-go 0.29.2, 0.31.0
+  and 0.32.0). Evaluating the unchecked program avoids that. The ext
+  `strings`, `lists`, `sets` and `encoders` libraries are available, and each
+  evaluation has a cost limit.
+- **A drain needs `min_matching = 0`.** `max_matching = 0` with the default
+  `min_matching` of 1 is rejected as `min_matching > max_matching`, with a hint.
+- **Attributes that do nothing in the chosen mode are warnings, not errors.**
+  This covers `filter`, `set_expression`, `min_matching`, `max_matching` and
+  `require_all` in single-object mode, and `absent` in set mode.
+
+**Watching**
+- **An API error resets settle.** A retried error counts as a pending
+  observation, because an interval nobody observed cannot count toward "held
+  continuously". Without the reset, an NVCRE Failed → InProgress → Failed flip
+  during an outage could settle as a false failure. Retries back off from 1s up
+  to `poll_interval`.
+- **401 gets one immediate retry before failing.** client-go's exec plugin (here
+  `aws eks get-token`) fetches a new token only on the request after a 401.
+  Without the retry, a token that expired partway through a 60-minute wait would
+  end the wait. This was measured: without the retry, an exec plugin that
+  returns an expired token and then a valid one fails the wait; with it, the
+  wait succeeds. 403 fails at once.
+- **A kind the server does not serve counts as no objects.** A 404 for the
+  group/version, or a group/version that lacks the kind, is observed as the
+  empty set:
+  - drains pass;
+  - set-mode success waits stay pending;
+  - single-object mode applies `absent`.
+
+  The kind is discovered again on every resync, so a CRD established mid-wait
+  is picked up. Every progress event says `kind … not served (treated as no
+  objects)`, and a success reached this way carries a warning naming the kind,
+  in case it is misspelled. Any other discovery error, such as the 503 of an
+  unavailable aggregated API, is retried, never treated as "not served".
+- **Resync replaces the watch.** Every `poll_interval` the wait stops the watch,
+  re-lists and watches again from the new list. A stopped watch's late events
+  never reach the fresh snapshot. A watch that closes, or answers 410 Gone,
+  starts a new cycle; it is not an error.
+
+**Connection**
+- **No implicit cluster, and no implicit namespace.** With nothing configured,
+  or a provider configuration that was unknown when the provider was
+  configured, a wait fails. It never falls back to localhost, `~/.kube/config`
+  or in-cluster credentials, because a drain against the wrong cluster passes.
+  Once discovery tells it the kind's scope, the wait also fails at once on:
+  - `namespace` set on a cluster-scoped kind;
+  - single-object mode on a namespaced kind without `namespace`.
+
+**Progress**
+- **When progress goes out:**
+  - when the verdict changes;
+  - on entering or leaving an API-error or unserved state;
+  - every `progress_interval` otherwise;
+  - once at the end.
+
+  Line 1 carries the verdict, the reason, the elapsed and remaining budget, and
+  how long an unsettled verdict has held. One line per observed object follows,
+  capped at 10, with each of `progress_fields`. Condition lists render as
+  `Type=Status(Reason)`.
+- **Terraform 1.16.2 prints each progress event verbatim, multi-line included**
+  (measured):
+
+  ```
+  Action action.kubewait_condition.terminal (triggered by terraform_data.cert): pending: nvcre-certification/gpu-pools: Succeeded=False (WorkflowRunning) · 3s elapsed, 57s left
+    nvcre-certification/gpu-pools status.conditions=[Succeeded=False(WorkflowRunning) Failed=False(WorkflowRunning)] status.categoryStatuses=[{"domain":"communication","status":"InProgress","variant":"nccl-all-reduce"}]
+  ```
+
+**When validation runs**
+- **Under Terraform 1.16.2 (measured):**
+  - `terraform validate` calls `ValidateActionConfig`. Values from variables
+    and data sources are unknown there, and checks that need them are skipped.
+  - `terraform plan` calls `PlanAction`, which repeats the checks with the
+    values known. A violation that arrives through a variable fails there.
+- **Invoke validates again.** The MCP engine implements only `InvokeAction`,
+  not `ValidateActionConfig` or `PlanAction`. Under it, a bad wait config
+  therefore fails when the action is invoked, not at plan.
+- **No plan-time deferral yet.** `PlanAction` never contacts the cluster and
+  never defers. The intended shape, once an engine calls `PlanAction` with
+  `DeferralAllowed`:
+  - if the connection is known and discovery says the kind is not served
+    (its CRD arrives in the same apply), return `Deferred{AbsentPrereq}`;
+  - the engine must defer the trigger along with the action. Otherwise an
+    `after_create` hook's dependents would start before the wait has run.
 
 ## What it is not
 

@@ -1,7 +1,7 @@
 # modules/certification: what the Certification spec says, what the waits are
-# configured to check, and what makes a certificate stale. The waits are the
-# tfcoremock stand-in (mocked here); these runs check the wiring, not the
-# behaviour kubewait-action.md specifies.
+# configured to check, and what makes a certificate stale. The waits are
+# mocked here; these runs check the wiring, not the behaviour
+# kubewait-action.md specifies.
 
 mock_provider "kubernetes" {
   # kubernetes_manifest.object is what the API server returned; give the mock a UID.
