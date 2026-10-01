@@ -99,7 +99,7 @@ single-idea example. Drive them the same way (`turf -C <dir> up`).
 | `datacenter/ngc-stack`   | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | NVIDIA NGC operators on a GPU-less cluster — four charts, four modules, zero credentials |
 | `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
 | `datacenter/aicr-eks-certification` | hashicorp/aws, hashicorp/kubernetes, hashicorp/helm (v3+) | 📐 | Target-state spec: a real GPU cluster, its stack and its NVCRE certification as one graph; the waits are a specified action |
-| `datacenter/ansible-k3s` | hashicorp/aws, ansible/ansible, hashicorp/kubernetes | ☁️ AWS | Hosts by Terraform, k3s by Ansible, a custom resource by Terraform again — one graph, three rounds on the Restate engine |
+| `datacenter/ansible-k3s` | hashicorp/aws, ansible/ansible, hashicorp/kubernetes | ☁️ AWS | Hosts by Terraform, k3s by Ansible, a custom resource by Terraform again — one graph, three rounds on Turf |
 
 The NGC stack is worth reading for what it proves about NVIDIA's operators: the
 GPU Operator and the NIM Operator both install and reach a healthy state with no
@@ -124,7 +124,7 @@ graph: the inventory is a value built from the hosts' outputs, one
 kubeconfig back to a file that a data source reads, and the `kubernetes`
 provider is configured from it. Teardown runs back through the same seam, with
 the cluster objects deleted through its API before the hosts and the network.
-It runs on Turf's Restate engine; plain Terraform needs targeted applies. See
+Turf converges it in one command; plain Terraform needs targeted applies. See
 [`use-cases/datacenter/ansible-k3s/README.md`](use-cases/datacenter/ansible-k3s/README.md).
 
 📐 = a **spec**: it validates and its mocked `terraform test` suite passes, but

@@ -1,6 +1,6 @@
 terraform {
   required_providers {
-    # The Restate engine installs from registry.opentofu.org, which publishes
+    # Turf installs from registry.opentofu.org, which publishes
     # hashicorp/aws a release or so behind registry.terraform.io.
     aws = {
       source  = "hashicorp/aws"

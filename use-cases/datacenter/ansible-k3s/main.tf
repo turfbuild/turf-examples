@@ -25,8 +25,8 @@ locals {
   operator_cidr = coalesce(var.operator_cidr, "${trimspace(data.http.operator_ip.response_body)}/32")
 }
 
-# Read on every run, even when operator_cidr is set: the Restate engine does not
-# take count on a data source yet, so the lookup cannot be switched off.
+# Read on every run, even when operator_cidr is set: Turf does not take count on
+# a data source yet, so the lookup cannot be switched off.
 data "http" "operator_ip" {
   url = "https://checkip.amazonaws.com"
 }

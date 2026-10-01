@@ -7,11 +7,125 @@ graph**. Terraform creates the hosts. An `ansible_playbook_run` action installs
 k3s across them. The playbook hands the cluster's kubeconfig back as a file, and
 the `kubernetes` provider is configured from that file.
 
-Each layer cannot be planned until the one before it has been applied: the hosts
-have no addresses, the cluster has no credentials, the custom kind is not served.
-Turf's Restate engine converges it with one command in three rounds. Stock
-Terraform 1.16.2 gets there too: three applies, two of them `-target`ed, after
-two plain applies that fail at plan ([below](#on-plain-terraform)).
+## In plain terms
+
+Standing up a cluster on your own machines usually means three tools, run by
+hand and in order. Terraform creates the machines. Then you copy their addresses
+into an Ansible inventory and run a playbook that installs Kubernetes on them.
+Then you copy the cluster's credentials off the server and run Terraform (or
+`kubectl`) again to put things into the cluster. Tearing it down is the same
+dance backwards, and getting the order wrong strands something.
+
+This example writes the whole chain as one configuration, and Turf runs it as
+one graph, each step as soon as what it needs exists:
+
+1. Create a network and two Ubuntu machines.
+2. Build Ansible's inventory from the machines' addresses, and run the k3s
+   playbook across both of them.
+3. Read the cluster's credentials back from the file the playbook saved.
+4. Use them to create a custom resource type (a CRD) in the new cluster, then an
+   object of that type.
+
+Some of these steps cannot even be *planned* until the earlier ones have run:
+there is no address to put in the inventory, no credential for the cluster, no
+such resource type yet. Turf plans what it can, applies it, and comes back for
+the rest — three rounds, one command, about three and a half minutes. `down`
+walks the same graph backwards: the objects leave the cluster while it still
+exists, then the machines go, then the network. Stock Terraform 1.16.2 gets there
+too, but needs three applies, two of them `-target`ed, after two plain applies
+that fail at plan ([below](#on-plain-terraform)).
+
+### The gist
+
+Terraform hands Ansible an inventory built from the hosts it just created, and
+runs the playbook once they exist (`modules/k3s/main.tf`, trimmed):
+
+```hcl
+data "ansible_inventory" "cluster" {
+  group {
+    name = "k3s_cluster"
+
+    group {
+      name = "server"
+      host {
+        name         = var.server.name
+        ansible_host = var.server.public_ip # from module.nodes' aws_instance
+        ansible_user = var.ssh_user
+      }
+    }
+    # ...and an "agent" group, one host per agent
+  }
+}
+
+# One anchor for the whole cluster: created once the hosts are, and replaced
+# (re-running the playbook) whenever a host is.
+resource "terraform_data" "install" {
+  triggers_replace = concat([var.server.id], var.agents[*].id)
+
+  lifecycle {
+    action_trigger {
+      events  = [after_create]
+      actions = [action.ansible_playbook_run.k3s]
+    }
+  }
+}
+
+action "ansible_playbook_run" "k3s" {
+  config {
+    playbooks   = ["${var.playbook_dir}/wait.yml", "${var.playbook_dir}/site.yml"]
+    inventories = [data.ansible_inventory.cluster.json]
+  }
+}
+```
+
+The playbook is k3s-ansible's own, unchanged, plus one play that saves the
+cluster's credentials where Terraform will look for them (`playbooks/site.yml`):
+
+```yaml
+- name: Install k3s with k3s-ansible
+  ansible.builtin.import_playbook: k3s.orchestration.site
+
+- name: Hand the kubeconfig back to Terraform
+  hosts: server
+  become: true
+  tasks:
+    - name: Fetch the admin kubeconfig
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ kubeconfig_out }}"
+        flat: true
+```
+
+And Terraform reads that file back and talks to the cluster Ansible built
+(`modules/k3s/main.tf`, `providers.tf` and `modules/demo/main.tf`, trimmed):
+
+```hcl
+data "local_sensitive_file" "kubeconfig" {
+  filename   = var.kubeconfig_file
+  depends_on = [terraform_data.install] # after the playbook has run
+}
+
+provider "kubernetes" {
+  host                   = "https://${module.nodes.server_public_ip}:6443"
+  cluster_ca_certificate = module.k3s.cluster_ca_certificate # decoded from that file
+  client_certificate     = module.k3s.client_certificate
+  client_key             = module.k3s.client_key
+}
+
+resource "kubernetes_manifest" "turf" {
+  depends_on = [kubernetes_manifest.crd]
+
+  manifest = {
+    apiVersion = "demo.local/v1"
+    kind       = "Turf"
+    metadata   = { name = "built-by-ansible", namespace = var.namespace }
+    spec       = { message = var.message }
+  }
+}
+```
+
+Nothing in between is a script: no inventory file, no `ansible-playbook` run by
+hand, no kubeconfig copied around.
 
 ## What This Demonstrates
 
@@ -77,8 +191,7 @@ internet gateway could not detach while the hosts still held public addresses
 
 ## What it does when you run it
 
-Measured on the **Restate engine** (`turf-engine` at `e71ee93`,
-[turf-engine #100](https://github.com/turfbuild/turf-engine/pull/100), driven by
+Measured on **Turf** (`turf-engine` at `d0910c1`, driven by
 `turf-driver up -converge`), from empty state, in `us-west-2` on 2026-10-01.
 
 **Round 1** builds the hosts and runs the playbook. Everything that talks to the
@@ -188,9 +301,8 @@ from the server.
 - **`kubectl` is optional.** k3s-ansible copies a kubeconfig to the control node
   only when `kubectl` is installed there, and that step needs `netaddr` (pinned
   in `requirements.txt`). The example's own fetch does not depend on it.
-- **Turf's Restate engine** (`turf-engine` and `turf-driver`, with a
-  `restate-server`). `ansible/ansible` is an action provider that serves plugin
-  protocol 5 only; this example has not been run on the shipping MCP engine.
+- **Turf** (`turf-engine` and `turf-driver`). `ansible/ansible` is an action
+  provider that serves plugin protocol 5 only.
 - By default the security group admits only this machine's public address, as
   `checkip.amazonaws.com` reports it. Set `operator_cidr` in `terraform.tfvars`
   (see `terraform.tfvars.example`) if you run from behind a NAT whose egress
@@ -198,8 +310,8 @@ from the server.
 
 ## Usage
 
-With `restate-server` running and `turf-engine` registered against it (started
-with the AWS credentials and `.venv/bin` on its `PATH`):
+With `turf-engine` running, started with the AWS credentials and `.venv/bin` on
+its `PATH`:
 
 ```bash
 turf-driver up -converge -auto-approve use-cases/datacenter/ansible-k3s
@@ -244,12 +356,12 @@ the hosts, so nothing is left in AWS or orphaned in state.
   shows the same truncation, so it is the provider's, not the engine's. The
   playbooks still run to completion.
 - **The operator lookup always runs.** `data.http.operator_ip` is read even when
-  `operator_cidr` is set, because the Restate engine does not yet take `count`
-  on a data source.
+  `operator_cidr` is set, because Turf does not yet take `count` on a data
+  source.
 - **The AMI is pinned by exact name.** The usual `most_recent` lookup would
   replace both hosts, and so the cluster, the first time Canonical publishes an
-  image, and the Restate engine does not take `ignore_changes`.
-- **`hashicorp/aws` is `~> 6.66`.** The Restate engine installs from
+  image, and Turf does not take `ignore_changes` yet.
+- **`hashicorp/aws` is `~> 6.66`.** Turf installs from
   registry.opentofu.org, which publishes a release or so behind
   registry.terraform.io; a constraint it cannot match yet stalls the install.
 - **The root module names every provider**, including those reached only from
