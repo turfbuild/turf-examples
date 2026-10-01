@@ -40,6 +40,8 @@ use-cases/        End-to-end stacks for a real domain, composed from local modul
                     one AICR recipe, deployed as the dependency graph it declares
     aicr-eks-certification/  spec: EKS (ported from mchmarny/cluster) + the AICR
                     stack + an NVCRE certification, waits as Terraform actions
+    ansible-k3s/    EC2 hosts made a k3s cluster by an Ansible playbook action,
+                    then a CRD and an object of its kind on that cluster
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
@@ -97,6 +99,7 @@ single-idea example. Drive them the same way (`turf -C <dir> up`).
 | `datacenter/ngc-stack`   | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | NVIDIA NGC operators on a GPU-less cluster — four charts, four modules, zero credentials |
 | `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
 | `datacenter/aicr-eks-certification` | hashicorp/aws, hashicorp/kubernetes, hashicorp/helm (v3+) | 📐 | Target-state spec: a real GPU cluster, its stack and its NVCRE certification as one graph; the waits are a specified action |
+| `datacenter/ansible-k3s` | hashicorp/aws, ansible/ansible, hashicorp/kubernetes | ☁️ AWS | Hosts by Terraform, k3s by Ansible, a custom resource by Terraform again — one graph, three rounds on the Restate engine |
 
 The NGC stack is worth reading for what it proves about NVIDIA's operators: the
 GPU Operator and the NIM Operator both install and reach a healthy state with no
@@ -114,6 +117,15 @@ renderers only Flux carries the full graph; Argo CD and Helmfile flatten it to
 barriers. Terraform is the one consumer that can hold the graph *and* create the
 cluster underneath it. See
 [`use-cases/datacenter/aicr-stack/README.md`](use-cases/datacenter/aicr-stack/README.md).
+
+The Ansible k3s stack is the datacenter cascade with every hand-off inside the
+graph: the inventory is a value built from the hosts' outputs, one
+`ansible_playbook_run` action installs k3s across them, the playbook fetches the
+kubeconfig back to a file that a data source reads, and the `kubernetes`
+provider is configured from it. Teardown runs back through the same seam, with
+the cluster objects deleted through its API before the hosts and the network.
+It runs on Turf's Restate engine; plain Terraform needs targeted applies. See
+[`use-cases/datacenter/ansible-k3s/README.md`](use-cases/datacenter/ansible-k3s/README.md).
 
 📐 = a **spec**: it validates and its mocked `terraform test` suite passes, but
 it depends on features no engine has yet, so it is not runnable. The EKS
