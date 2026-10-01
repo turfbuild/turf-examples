@@ -249,16 +249,16 @@ comments are kept, and upstream's tests pass unchanged (`tests/compute.tftest.hc
 
 What would have to exist for an engine to take this end to end:
 
-| Needed | MCP engine | Restate engine |
+| Needed | Turf MCP server | Turf's new engine |
 | --- | --- | --- |
-| `action` blocks and `action_trigger`, including destroy events | supported | refused (tier 2) |
-| `on_failure = taint` | treated as `halt` | — |
+| `action` blocks and `action_trigger`, including destroy events | supported | supported |
+| `on_failure = taint` | treated as `halt` | supported, as Terraform (taints on `after_create`) |
 | `ignore_changes` on nested paths (ASG / node-group `desired_*`) | nested paths are no-ops | refused |
 | `for_each` on data sources (three in the port) | not verified | refused |
 | forwarding `timeouts {}` (ASG delete 30m, GPU pools) | not forwarded | not verified |
 | builtin `terraform_data` (shims, identity, barrier) | not served | supported |
 | graceful teardown through the prior-state provider | built | built |
-| **the same prior-state pin for destroy-event actions** | **new** | **new** |
+| **the same prior-state pin for destroy-event actions** | **new** | built |
 | deferral: unknown provider config; CRD kind not served | built | built |
 
 Beyond the engines:
@@ -334,8 +334,8 @@ In a destroy walk Terraform turns a failed destroy-event action into a warning,
 whatever `on_failure` says, and deletes anyway. A failed `before_destroy` gate
 halts only a destroy that is part of an ordinary apply, such as a replace. So
 under the Terraform CLI, the drains and the LoadBalancer gate warn at full
-teardown instead of halting it. The teardown order above assumes an engine that
-honours them.
+teardown instead of halting it. Turf's new engine follows Terraform here. The
+teardown order above assumes an engine that honours them.
 
 ## Regenerating `bundle/`
 

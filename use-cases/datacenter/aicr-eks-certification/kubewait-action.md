@@ -307,16 +307,18 @@ follows. "Measured" means observed in the provider's tests or under Terraform
     and data sources are unknown there, and checks that need them are skipped.
   - `terraform plan` calls `PlanAction`, which repeats the checks with the
     values known. A violation that arrives through a variable fails there.
-- **Invoke validates again.** The MCP engine implements only `InvokeAction`,
-  not `ValidateActionConfig` or `PlanAction`. Under it, a bad wait config
-  therefore fails when the action is invoked, not at plan.
+- **Invoke validates again.** Turf's MCP server implements only
+  `InvokeAction`, not `ValidateActionConfig` or `PlanAction`. Under it, a bad
+  wait config therefore fails when the action is invoked, not at plan. Turf's
+  new engine calls all three, as Terraform does.
 - **No plan-time deferral yet.** `PlanAction` never contacts the cluster and
-  never defers. The intended shape, once an engine calls `PlanAction` with
-  `DeferralAllowed`:
+  never defers. The intended shape, now that an engine calls `PlanAction` with
+  `DeferralAllowed` (Turf's new engine does):
   - if the connection is known and discovery says the kind is not served
     (its CRD arrives in the same apply), return `Deferred{AbsentPrereq}`;
   - the engine must defer the trigger along with the action. Otherwise an
     `after_create` hook's dependents would start before the wait has run.
+    Turf's new engine does.
 
 ## What it is not
 
