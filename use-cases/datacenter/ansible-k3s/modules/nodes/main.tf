@@ -168,7 +168,15 @@ resource "local_sensitive_file" "ssh_key" {
   directory_permission = "0700"
 }
 
+# Nothing the hosts read names the route out of the subnet, so without the
+# depends_on the route is free to go first on the way down: a destroy would
+# delete the route table while the cluster objects in module.demo still need
+# the API, and an IGW cannot detach while hosts hold public addresses. Ordered
+# here, everything that reaches a host through module.k3s or the kubernetes
+# provider is also after the route on the way up, and before it on the way down.
 resource "aws_instance" "server" {
+  depends_on = [aws_route_table_association.public]
+
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
@@ -184,7 +192,8 @@ resource "aws_instance" "server" {
 }
 
 resource "aws_instance" "agent" {
-  count = var.agent_count
+  count      = var.agent_count
+  depends_on = [aws_route_table_association.public]
 
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
