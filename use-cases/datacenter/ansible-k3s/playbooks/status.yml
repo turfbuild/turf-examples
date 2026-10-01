@@ -1,0 +1,16 @@
+---
+# Run on demand, not on a lifecycle event: what the cluster says about its
+# nodes, from the server itself. Changes nothing.
+- name: Report the cluster's nodes
+  hosts: server
+  gather_facts: false
+  become: true
+  tasks:
+    - name: List the nodes
+      ansible.builtin.command: k3s kubectl get nodes -o wide
+      register: status_nodes
+      changed_when: false
+
+    - name: Show them
+      ansible.builtin.debug:
+        var: status_nodes.stdout_lines

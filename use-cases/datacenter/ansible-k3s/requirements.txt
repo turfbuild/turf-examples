@@ -1,0 +1,6 @@
+# The Ansible controller: pip install -r requirements.txt (Python 3.12 or later).
+ansible-core==2.21.4
+# k3s-ansible's kubeconfig step runs only when kubectl is on this machine, and
+# it then filters the API address through ansible.utils.ipwrap, which needs
+# netaddr. Without kubectl the step is skipped and netaddr goes unused.
+netaddr==1.3.0

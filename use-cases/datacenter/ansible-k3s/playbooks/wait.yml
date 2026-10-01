@@ -1,0 +1,10 @@
+---
+# A host is "running" to AWS before sshd accepts connections. Wait for each one,
+# so the install does not race its own hosts' boot.
+- name: Wait for the hosts to accept SSH
+  hosts: k3s_cluster
+  gather_facts: false
+  tasks:
+    - name: Wait for a connection
+      ansible.builtin.wait_for_connection:
+        timeout: 300

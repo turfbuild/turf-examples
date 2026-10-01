@@ -1,0 +1,14 @@
+# ansible-galaxy collection install -r requirements.yml -p collections
+collections:
+  # k3s-ansible, as the k3s.orchestration collection.
+  - name: https://github.com/k3s-io/k3s-ansible.git
+    type: git
+    version: 1.2.2
+  # Its own dependencies, pinned. ansible.utils is used (ipwrap) but not declared
+  # by k3s-ansible 1.2.2, so it is named here.
+  - name: community.general
+    version: 13.4.0
+  - name: ansible.posix
+    version: 2.2.2
+  - name: ansible.utils
+    version: 6.1.1

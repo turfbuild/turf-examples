@@ -1,0 +1,7 @@
+# Written at run time: the SSH key Ansible connects with and the kubeconfig the
+# playbook fetches back.
+.k3s/
+
+# The Ansible controller and its collections (see README: Prerequisites).
+.venv/
+collections/

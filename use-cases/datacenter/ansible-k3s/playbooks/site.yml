@@ -1,0 +1,19 @@
+---
+# k3s-ansible's own playbook, unchanged: prerequisites on every host, the
+# server, then the agents.
+- name: Install k3s with k3s-ansible
+  ansible.builtin.import_playbook: k3s.orchestration.site
+
+# The way back to Terraform. An action returns nothing Terraform can bind, so the
+# cluster's credentials come back as a file at the path the inventory names,
+# which module.k3s reads.
+- name: Hand the kubeconfig back to Terraform
+  hosts: server
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Fetch the admin kubeconfig
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ kubeconfig_out }}"
+        flat: true
