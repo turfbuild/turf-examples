@@ -1,0 +1,22 @@
+# Set by modules/kai-scheduler; these are only the shapes.
+
+# The parent queue — Run:ai's "department". Holds no jobs itself.
+department: datacenter
+
+# The leaf queue — Run:ai's "project". Pods name it in the kai.scheduler/queue
+# label.
+project: slurm
+
+# Guaranteed (quota) and maximum (limit) whole GPUs for the project queue.
+# -1 means unlimited; a limit of 0 means nothing beyond quota.
+gpu:
+  quota: 0
+  limit: -1
+
+# KAI's pod-grouper, which needs read access to an owner kind before it can
+# group pods by it.
+podGrouper:
+  namespace: kai-scheduler
+  serviceAccount: pod-grouper
+  # Grant it Slinky NodeSets: one PodGroup per NodeSet rather than per pod.
+  readNodeSets: true
