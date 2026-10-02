@@ -1,0 +1,42 @@
+# Copy to terraform.tfvars and edit. Every value below is already the default —
+# the stack runs with no tfvars at all.
+
+# cluster_name = "slinky"
+# node_image   = "kindest/node:v1.36.1"
+# worker_count = 2   # one slurmd per node: caps cpu_nodeset_replicas
+
+# Bump to roll the cluster and everything inside it.
+# generation = "2"
+
+# Chart pins. All public; none needs a credential.
+# cert_manager_version  = "v1.21.2"
+# gpu_operator_version  = "v26.7.0"
+# kai_scheduler_version = "v0.18.1"
+# slinky_version        = "1.2.2"   # slurm-operator-crds, slurm-operator, slurm
+
+# --- The Run:ai project, as KAI queues --------------------------------------
+# use_kai_scheduler = true
+# queue_department  = "datacenter"
+# queue_name        = "slurm"
+# queue_gpu_quota   = 4    # "sized for the NodeSet request": replicas × gpus_per_node
+# queue_gpu_limit   = -1
+
+# --- The Slurm cluster -------------------------------------------------------
+# cpu_nodeset_replicas  = 2
+# gpu_nodeset           = { replicas = 1, gpus_per_node = 4 }   # null for none
+# slurm_non_preemptible = true
+# login_service_type    = "ClusterIP"
+
+# The tutorial's --set-file loginsets.slinky.rootSshAuthorizedKeys=...
+# root_ssh_authorized_keys = "ssh-ed25519 AAAA... you@example.com"
+
+# Slurm prolog/epilog ↔ DCGM exporter, through one host directory. null: off.
+# dcgm_job_mapping_dir = "/var/lib/dcgm-exporter/job-mapping"
+
+# --- Pointing this at real GPUs ----------------------------------------------
+# On a node pool whose image ships no driver or container runtime config:
+# gpu_driver_enabled  = true
+# gpu_toolkit_enabled = true
+#
+# On a real Run:ai cluster the project already owns the namespace's scheduling:
+# use_kai_scheduler = false

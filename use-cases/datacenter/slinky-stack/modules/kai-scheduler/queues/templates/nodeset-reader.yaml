@@ -1,0 +1,30 @@
+{{- if .Values.podGrouper.readNodeSets }}
+# What Run:ai calls "NodeSet is a natively supported workload type", for KAI.
+#
+# KAI's pod-grouper makes one PodGroup per *top owner*, found by walking a pod's
+# ownerReferences. A slurmd pod is owned directly by its NodeSet, but the
+# pod-grouper's ClusterRole has no rule for slinky.slurm.net, so the walk stops
+# at the pod and every slurmd pod becomes a PodGroup of its own. This lets the
+# walk reach the NodeSet.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kai-podgrouper-slinky-nodesets
+rules:
+  - apiGroups: ["slinky.slurm.net"]
+    resources: ["nodesets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kai-podgrouper-slinky-nodesets
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kai-podgrouper-slinky-nodesets
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.podGrouper.serviceAccount }}
+    namespace: {{ .Values.podGrouper.namespace }}
+{{- end }}

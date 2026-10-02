@@ -1,0 +1,27 @@
+# Department, then project. KAI only places pods in leaf queues.
+#
+# CPU and memory are unlimited (-1 for quota and limit alike): this example is
+# about the GPU quota, the one Run:ai's tutorial asks you to size.
+apiVersion: scheduling.run.ai/v2
+kind: Queue
+metadata:
+  name: {{ .Values.department }}
+spec:
+  resources:
+    cpu: {quota: -1, limit: -1, overQuotaWeight: 1}
+    memory: {quota: -1, limit: -1, overQuotaWeight: 1}
+    gpu: {quota: -1, limit: -1, overQuotaWeight: 1}
+---
+apiVersion: scheduling.run.ai/v2
+kind: Queue
+metadata:
+  name: {{ .Values.project }}
+spec:
+  parentQueue: {{ .Values.department }}
+  resources:
+    cpu: {quota: -1, limit: -1, overQuotaWeight: 1}
+    memory: {quota: -1, limit: -1, overQuotaWeight: 1}
+    gpu:
+      quota: {{ .Values.gpu.quota }}
+      limit: {{ .Values.gpu.limit }}
+      overQuotaWeight: 1

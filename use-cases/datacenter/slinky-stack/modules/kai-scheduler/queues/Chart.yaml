@@ -1,0 +1,7 @@
+apiVersion: v2
+name: kai-queues
+description: >-
+  The tenant side of KAI Scheduler for this stack: a department queue, a project
+  queue under it, and read access for KAI's pod-grouper to Slinky NodeSets.
+type: application
+version: 0.1.0

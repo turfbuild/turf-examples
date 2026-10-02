@@ -42,6 +42,8 @@ use-cases/        End-to-end stacks for a real domain, composed from local modul
                     stack + an NVCRE certification, waits as Terraform actions
     ansible-k3s/    EC2 hosts made a k3s cluster by an Ansible playbook action,
                     then a CRD and an object of its kind on that cluster
+    slinky-stack/   NVIDIA's Slurm-in-Run:ai tutorial as one graph: Slinky + KAI
+                    Scheduler + GPU Operator on kind, waits as kubewait actions
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
   kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
@@ -100,6 +102,7 @@ single-idea example. Drive them the same way (`turf -C <dir> up`).
 | `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
 | `datacenter/aicr-eks-certification` | hashicorp/aws, hashicorp/kubernetes, hashicorp/helm (v3+) | 📐 | Target-state spec: a real GPU cluster, its stack and its NVCRE certification as one graph; the waits are a specified action |
 | `datacenter/ansible-k3s` | hashicorp/aws, ansible/ansible, hashicorp/kubernetes | ☁️ AWS | Hosts by Terraform, k3s by Ansible, a custom resource by Terraform again — one graph, three rounds on Turf |
+| `datacenter/slinky-stack` | tehcyx/kind, hashicorp/helm (v3+), turfbuild/kubewait | ✅ | A Slurm cluster in a "Run:ai project" with KAI Scheduler as the open Run:ai — `srun` works, the GPU partition pends; two rounds on Turf |
 
 The NGC stack is worth reading for what it proves about NVIDIA's operators: the
 GPU Operator and the NIM Operator both install and reach a healthy state with no
@@ -126,6 +129,19 @@ provider is configured from it. Teardown runs back through the same seam, with
 the cluster objects deleted through its API before the hosts and the network.
 Turf converges it in one command; plain Terraform needs targeted applies. See
 [`use-cases/datacenter/ansible-k3s/README.md`](use-cases/datacenter/ansible-k3s/README.md).
+
+The Slinky stack is NVIDIA's Run:ai tutorial for Slurm, eight imperative steps
+across helm, kubectl and the `runai` CLI, as one configuration on a GPU-less kind
+cluster: cert-manager, the GPU Operator, KAI Scheduler (the scheduler inside
+Run:ai, open-sourced) with the Run:ai project written as a queue, SchedMD's
+Slinky operator, and a Slurm cluster whose pods KAI schedules. The tutorial's
+`kubectl patch` of a Helm-owned object becomes values. Two releases have nothing
+for helm's wait to wait on, KAI because it is operator-shaped and Slurm because
+its chart renders only custom resources, so the waits that mean something are
+`kubewait_condition` actions: on KAI's own readiness, on Slurm's own count of
+IDLE nodes, and on the pods draining before the operator goes. `srun -N2` runs
+across both workers; `srun --gres=gpu:1` gets the tutorial's own rejection. See
+[`use-cases/datacenter/slinky-stack/README.md`](use-cases/datacenter/slinky-stack/README.md).
 
 📐 = a **spec**: it validates and its mocked `terraform test` suite passes, but
 it depends on features no engine has yet, so it is not runnable. The EKS
