@@ -1,4 +1,0 @@
-.terraform/
-.turf/*
-!.turf/skills/
-!.turf/turf.yaml

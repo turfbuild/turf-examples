@@ -7,13 +7,15 @@ evaluates policy through an **OPA MCP server**, all inside the agent loop.
 
 A walkthrough of a real run, with screenshots: **[turf.build/demo/scalr](https://turf.build/demo/scalr/)**
 
-This directory ships **no plot at all** — only this README and `.turf/` (turf.yaml, the
-`scalr` skill, the banner). On your first prompt the agent `config_init`s a *fresh* plot
-here, `declare_backend`s a `remote` backend bound to the `turf-scalr-chat` workspace
+This directory ships **no configuration at all** — only this README and `.turf/`
+(turf.yaml, the `scalr` skill, the banner). On your first prompt the agent `config_init`s
+this directory and writes an ordinary Terraform configuration into it with its file tools:
+a `backend.tf` holding a `remote` backend bound to the `turf-scalr-chat` workspace
 `../setup` created — a *state-storage-only* remote workspace, so Turf still plans/applies
-locally while Scalr holds the state — then authors the `aws` provider and the VPC module
-live, from your prompt. The generated `*.tfplot.hcl` units (and any local state) are
-git-ignored, so a run leaves your checkout clean — nothing to reset.
+locally while Scalr holds the state — then a `main.tf` with the `aws` provider and the VPC
+module, live, from your prompt. The generated `*.tf` files (and any local state) are
+git-ignored, so a run leaves your checkout clean. Delete them to start the next run from
+an empty directory.
 
 ## How it works
 
@@ -31,13 +33,14 @@ The `scalr` skill in `.turf/skills/scalr/` teaches the agent the call sequences
 
 The same file also carries a `branding:` section, giving this directory a Scalr look and
 voice: the `SCALR` banner (`.turf/scalr-banner.txt`), the `surf` theme, a Scalr welcome,
-and standing instructions to treat policy as a pre-approval gate. Because nothing is checked
-in as a plot, those `branding.additional_instructions` are also where the session is told to
-`config_init` a fresh plot, `declare_backend` a `remote` backend for the `turf-scalr-chat`
-workspace (state-storage-only), and open it — never a local backend. Branding is look and
-voice only — turf is not renamed (the binary, status bar, and agent badge still say `turf`),
-the tool namespace stays `turf_*`, and no approval gate is relaxed. Your own `/theme` pick
-still overrides the branded default.
+and standing instructions to treat policy as a pre-approval gate. Because no configuration
+is checked in, those `branding.additional_instructions` are also where the session is told
+to `config_init` this directory, write a `remote` backend for the `turf-scalr-chat`
+workspace (state-storage-only) into `backend.tf`, write `main.tf` from the request, and only
+then open it (the open loads the providers `main.tf` names) — never a local backend.
+Branding is look and voice only — turf is not renamed (the binary, status bar, and agent
+badge still say `turf`), the tool namespace stays `turf_*`, and no approval gate is relaxed.
+Your own `/theme` pick still overrides the branded default.
 
 ## Prerequisites
 

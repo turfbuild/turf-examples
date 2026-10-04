@@ -10,7 +10,7 @@ through ordinary Terraform HCL — there are no Go imports of Turf internals.
 ## Layout
 
 ```
-terraform/        Standard Terraform/HCL configurations (tofu dialect)
+terraform/        Standard Terraform/HCL configurations
   kubernetes/
     kind-crd/       kind cluster → CustomResourceDefinition → custom resource
     kind-helm/      kind cluster → Helm release (podinfo)
@@ -25,12 +25,6 @@ terraform/        Standard Terraform/HCL configurations (tofu dialect)
     actions/        Terraform Actions — action blocks + lifecycle.action_trigger
     two-phase/      staged-then-commit convergence (stretch/advanced)
     replace-ordering/  replacement teardown ordering + infectious create-before-destroy
-
-turf/             Turf-specific examples — the plot dialect + Turf-native features
-  language/
-    plot-dialect/   plot units (*.tfplot.hcl) authored by declare_*, then config_promote
-    local-module/   a plot that calls a local module by a portable relative source
-    turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
 
 use-cases/        End-to-end stacks for a real domain, composed from local modules
   datacenter/
@@ -56,8 +50,8 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
 
 ## Terraform examples
 
-Each `terraform/<...>` directory is a self-contained **tofu** configuration — plain
-hand-authored `.tf` files. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP
+Each `terraform/<...>` directory is a self-contained, ordinary Terraform configuration —
+plain `.tf` files. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP
 tools (`config_init` against the directory, then `plan_new` — its initial walk plans
 the whole tree). See each example's `README.md` for prerequisites, usage, and cleanup.
 
@@ -76,25 +70,11 @@ the whole tree). See each example's `README.md` for prerequisites, usage, and cl
 ✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
 Kubernetes cluster + kubeconfig.
 
-## Turf examples
-
-The `turf/` tree exercises capabilities specific to Turf. Most are **plots** —
-turf-authored `*.tfplot.hcl` units, one per address, written by the `declare_*` tools
-from an ad-hoc session (`config_init` reports the dialect). `config_promote` graduates
-a plot into an ordinary tofu configuration — a one-way, walk-equivalent strip-fold-rename.
-Drive them the same way (`turf -C <dir> up`); all are credential-free.
-
-| Example                     | Providers            | Notes                                                              |
-|-----------------------------|----------------------|--------------------------------------------------------------------|
-| `language/plot-dialect`     | hashicorp/random     | **plot** dialect — declare-authored `*.tfplot.hcl` + `config_promote` |
-| `language/local-module`     | hashicorp/random     | a **plot** calling `./modules/greeting` by a portable relative `source` |
-| `language/turf-actions`     | hashicorp/tfcoremock | Turf-native `turf_confirm` + `turf_action` gates (no provider)     |
-
 ## Use cases
 
-The `use-cases/` tree holds end-to-end stacks for a particular domain: a **tofu**
-configuration that composes several local modules under `modules/`, rather than a
-single-idea example. Drive them the same way (`turf -C <dir> up`).
+The `use-cases/` tree holds end-to-end stacks for a particular domain: an ordinary
+Terraform configuration that composes several local modules under `modules/`, rather
+than a single-idea example. Drive them the same way (`turf -C <dir> up`).
 
 | Example                  | Providers                                | Local? | Notes                                                        |
 |--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
@@ -168,6 +148,10 @@ via the [kagent](https://github.com/kagent-dev/kagent) operator:
 | `turf-pvc.yaml`           | `PersistentVolumeClaim` for caching provider binaries               |
 | `turf-model-config.yaml`  | Model provider configuration                                        |
 | `opentofu-mcpserver.yaml` | Companion OpenTofu registry `RemoteMCPServer` (provider/module docs)|
+
+The kagent agent has no file tools, so it **operates** existing configurations — plan,
+apply, destroy, import, and actions — but does not author them; writing `.tf` needs a
+client with file tools (the Turf CLI, Claude Code).
 
 ```sh
 kubectl apply -f integrations/kagent/

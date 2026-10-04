@@ -7,10 +7,9 @@ chat/.turf/*
 !chat/.turf/turf.yaml
 !chat/.turf/scalr-banner.txt
 
-# The chat demo ships with NO plot: the agent config_inits a fresh plot each
-# session, so config_init + declare_backend + the declares scaffold a .gitignore,
-# *.tfplot.hcl units, and a local tfstate here. Keep them out of git so runs leave
-# the checkout clean.
-chat/.gitignore
-chat/*.tfplot.hcl
+# The chat demo ships with NO configuration: each session the agent writes its own
+# ordinary Terraform here (backend.tf, main.tf, …) with its file tools, and any
+# local tfstate lands beside it. Keep that session-generated config out of git so
+# runs leave the checkout clean.
+chat/*.tf
 chat/terraform.tfstate*

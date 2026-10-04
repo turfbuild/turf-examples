@@ -58,8 +58,7 @@ The planned invocations show up in the phase's plan (`action_invocations`), and 
 fires as an `invoke` effect in order.
 
 > Turf also ships its own **native** actions — `turf_confirm` (a human gate) and
-> `turf_action` (an agent step) — that need no provider. See
-> [the Turf-native actions example](../../../turf/language/turf-actions).
+> `turf_action` (an agent step) — that need no provider.
 
 ## Real providers with actions
 

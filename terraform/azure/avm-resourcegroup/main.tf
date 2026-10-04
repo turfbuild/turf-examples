@@ -27,15 +27,17 @@ variable "resource_groups" {
   }
 }
 
-# One AVM resource-group module instance per entry in var.resource_groups. This
-# is the *codified* (HCL) form of multi-instance composition: turf's full walk
+# One AVM resource-group module instance per entry in var.resource_groups —
+# multi-instance composition with for_each on the module block: turf's full walk
 # (plan_new / replan) expands the for_each and emits
-# module.resource_group["<key>"].* addresses. The ad-hoc analogue — driving the
-# same outcome through the declare_module tool's for_each/count meta-args, no
-# hand-written HCL — is in README.md.
+# module.resource_group["<key>"].* addresses.
+#
+# Pinned to 0.2.x: 0.3.0 moved the module to azapi with moved blocks that change
+# a resource's type (azurerm_resource_group -> azapi_resource), and turf refuses
+# a cross-type move.
 module "resource_group" {
   source   = "Azure/avm-res-resources-resourcegroup/azurerm"
-  version  = "~> 0.2"
+  version  = "~> 0.2.0"
   for_each = var.resource_groups
 
   name     = "rg-avm-demo-${each.key}"
@@ -55,7 +57,7 @@ module "resource_group" {
 #
 #   module "resource_group_n" {
 #     source   = "Azure/avm-res-resources-resourcegroup/azurerm"
-#     version  = "~> 0.2"
+#     version  = "~> 0.2.0"
 #     count    = var.rg_count
 #     name     = "rg-avm-demo-${count.index}"
 #     location = "East US"
