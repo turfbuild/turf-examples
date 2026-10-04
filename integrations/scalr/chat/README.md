@@ -36,7 +36,8 @@ voice: the `SCALR` banner (`.turf/scalr-banner.txt`), the `surf` theme, a Scalr 
 and standing instructions to treat policy as a pre-approval gate. Because no configuration
 is checked in, those `branding.additional_instructions` are also where the session is told
 to `config_init` this directory, write a `remote` backend for the `turf-scalr-chat`
-workspace (state-storage-only) into `backend.tf`, and open it — never a local backend.
+workspace (state-storage-only) into `backend.tf`, write `main.tf` from the request, and only
+then open it (the open loads the providers `main.tf` names) — never a local backend.
 Branding is look and voice only — turf is not renamed (the binary, status bar, and agent
 badge still say `turf`), the tool namespace stays `turf_*`, and no approval gate is relaxed.
 Your own `/theme` pick still overrides the branded default.

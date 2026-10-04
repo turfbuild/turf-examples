@@ -35,7 +35,9 @@ Scalr running the plan.
    executing this run. Re-run `turf_config_init` to install the new module (it is turf's
    `tofu init`).
 4. `turf_plan_new` (or `turf_replan`, if a plan is already open) and review — the planned
-   module inputs carry the Scalr-sourced value.
+   module inputs carry the Scalr-sourced value. If the workspace was opened before the
+   provider block existed, `turf_workspace_close` and `turf_workspace_open` first: the open
+   loads only what the configuration required at that moment.
 
 ## Playbook 2 — discover the Scalr policy group, enforce it locally
 

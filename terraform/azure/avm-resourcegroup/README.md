@@ -15,11 +15,22 @@ with `for_each = var.resource_groups`. Opening a phase plans the directory and e
 
 ```
 config_init({ path: "terraform/azure/avm-resourcegroup" })   # installs the registry module
-# workspace_open (the provider {} block in the directory configures itself), then:
+workspace_open({ required_providers: {                       # the module's own providers
+  azapi:  { source: "Azure/azapi",      version: "~> 2.4" },
+  modtm:  { source: "azure/modtm",      version: "~> 0.3" },
+  random: { source: "hashicorp/random", version: "~> 3.5" } } })
 plan_new({})
 → module.resource_group["eastus"].azurerm_resource_group.this   + create
   module.resource_group["westus"].azurerm_resource_group.this   + create
 ```
+
+`workspace_open` loads what the **root** module requires — here only `azurerm`, whose `provider {}`
+block in `main.tf` configures it. The AVM module also requires `azapi`, `modtm` and `random`, and a
+provider that only a child module requires has to be named in `workspace_open`'s
+`required_providers` (or declared in the root's). Terraform needs neither; turf refuses the plan
+until they are loaded, naming each one. `config_init`'s `required_providers` lists them, with the
+module's constraints. `main.tf` pins the module to 0.2.x: from 0.3.0 it moves its resources to
+`azapi_resource` with `moved` blocks that change a resource's type, which turf refuses.
 
 Then `plan_approve({})` and `effect_apply` each ready effect, as usual. Add or drop a region in
 `var.resource_groups` and only that instance is created/deleted; the others stay `noop`.

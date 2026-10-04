@@ -77,16 +77,21 @@ branding:
        workspace ../setup created." Do NOT open the `../setup` workspace to read its
        outputs — the identity is fixed, and opening it just locks and rewrites setup
        state.
-    3. `turf_workspace_open` — the backend comes from `backend.tf`, so pass no
-       `backend_type`, and no workspace `name` (`workspaces { name }` already
-       addresses exactly one remote workspace). The backend authenticates with a
-       Scalr CLI token (`turf login <acct>.scalr.io` or `TF_TOKEN_<host>`), separate
-       from the SCALR_API_TOKEN the MCP server uses.
+    3. Write the request's providers, resources, and module calls into `main.tf`.
+       After adding a `module` block, re-run `turf_config_init` (it installs the
+       module, like `tofu init`).
+    4. `turf_workspace_open` — only now, once `main.tf` names its providers: the
+       open loads what the configuration requires at that moment, and a provider
+       added later is loaded only by closing and reopening the workspace. The
+       backend comes from `backend.tf`, so pass no `backend_type`, and no workspace
+       `name` (`workspaces { name }` already addresses exactly one remote
+       workspace). The backend authenticates with a Scalr CLI token (`turf login
+       <acct>.scalr.io` or `TF_TOKEN_<host>`), separate from the SCALR_API_TOKEN
+       the MCP server uses.
 
-    Write providers, resources, and module calls into `main.tf`, plan with
-    `turf_plan_new`, and `turf_replan` after every later edit — after adding a
-    `module` block, re-run `turf_config_init` first (it installs the module, like
-    `tofu init`).
+    Plan with `turf_plan_new`, and `turf_replan` after every later edit — re-run
+    `turf_config_init` first after adding a `module` block, and close and reopen
+    the workspace after adding a provider.
 
     Never write or open a LOCAL backend here. The workspace must already exist — if
     it doesn't, tell the user to apply `../setup` first rather than creating it by hand.
