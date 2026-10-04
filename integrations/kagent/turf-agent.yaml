@@ -137,7 +137,6 @@ spec:
             - workspace_delete
             - provider_search
             - provider_describe
-            - provider_load
             - config_init
             - config_show
             - plan_new
@@ -145,8 +144,6 @@ spec:
             - plan_approve
             - plan_export
             - replan
-            - module_init
-            - module_outputs
             - outputs
             - state_list
             - datasource_read
