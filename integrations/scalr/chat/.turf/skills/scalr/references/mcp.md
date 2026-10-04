@@ -26,12 +26,16 @@ Scalr running the plan.
    non-sensitive entry carries its `value` inline (e.g. `region` → `us-east-1`).
    **Only non-sensitive `category=terraform` vars return a value** — sensitive vars are
    write-once and come back masked, so never rely on pulling a secret this way.
-3. **News-up the module.** `turf_declare_module` with the module's four-part registry
-   `source` (`<host>/<namespace>/<name>/<provider>`, from `setup`'s `module_source`
-   output) + a pinned `version`, passing the pulled value as an input. Configure the
-   module's provider (e.g. `aws`) with the same region — provider creds come from the
-   **local** environment, since Scalr isn't executing this run.
-4. `turf_plan_new` and review — the planned module inputs carry the Scalr-sourced value.
+3. **Write the module call.** Add a `module` block to the configuration (e.g. `main.tf`)
+   with the module's four-part registry `source` (`<host>/<namespace>/<name>/<provider>`,
+   from `setup`'s `module_source` output) + a pinned `version`, passing the pulled value
+   as an input — with a comment naming the Scalr variable it came from. Write the module's
+   provider (e.g. a `provider "aws"` block, plus its `required_providers` entry) with the
+   same region — provider creds come from the **local** environment, since Scalr isn't
+   executing this run. Re-run `turf_config_init` to install the new module (it is turf's
+   `tofu init`).
+4. `turf_plan_new` (or `turf_replan`, if a plan is already open) and review — the planned
+   module inputs carry the Scalr-sourced value.
 
 ## Playbook 2 — discover the Scalr policy group, enforce it locally
 
@@ -63,9 +67,10 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    `policies/*.rego` treating every policy as **advisory**, and say so.
 2. **Fetch each policy's rego** from the group's `vcs_repo.path`, matching by name:
    read `<path>/<name>.rego` with the filesystem tool (e.g.
-   `../policies/require_environment_tag.rego`). The policies dir sits outside the plot —
-   one level up from `chat/` — so launch turf with `--allow-path ..` (resolved against the
-   `-C` config dir) or the read fails as *"outside the allowed directories."* Grant the
+   `../policies/require_environment_tag.rego`). The policies dir sits outside the
+   configuration directory — one level up from `chat/` — so launch turf with
+   `--allow-path ..` (resolved against the `-C` config dir) or the read fails as
+   *"outside the allowed directories."* Grant the
    parent, not just `../policies`: getting your bearings by listing the directory the
    policies sit in otherwise fails the same way. A `chat/policies` symlink does not help —
    the file tools resolve symlinks on both sides of the check. (No local checkout? Fetch

@@ -6,8 +6,8 @@ description: Working with Scalr from a Turf session — the remote backend + sta
 ## When to use
 
 Load this skill when a configuration in this repo targets **Scalr** — i.e. its
-backend is `remote` pointed at a `*.scalr.io` host, or you are authoring a plot/tofu
-config that should store state and variables in a Scalr workspace.
+backend is `remote` pointed at a `*.scalr.io` host, or you are writing a configuration
+that should store state and variables in a Scalr workspace.
 
 ## The standard
 
@@ -59,9 +59,10 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
 **load `references/mcp.md` for the exact call sequences**:
 
 - **Pull a variable → feed a module.** Read a non-sensitive workspace variable with
-  `scalr_list_variables` / `scalr_get_variable`, then `turf_declare_module` a
-  private-registry module using that value. (Sensitive values are write-once and never
-  returned — only non-sensitive vars are pullable.) Which workspace? The one this config
+  `scalr_list_variables` / `scalr_get_variable`, then write a `module` block for a
+  private-registry module that takes that value, re-run `turf_config_init` to install it,
+  and plan. (Sensitive values are write-once and never returned — only non-sensitive
+  vars are pullable.) Which workspace? The one this config
   binds to — resolve it from the config's `backend "remote"` / the workspace the session
   opened, or the name the user gives you. (This repo's `chat` demo targets the workspace
   `../setup` created; its README names it.)
@@ -80,7 +81,9 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
   backend with variables. (A config may instead declare **no** backend and open a
   state-storage-only remote workspace at runtime — carrying the same
   `hostname`/`environment`/`workspace` identity from its instructions — when it wants to
-  stay generic; the `chat` demo does this.)
+  stay generic. The `chat` demo gets the same effect differently: the agent writes the
+  backend block into a session-generated `backend.tf` that is git-ignored, so no
+  workspace is pinned into committed files.)
 - Whether it lives in a backend block or is passed to `workspace_open`, keep the
   environment/workspace names in sync with whatever provisioned that workspace.
 - Load `references/backend.md` for the state-only rationale and the token-env-var

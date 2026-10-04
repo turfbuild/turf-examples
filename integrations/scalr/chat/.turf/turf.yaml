@@ -58,25 +58,37 @@ branding:
     `read_skill_file` (NOT `turf_read_skill_file` / `turf_skill_*`, which are
     turf-mcp-server's own built-in skills and don't know this project skill).
 
-    This directory ships NO plot. On the first request, stand one up and bind its
-    state to Scalr (state-storage-only REMOTE, the `turf-scalr-chat` workspace
-    `../setup` created) — Turf still plans/applies locally:
+    This directory ships NO configuration. On the first request, write one here and
+    bind its state to Scalr (state-storage-only REMOTE, the `turf-scalr-chat` workspace
+    `../setup` created) — Turf still plans/applies locally. The configuration is
+    ordinary Terraform: you write its `.tf` files with your file tools
+    (`write_file` / `edit_file`), and turf plans whatever the directory holds
+    (`turf_skill_authoring` carries the loop):
 
     1. `turf_config_init` this directory (path = the config dir turf was launched with)
-       to scaffold a fresh plot, with an `intent` like "Compose Scalr's registry
+       to register it.
+    2. Write `backend.tf`: a `terraform {}` block holding a `remote` backend —
+       `organization` = `turf-demo`, `workspaces { name = "turf-scalr-chat" }` (the
+       `../setup` defaults), `hostname` = your Scalr account host: the host part of
+       the exported `SCALR_API_URL` (`https://<acct>.scalr.io` → `<acct>.scalr.io`),
+       or your `turf login` host. All three are literals — a backend can't read
+       variables. Above it, a comment recording why: "Compose Scalr's registry
        variable and OPA policy in one local turf session; state lives in the Scalr
-       workspace ../setup created."
-    2. `turf_declare_backend` a `remote` backend — `organization` = `turf-demo`,
-       `workspaces.name` = `turf-scalr-chat` (the `../setup` defaults), `hostname` =
-       your Scalr account host: the host part of the exported `SCALR_API_URL`
-       (`https://<acct>.scalr.io` → `<acct>.scalr.io`), or your `turf login` host. Do
-       NOT open the `../setup` workspace to read its outputs — the identity is fixed,
-       and opening it just locks and rewrites setup state.
-    3. `turf_workspace_open` with the same `remote` backend args. The backend
-       authenticates with a Scalr CLI token (`turf login <acct>.scalr.io` or
-       `TF_TOKEN_<host>`), separate from the SCALR_API_TOKEN the MCP server uses.
+       workspace ../setup created." Do NOT open the `../setup` workspace to read its
+       outputs — the identity is fixed, and opening it just locks and rewrites setup
+       state.
+    3. `turf_workspace_open` — the backend comes from `backend.tf`, so pass no
+       `backend_type`, and no workspace `name` (`workspaces { name }` already
+       addresses exactly one remote workspace). The backend authenticates with a
+       Scalr CLI token (`turf login <acct>.scalr.io` or `TF_TOKEN_<host>`), separate
+       from the SCALR_API_TOKEN the MCP server uses.
 
-    Never declare or open a LOCAL backend here. The workspace must already exist — if
+    Write providers, resources, and module calls into `main.tf`, plan with
+    `turf_plan_new`, and `turf_replan` after every later edit — after adding a
+    `module` block, re-run `turf_config_init` first (it installs the module, like
+    `tofu init`).
+
+    Never write or open a LOCAL backend here. The workspace must already exist — if
     it doesn't, tell the user to apply `../setup` first rather than creating it by hand.
 
     Treat Scalr policy as a gate, not a report: before asking the user to approve

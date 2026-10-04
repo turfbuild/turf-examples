@@ -2,88 +2,53 @@
 
 This example deploys **several** Azure resource groups from the published
 [`Azure/avm-res-resources-resourcegroup/azurerm`](https://registry.terraform.io/modules/Azure/avm-res-resources-resourcegroup/azurerm)
-module, the same outcome reached two ways:
-
-- **Codified** — `main.tf` puts `for_each` on the `module` block (native HCL). Drive it with the
-  codified workflow (`config_init` against this directory, then `plan_new`).
-- **Ad-hoc** — the `declare_module` tool's own `for_each`/`count` **meta-args** produce the same keyed
-  instances from a conversational request, with no hand-written HCL (the walkthrough below).
-
-Both emit native keyed addresses — `module.resource_group["eastus"]`, `module.resource_group["westus"]`.
+module: `main.tf` puts `for_each` on the `module` block (native HCL), and Turf's walk expands
+it into native keyed addresses — `module.resource_group["eastus"]`, `module.resource_group["westus"]`.
 
 > Requires Azure credentials for the `azurerm` provider, so this is a showcase rather than a
-> CI-runnable config. The keyed `declare_module` mechanics themselves are exercised offline against
-> a local `random`-provider module in Turf's own test suite.
+> CI-runnable config.
 
-## Codified (`plan_new`)
+## Plan it (`plan_new`)
 
 `main.tf` declares `var.resource_groups` (a map keyed by region) and a single `module "resource_group"`
 with `for_each = var.resource_groups`. Opening a phase plans the directory and expands it:
 
 ```
-config_init({ path: "terraform/azure/avm-resourcegroup" })
+config_init({ path: "terraform/azure/avm-resourcegroup" })   # installs the registry module
 # workspace_open (the provider {} block in the directory configures itself), then:
 plan_new({})
 → module.resource_group["eastus"].azurerm_resource_group.this   + create
   module.resource_group["westus"].azurerm_resource_group.this   + create
 ```
 
-Add or drop a region in `var.resource_groups` and only that instance is created/deleted; the others
-stay `noop`.
-
-## Ad-hoc (`declare_module` meta-args)
-
-Same module, no hand-written HCL — pass `for_each` on the **unkeyed** address (the declaration
-writes through into the configuration directory as a `.tf.json` file). `inputs` may reference
-`${each.key}` / `${each.value...}`:
-
-```jsonc
-// (after workspace_open — the walk configures azurerm from its own block)
-plan_new({})
-declare_module({
-  address: "module.resource_group",
-  source:  "Azure/avm-res-resources-resourcegroup/azurerm",
-  version: "~> 0.2",
-  for_each: {
-    eastus: { location: "East US" },
-    westus: { location: "West US 2" }
-  },
-  inputs: {
-    name:     "rg-avm-demo-${each.key}",
-    location: "${each.value.location}"
-  }
-})
-// → resources: module.resource_group["eastus"].azurerm_resource_group.this  (+)
-//              module.resource_group["westus"].azurerm_resource_group.this  (+)
-//   outputs keyed by instance: { eastus: {...}, westus: {...} }
-```
-
-Then `plan_approve({})` and `effect_apply` each ready effect, as usual.
+Then `plan_approve({})` and `effect_apply` each ready effect, as usual. Add or drop a region in
+`var.resource_groups` and only that instance is created/deleted; the others stay `noop`.
 
 ### `count` instead of `for_each`
 
-When the instances are homogeneous, use `count` (int-keyed addresses `module.resource_group[0]`, `[1]`)
-and reference `${count.index}`:
-
-```jsonc
-declare_module({
-  address: "module.resource_group",
-  source:  "Azure/avm-res-resources-resourcegroup/azurerm",
-  version: "~> 0.2",
-  count:   2,
-  inputs:  { name: "rg-avm-demo-${count.index}", location: "East US" }
-})
-```
-
-`count` and `for_each` are mutually exclusive. Keep the `address` itself unkeyed (`module.resource_group`,
-not `module.resource_group["eastus"]`) — the keys come from the meta-arg.
+When the instances are homogeneous, `count` works too (int-keyed addresses
+`module.resource_group_n[0]`, `[1]`, referencing `count.index`). `main.tf` carries a commented-out
+`module "resource_group_n"` that shows the shape; uncomment it (and its `rg_count` variable),
+re-run `config_init` (a new `module` block needs installing — it is turf's `tofu init`), and
+`replan` to compare. `count` and `for_each` are mutually exclusive on one `module` block.
 
 ### Day-2: shrink and destroy
 
-- **Shrink** — re-`declare_module` with a key removed from `for_each`; the dropped instance is detected as
-  an orphan and planned `-` (delete), the rest stay `noop`.
-- **Remove** — `declare_module({ address: "module.resource_group", remove: true })` un-declares the call
-  and plans every keyed instance's teardown (reverse-topological). For a whole-workspace teardown that
-  keeps the configuration, use `plan_new({ destroy: true })` instead.
+Shrinking and removing are edits to the files, followed by `replan`:
 
-See `skill_adhoc` ("Multiple instances") for the full reference.
+- **Shrink** — remove a key from `var.resource_groups`; the dropped instance is detected as an orphan
+  and planned `-` (delete), the rest stay `noop`.
+- **Remove** — delete the `module "resource_group"` block; the next plan tears down every keyed
+  instance (reverse-topological). To stop managing them *without* destroying anything, replace the
+  block with a `removed` block instead:
+
+  ```hcl
+  removed {
+    from = module.resource_group
+    lifecycle {
+      destroy = false
+    }
+  }
+  ```
+
+- **Tear down everything, keep the configuration** — `plan_new({ destroy: true })`.

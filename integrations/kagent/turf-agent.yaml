@@ -4,20 +4,34 @@ metadata:
   name: turf-agent
   namespace: kagent
 spec:
-  description: Infrastructure management agent powered by OpenTofu providers. Creates, updates, and deletes cloud infrastructure resources using AWS, GCP, Azure, Kubernetes, and hundreds of other providers.
+  description: Infrastructure management agent powered by OpenTofu providers. Plans, applies, and destroys existing Terraform configurations — creating, updating, and deleting cloud infrastructure resources using AWS, GCP, Azure, Kubernetes, and hundreds of other providers.
   type: Declarative
   declarative:
     modelConfig: turf-model-config
     systemMessage: |
       You are turf, an infrastructure management agent powered by OpenTofu providers.
 
-      Follow the turf MCP server's instructions and call its skill_* tools when the user's request matches one. Load `skill_core` at the start of any session; load `skill_adhoc` for natural-language infrastructure requests and `skill_codified` for HCL-driven (declarative) flows.
+      Follow the turf MCP server's instructions and call its skill_* tools when the user's request matches one. Load `skill_core` at the start of any session, and `skill_codified` before planning, applying, or destroying a configuration.
+
+      ## Scope: Operate Existing Configurations
+
+      You have no file-writing tools, so you do not author Terraform. You operate
+      configurations that already exist on the turf server's filesystem: register
+      one with `config_init`, then plan, apply, and destroy it; refresh and import
+      resources; read state and outputs; and run provider actions (`action_invoke`
+      to run one now, `action_trigger` to attach one to the open plan).
+
+      When the user asks for new infrastructure or a change to what a configuration
+      declares, say plainly that authoring — writing or editing `.tf` files — needs a
+      client with file tools (for example the Turf CLI or Claude Code), and offer to
+      plan and apply the configuration once it exists.
 
       ## Kubernetes State Backend (Default)
 
       You are running in-cluster. Use the **Kubernetes state backend** to persist
       state in Kubernetes Secrets with locking via Leases. This is the default
-      backend for ad-hoc infrastructure stacks.
+      backend for every stack whose configuration declares no backend of its own
+      (a configuration that declares one is opened against it).
 
       Use a dedicated **workspace** per stack so that each stack has isolated state:
 
@@ -86,15 +100,15 @@ spec:
             - Deploy the infrastructure changes
         - id: manage-stack
           name: Manage Infrastructure Stack
-          description: Create, update, or tear down a named infrastructure stack. Uses the Kubernetes state backend to persist state in-cluster, with each stack isolated by workspace name.
+          description: Deploy, update, or tear down a named infrastructure stack from an existing configuration directory. Uses the Kubernetes state backend to persist state in-cluster, with each stack isolated by workspace name.
           tags:
             - infrastructure
             - opentofu
             - stacks
             - kubernetes
           examples:
-            - Create a stack called "demo" with an S3 bucket and a DynamoDB table
-            - Add a Redis instance to the "cache" stack
+            - Deploy the ./network configuration as a stack called "demo"
+            - Import the existing my-logs bucket into the "demo" stack
             - Tear down the "staging" stack
             - What stacks exist? What resources are in the "demo" stack?
         - id: destroy-infrastructure
@@ -125,21 +139,12 @@ spec:
             - provider_describe
             - provider_load
             - config_init
-            - config_promote
             - config_show
-            - declare_backend
-            - declare_provider
             - plan_new
             - plan_cancel
             - plan_approve
             - plan_export
             - replan
-            - declare_resource
-            - declare_module
-            - declare_var
-            - declare_outputs
-            - declare_action
-            - declare_datasource
             - module_init
             - module_outputs
             - outputs
@@ -150,8 +155,9 @@ spec:
             - effect_apply
             - effect_cancel
             - action_invoke
+            - action_trigger
+            - action_untrigger
             - skill_core
-            - skill_adhoc
             - skill_codified
             - skill_demo
             - read_skill_file

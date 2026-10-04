@@ -44,5 +44,6 @@ to hold its state points `backend "remote"` at a workspace setup created.
 A config may also declare **no** backend at all and instead open a state-storage-only
 remote workspace at runtime — carrying the same `hostname`/`environment`/`workspace`
 identity from its instructions into `workspace_open`. That keeps the config generic (no
-workspace pinned into the checked-in files) while still storing state in Scalr; the `chat`
-demo takes this approach.
+workspace pinned into the checked-in files) while still storing state in Scalr. The `chat`
+demo reaches the same end another way: its agent writes the `backend "remote"` block into a
+session-generated `backend.tf`, which is git-ignored, so nothing it pins is committed.

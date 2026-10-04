@@ -6,13 +6,14 @@ description: Enforce the organization's resource tagging and naming standard. Us
 # Tagging & naming policy
 
 A guardrail skill: it does not create resources on its own — it shapes the
-configuration of whatever flow is already running (`skill_adhoc` for free-form
-requests, `skill_codified` for HCL) so every managed resource meets the org
-standard before the plan is approved and applied.
+configuration of whatever flow is already running (`skill_authoring` when you are
+writing Terraform from a request, `skill_codified` for HCL the user wrote) so every
+managed resource meets the org standard before the plan is approved and applied.
 
 ## When to use
 
-- Any `declare_resource` / `effect_apply` for a billable cloud resource.
+- Any billable cloud resource you write into (or edit in) a `.tf` file, or that
+  a plan you are about to approve would create or update.
 - Importing or adopting existing resources — bring them up to standard on the
   first reconcile (a `~` update is expected and correct).
 
@@ -30,9 +31,12 @@ do not preload it.
 
 1. Confirm `env` and `owner` with the user if they are not already obvious from
    the request.
-2. Inject the tag block into each resource's configuration.
-3. `declare_resource` and review the diff. A first-time tag addition shows as `~`
-   (in-place update); a brand-new resource shows as `+`.
+2. Write the tags into each resource's block in its `.tf` file — the `tags` map
+   (or the provider's equivalent container, below). In a configuration the user
+   wrote, edit their files only with their go-ahead.
+3. `replan` (or `plan_new`, if no plan is open yet) and review the diff. A
+   first-time tag addition shows as `~` (in-place update); a brand-new resource
+   shows as `+`.
 4. `plan_approve` + `effect_apply` once the diff is clean and the user has approved it.
 
 If a provider exposes tags under a different key (e.g. AWS/azurerm/google use a
