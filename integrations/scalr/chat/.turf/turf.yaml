@@ -125,10 +125,10 @@ branding:
 mcps:
   scalr:
     command: docker
-    args: [run, --rm, -i, --env, SCALR_API_TOKEN, --env, SCALR_API_URL, scalr/mcp-server:latest]
+    args: [run, --rm, -i, --env, SCALR_API_TOKEN, --env, SCALR_API_URL, "scalr/mcp-server:latest"]
   opa:
     command: docker
-    args: [run, --rm, -i, orygn/opa-mcp:latest]
+    args: [run, --rm, -i, "orygn/opa-mcp:latest"]
     # No Docker? Swap the two lines above for the keyless npm runner:
     #   command: npx
     #   args: [-y, "@orygn/opa-mcp"]
