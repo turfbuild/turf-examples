@@ -26,11 +26,6 @@ terraform/        Standard Terraform/HCL configurations
     two-phase/      staged-then-commit convergence (stretch/advanced)
     replace-ordering/  replacement teardown ordering + infectious create-before-destroy
 
-turf/             Turf-specific examples — Turf-native features and behaviors
-  language/
-    local-module/   a configuration that calls a local module by a portable relative source
-    turf-actions/   Turf-native actions — turf_confirm (human) + turf_action (agent)
-
 use-cases/        End-to-end stacks for a real domain, composed from local modules
   datacenter/
     ngc-stack/      NVIDIA GPU Cloud — GPU Operator + NIM Operator + cert-manager
@@ -74,17 +69,6 @@ the whole tree). See each example's `README.md` for prerequisites, usage, and cl
 
 ✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
 Kubernetes cluster + kubeconfig.
-
-## Turf examples
-
-The `turf/` tree exercises capabilities specific to Turf. Each example is an ordinary
-Terraform configuration — `.tf` files, written by hand or by an agent with its own file
-tools. Drive them the same way (`turf -C <dir> up`); all are credential-free.
-
-| Example                     | Providers            | Notes                                                              |
-|-----------------------------|----------------------|--------------------------------------------------------------------|
-| `language/local-module`     | hashicorp/random     | calls `./modules/greeting` by a portable relative `source`         |
-| `language/turf-actions`     | hashicorp/tfcoremock | Turf-native `turf_confirm` + `turf_action` gates (no provider)     |
 
 ## Use cases
 
