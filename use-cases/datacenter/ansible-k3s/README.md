@@ -301,7 +301,8 @@ from the server.
 - **`kubectl` is optional.** k3s-ansible copies a kubeconfig to the control node
   only when `kubectl` is installed there, and that step needs `netaddr` (pinned
   in `requirements.txt`). The example's own fetch does not depend on it.
-- **Turf** (`turf-engine` and `turf-driver`). `ansible/ansible` is an action
+- **Turf** (`turf-engine` and `turf-driver`), `turf-engine` at `25527d0` or
+  later, the first to take `ignore_changes`. `ansible/ansible` is an action
   provider that serves plugin protocol 5 only.
 - By default the security group admits only this machine's public address, as
   `checkip.amazonaws.com` reports it. Set `operator_cidr` in `terraform.tfvars`
@@ -358,9 +359,11 @@ the hosts, so nothing is left in AWS or orphaned in state.
 - **The operator lookup always runs.** `data.http.operator_ip` is read even when
   `operator_cidr` is set, because Turf does not yet take `count` on a data
   source.
-- **The AMI is pinned by exact name.** The usual `most_recent` lookup would
-  replace both hosts, and so the cluster, the first time Canonical publishes an
-  image, and Turf does not take `ignore_changes` yet.
+- **The hosts keep the image they were created from.** The AMI lookup takes
+  Canonical's newest Ubuntu 24.04 image, and a new `ami` would replace both
+  hosts, and so the cluster, so both declare `ignore_changes = [ami]`. A newly
+  published image plans no change to a host that exists; a host created later,
+  another agent or a replaced one, starts from the newest.
 - **`hashicorp/aws` is `~> 6.66`.** Turf installs from
   registry.opentofu.org, which publishes a release or so behind
   registry.terraform.io; a constraint it cannot match yet stalls the install.

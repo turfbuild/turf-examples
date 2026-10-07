@@ -46,12 +46,12 @@ variable "key_file" {
 
 variable "ubuntu_image" {
   description = <<-EOT
-    Canonical's AMI name, pinned to one release. The usual most_recent lookup
-    would replace both hosts, and so the cluster, the first time Canonical
-    publishes a new image.
+    Canonical's AMI name pattern; the newest image that matches it is used.
+    The hosts ignore later images (their ignore_changes), so a new release
+    replaces nothing.
   EOT
   type        = string
-  default     = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-20260904"
+  default     = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 }
 
 data "aws_availability_zones" "available" {
@@ -59,7 +59,8 @@ data "aws_availability_zones" "available" {
 }
 
 data "aws_ami" "ubuntu" {
-  owners = ["099720109477"] # Canonical
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
@@ -189,6 +190,13 @@ resource "aws_instance" "server" {
   }
 
   tags = { Name = "${var.name_prefix}-server" }
+
+  # A new ami replaces the host, and the cluster with it, so the host keeps the
+  # image it was created from when Canonical publishes another. A host created
+  # later, or replaced, starts from the newest.
+  lifecycle {
+    ignore_changes = [ami]
+  }
 }
 
 resource "aws_instance" "agent" {
@@ -207,6 +215,11 @@ resource "aws_instance" "agent" {
   }
 
   tags = { Name = "${var.name_prefix}-agent-${count.index}" }
+
+  # As the server's.
+  lifecycle {
+    ignore_changes = [ami]
+  }
 }
 
 output "server" {
