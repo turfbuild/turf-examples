@@ -21,14 +21,21 @@ locals {
   local_dir = abspath("${path.root}/.k3s")
 
   # Ansible is the one path into the hosts, and the kubernetes provider the one
-  # path into the cluster; both come from this machine.
-  operator_cidr = coalesce(var.operator_cidr, "${trimspace(data.http.operator_ip.response_body)}/32")
+  # path into the cluster; both come from this machine. The lookup exists only
+  # when operator_cidr is unset (its count is the gate), so the other branch is
+  # never evaluated — a conditional, not coalesce(), which evaluates every
+  # argument and trips over trimspace(null) when the count is 0.
+  operator_cidr = (
+    var.operator_cidr != null
+    ? var.operator_cidr
+    : "${trimspace(one(data.http.operator_ip[*].response_body))}/32"
+  )
 }
 
-# Read on every run, even when operator_cidr is set: Turf does not take count on
-# a data source yet, so the lookup cannot be switched off.
+# Looked up only when operator_cidr is unset.
 data "http" "operator_ip" {
-  url = "https://checkip.amazonaws.com"
+  count = var.operator_cidr == null ? 1 : 0
+  url   = "https://checkip.amazonaws.com"
 }
 
 module "nodes" {

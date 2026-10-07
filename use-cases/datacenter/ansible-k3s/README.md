@@ -201,7 +201,7 @@ is read during this apply:
 ```
 plan for phase p-28812504 (16 of 21 address(es) change):
   actions: 1 invocation(s) planned, 0 deferred
-  read      data.http.operator_ip
+  read      data.http.operator_ip[0]
   create    module.nodes.aws_vpc.this
   ...
   create    module.nodes.aws_instance.agent[0]
@@ -301,13 +301,15 @@ from the server.
 - **`kubectl` is optional.** k3s-ansible copies a kubeconfig to the control node
   only when `kubectl` is installed there, and that step needs `netaddr` (pinned
   in `requirements.txt`). The example's own fetch does not depend on it.
-- **Turf** (`turf-engine` and `turf-driver`), `turf-engine` at `25527d0` or
-  later, the first to take `ignore_changes`. `ansible/ansible` is an action
-  provider that serves plugin protocol 5 only.
+- **Turf** (`turf-engine` and `turf-driver`), `turf-engine` at `c1c61dd` or
+  later, the first to take `count` on a data source (`25527d0` was the first to
+  take `ignore_changes`). `ansible/ansible` is an action provider that serves
+  plugin protocol 5 only.
 - By default the security group admits only this machine's public address, as
   `checkip.amazonaws.com` reports it. Set `operator_cidr` in `terraform.tfvars`
   (see `terraform.tfvars.example`) if you run from behind a NAT whose egress
-  address differs.
+  address differs; with it set, the lookup is not read at all (its `count` is
+  the gate).
 
 ## Usage
 
@@ -356,9 +358,6 @@ the hosts, so nothing is left in AWS or orphaned in state.
   "Show them"; the play recap and the node list never arrive. Terraform 1.16.2
   shows the same truncation, so it is the provider's, not the engine's. The
   playbooks still run to completion.
-- **The operator lookup always runs.** `data.http.operator_ip` is read even when
-  `operator_cidr` is set, because Turf does not yet take `count` on a data
-  source.
 - **The hosts keep the image they were created from.** The AMI lookup takes
   Canonical's newest Ubuntu 24.04 image, and a new `ami` would replace both
   hosts, and so the cluster, so both declare `ignore_changes = [ami]`. A newly
