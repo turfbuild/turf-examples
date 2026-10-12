@@ -48,12 +48,66 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
                       OPA policy, module registry, and MCP read-back
 ```
 
+## Running the examples
+
+Every example runs the same way. Turf plans and applies through an engine that runs
+on your machine as a Homebrew service, so a rollout keeps going when the client or
+the conversation that started it ends.
+
+**Install Turf and start its service:**
+
+```bash
+brew install turfbuild/tap/turf    # restate-server comes with it, from Restate's tap
+brew services start turf           # starts the engine now and at every login
+```
+
+**Run an example** from the Turf CLI, or register the server with any MCP client and
+ask it to:
+
+```bash
+turf -C terraform/kubernetes/kind-crd up    # the Turf CLI
+claude mcp add turf -- turf-mcp-server      # or register the server with Claude Code
+```
+
+The MCP tools are Terraform's commands. `init` registers an example's directory and
+installs its modules and providers, `workspace_open` binds its state, and `up` plans
+the first **round**. Each round stops at its approval point with its plan as a document
+on disk (`plan.path`, OpenTofu's JSON plan, exactly as `tofu show -json` prints it).
+`apply` with that plan's `plan.digest` approves it: it applies the round, plans the
+next, and stops again, until the configuration has converged. Not calling `apply`
+declines the plan. `destroy` tears down the same way. A value known only after an
+apply, such as a new cluster's endpoint, defers whatever reads it to the next round.
+That is how several examples here go from nothing to a running stack in one `up`.
+
+**A remote engine.** `TURF_RESTATE_URL` points the CLI or the server at an engine
+running elsewhere, such as in a cluster ([`integrations/kagent/`](integrations/kagent/)),
+instead of the local service.
+
+**What the providers see.** Provider plugins run inside the engine, not in your shell,
+so they get the service's environment: launchd's, with Homebrew's `PATH`, plus what
+`~/.homebrew/services/turf.env` sets (`KEY=value` lines; run `brew services restart turf`
+after editing it). When [mise](https://mise.jdx.dev) is installed, each configuration's
+providers also get that configuration's mise environment: what `mise env` prints in its
+directory, from a committed `mise.toml` and an untracked `mise.local.toml` beside it.
+Run `mise trust` in the directory once. `TURF_MISE=off` in `turf.env` turns this off.
+
+- **Credentials** for providers come from files (the default profile in
+  `~/.aws/config`, `~/.kube/config`, gcloud's application-default credentials, the
+  `az` login), from provider arguments in the HCL (`profile`, `config_path`), or from
+  the configuration's `mise.local.toml`. Anything that is yours rather than the
+  configuration's goes in `turf.env`.
+- **The state backend's credentials and `TF_VAR_*` variables** come from the session:
+  the environment you started the CLI or the MCP client in.
+
+Each example's README says what else it needs.
+
 ## Terraform examples
 
 Each `terraform/<...>` directory is a self-contained, ordinary Terraform configuration —
 plain `.tf` files. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP
-tools (`config_init` against the directory, then `plan_new` — its initial walk plans
-the whole tree). See each example's `README.md` for prerequisites, usage, and cleanup.
+tools (`init` against the directory, then `up`), as
+[Running the examples](#running-the-examples) describes. See each example's
+`README.md` for prerequisites, usage, and cleanup.
 
 | Example                        | Providers                     | Local? | Notes                                              |
 |--------------------------------|-------------------------------|--------|----------------------------------------------------|
@@ -79,7 +133,7 @@ than a single-idea example. Drive them the same way (`turf -C <dir> up`).
 | Example                  | Providers                                | Local? | Notes                                                        |
 |--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
 | `datacenter/ngc-stack`   | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | NVIDIA NGC operators on a GPU-less cluster — four charts, four modules, zero credentials |
-| `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
+| `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), built-in `terraform_data` | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
 | `datacenter/aicr-eks-certification` | hashicorp/aws, hashicorp/kubernetes, hashicorp/helm (v3+) | 📐 | Target-state spec: a real GPU cluster, its stack and its NVCRE certification as one graph; the waits are a specified action |
 | `datacenter/ansible-k3s` | hashicorp/aws, ansible/ansible, hashicorp/kubernetes | ☁️ AWS | Hosts by Terraform, k3s by Ansible, a custom resource by Terraform again — one graph, three rounds on Turf |
 | `datacenter/slinky-stack` | tehcyx/kind, hashicorp/helm (v3+), turfbuild/kubewait | ✅ | A Slurm cluster in a "Run:ai project" with KAI Scheduler as the open Run:ai — `srun` works, the GPU partition pends; two rounds on Turf |
@@ -124,8 +178,9 @@ across both workers; `srun --gres=gpu:1` gets the tutorial's own rejection. See
 [`use-cases/datacenter/slinky-stack/README.md`](use-cases/datacenter/slinky-stack/README.md).
 
 📐 = a **spec**: it validates and its mocked `terraform test` suite passes, but
-it depends on features no engine has yet, so it is not runnable. The EKS
-certification example is one. It takes the Terraform AICR's own UAT uses for
+it has never run end to end. Turf supports what it uses except forwarding
+`timeouts {}`, which is not verified, and nothing in it has run against a real
+cluster. The EKS certification example is one. It takes the Terraform AICR's own UAT uses for
 EKS test clusters (ported from `mchmarny/cluster`), the same AICR stack, and an
 NVCRE certification of the GPU pools, and writes them as one configuration.
 The waits that live in CI shell today become a Terraform action
@@ -137,17 +192,26 @@ reverse. See
 
 ### `integrations/kagent/` — Kubernetes deployment via kagent
 
-Manifests for deploying the Turf MCP server and an infrastructure agent in-cluster
-via the [kagent](https://github.com/kagent-dev/kagent) operator:
+Manifests for deploying Turf and an infrastructure agent in-cluster via the
+[kagent](https://github.com/kagent-dev/kagent) operator. In a cluster Turf runs as
+three parts, each in its own pod: the MCP server the agent talks to, the engine that
+plans and applies (and runs the provider plugins), and the restate-server the engine
+runs on. The server finds the engine through `TURF_RESTATE_URL`.
 
 | File                      | Purpose                                                              |
 |---------------------------|---------------------------------------------------------------------|
-| `turf-mcpserver.yaml`     | `MCPServer` — runs `turf-mcp-server` (HTTP) with provider/state PVCs |
+| `turf-mcpserver.yaml`     | `MCPServer` — runs `turf-mcp-server` (HTTP), pointed at the engine with `TURF_RESTATE_URL` |
+| `turf-engine.yaml`        | `Deployment` + `Service` — `turf-engine`, from the same image, registered with restate-server |
+| `restate.yaml`            | `StatefulSet` + `Service` — restate-server from Restate's own image, its data on a volume |
 | `turf-agent.yaml`         | `Agent` — the infrastructure agent (system prompt, tools, A2A skills)|
-| `turf-rbac.yaml`          | `ClusterRoleBinding` (cluster-admin, for the Kubernetes state backend)|
-| `turf-pvc.yaml`           | `PersistentVolumeClaim` for caching provider binaries               |
+| `turf-rbac.yaml`          | `ClusterRoleBinding` (cluster-admin, for the Kubernetes state backend and in-cluster providers)|
+| `turf-pvc.yaml`           | `PersistentVolumeClaim` the server and the engine share: configurations, plans, the provider cache |
 | `turf-model-config.yaml`  | Model provider configuration                                        |
 | `opentofu-mcpserver.yaml` | Companion OpenTofu registry `RemoteMCPServer` (provider/module docs)|
+
+The engine reads each configuration directory itself, so the server and the engine
+mount one volume at the same path. Provider credentials belong on the engine, where
+the plugins run; the state backend's belong on the server.
 
 The kagent agent has no file tools, so it **operates** existing configurations — plan,
 apply, destroy, import, and actions — but does not author them; writing `.tf` needs a
@@ -157,16 +221,17 @@ client with file tools (the Turf CLI, Claude Code).
 kubectl apply -f integrations/kagent/
 ```
 
-The container image is built in the [Turf repository](https://github.com/turfbuild/turf)
-(`make docker-build`).
+The container image is published with each Turf release as
+`ghcr.io/turfbuild/turf-mcp-server:<release>`; it carries both the server and
+`turf-engine`. Keep the server's and the engine's tags equal.
 
 ### `integrations/turf-cli/` — Turf CLI skill discovery
 
 The standalone [Turf CLI](https://github.com/turfbuild/turf) discovers user skills
 from turf-owned locations only — the working dir's `.turf/skills/` and the global
 `~/.turf/skills/`. Run the CLI from this directory and it gains a `tagging-policy`
-skill (loadable with `read_skill`) on top of the server's built-in `skill_*`
-workflows. See `integrations/turf-cli/README.md`.
+skill, loaded on demand like the server's built-in `skill_*` workflows. See
+`integrations/turf-cli/README.md`.
 
 ### `integrations/kubernetes-backend/` — Kubernetes state backend
 

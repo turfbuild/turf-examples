@@ -60,8 +60,8 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
 
 - **Pull a variable → feed a module.** Read a non-sensitive workspace variable with
   `scalr_list_variables` / `scalr_get_variable`, then write a `module` block for a
-  private-registry module that takes that value, re-run `turf_config_init` to install it,
-  and plan. (Sensitive values are write-once and never returned — only non-sensitive
+  private-registry module that takes that value, re-run `turf_init` to install it,
+  and plan (`turf_up`). (Sensitive values are write-once and never returned — only non-sensitive
   vars are pullable.) Which workspace? The one this config
   binds to — resolve it from the config's `backend "remote"` / the workspace the session
   opened, or the name the user gives you. (This repo's `chat` demo targets the workspace
@@ -69,10 +69,12 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
 - **Policy gate at approval.** Discover the Scalr policy group for the workspace's
   environment (`scalr_list_policy_groups` → `scalr_get_policy_group`) to learn each
   policy's `enforced-level` and its `vcs_repo`; fetch the matching `<name>.rego` from
-  that repo (Scalr returns metadata, never rego bytes); `turf_plan_export` → evaluate
-  with `opa_rego_eval` (inline `source`, `input = { "tfplan": <plan> }`) → refuse
-  `turf_plan_approve` per level (`hard-mandatory` blocks; `soft-mandatory` blocks unless
-  overridden; `advisory` warns). No group linked → eval the local rego as advisory.
+  that repo (Scalr returns metadata, never rego bytes); read the plan document
+  `turf_up` vended (`plan.path`) → evaluate with `opa_rego_eval` (inline `source`,
+  `input = { "tfplan": <plan> }`) → withhold `turf_apply` per level (`hard-mandatory`
+  blocks; `soft-mandatory` blocks unless overridden; `advisory` warns). Not calling
+  `turf_apply` is how a plan is declined. No group linked → eval the local rego as
+  advisory.
 
 ## How to apply
 

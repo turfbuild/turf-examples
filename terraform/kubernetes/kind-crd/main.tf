@@ -84,7 +84,7 @@ resource "kubernetes_manifest" "crd" {
 #
 # The Turf kind does not exist in the cluster's API until the CRD is applied, so
 # this manifest cannot be planned until then. depends_on orders it after the CRD;
-# Turf additionally defers it to a later phase (and reloads the provider so it
+# Turf additionally defers it to a later round (and reloads the provider so it
 # re-discovers the new API) to converge CRD-then-CR in a single `/up`. Plain
 # OpenTofu needs a targeted apply of the CRD first.
 resource "kubernetes_manifest" "instance" {

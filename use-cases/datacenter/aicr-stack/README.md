@@ -21,6 +21,8 @@ Helm releases come up behind it, from nothing, in one command.
 turf -C use-cases/datacenter/aicr-stack up
 ```
 
+Or from any MCP client; see [Running the examples](../../../README.md#running-the-examples).
+
 ## What the recipe actually says
 
 The recipe resolved here is `service=kind, accelerator=h100, intent=inference`:
@@ -134,20 +136,19 @@ error.
 
 ## What it does when you run it
 
-Measured on the **Restate engine** (`turf-engine` at `1ce29f8` — the
-built-in-provider branch, turf-engine #62/#63, not yet on `main` — driven by
-`turf-driver up --converge`), from empty state, on 2026-09-20. The containment
-shim is a `terraform_data`, a resource of the built-in
-`terraform.io/builtin/terraform` provider that no registry serves; this engine
-runs that provider as a sidecar process on the same path every other provider
-takes, so the bundle runs exactly as generated. Unlike
-[`../ngc-stack`](../ngc-stack/README.md), this example has **not** been run on
-the shipping MCP engine, which does not yet carry that sidecar.
+Measured on Turf from empty state on 2026-09-20, at engine commit `1ce29f8`
+(turf-engine #62/#63) and through the engine's development driver, before the
+v1 tools; the stack has since been run through the Turf MCP server as well. The
+containment shim is a `terraform_data`, a resource of the built-in
+`terraform.io/builtin/terraform` provider that no registry serves; Turf runs that
+provider as a sidecar process on the same path every other provider takes, so the
+bundle runs exactly as generated.
 
 Round one can plan and apply exactly six addresses — the cluster and the five
 containment shims that sit behind no order-only edge. Everything else defers,
 and nine of the fourteen components defer **whole**:
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 plan for phase p-014e4490 (75 of 75 address(es) change):
   create    kind_cluster.dc
@@ -181,14 +182,14 @@ and ordering is then just the graph inside one apply.
 bundle emitted no such folder, but a resource whose dependency is deferred is
 deferred *before* its count is evaluated — and both slots depend on
 `helm_release.this`. They collapse to zero instances in round two. And a module
-that defers whole is still walked, with every row inside it listed beneath the
-call: that descent is what lets the engine find an object the phase *condemns*
-even when its forward plan has to wait, which the cluster replacement below
+that defers whole is still planned through, with every row inside it listed
+beneath the call: that descent is what lets Turf find an object the round
+*condemns* even when its forward plan has to wait, which the cluster replacement below
 depends on. The cost is a noisier first plan: 75 rows for the 16 releases plus 14
 shims plus the cluster that actually exist.
 
 `turf -C use-cases/datacenter/aicr-stack destroy` removes all 31 addresses in a
-single phase.
+single round.
 
 ### Replacing the cluster
 
@@ -197,9 +198,10 @@ This is what the containment shim is for, and the part the four engines in
 get wrong. `up --var generation=2` on the converged stack replaces
 `kind_cluster.dc`. Every release's provider configuration now reads a cluster
 that is being replaced, so no release can be planned forward — but every one of
-them is *contained* by a shim that replaces this phase, and the engine walks the
+them is *contained* by a shim that replaces this round, and Turf plans through the
 deferred modules to find them:
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 plan for phase p-46e4ae41 (75 of 75 address(es) change):
   replace   kind_cluster.dc
@@ -264,7 +266,7 @@ three of its prerequisites, and `nvsentinel` / `nvidia-dra-driver-gpu` /
 and takes the cluster connection as variables, which is right for applying
 against a cluster that already exists. Calling that as a child module is a
 different matter. Terraform accepts it but then forbids `depends_on`, `count`
-and `for_each` on the call, and the Restate engine refuses it outright:
+and `for_each` on the call, and Turf refuses it outright:
 
 ```
 this engine milestone does not walk provider blocks in child modules
@@ -383,7 +385,7 @@ superset branch and is deferred from the submission as its own change. Until it
 lands, an edit to bundled content needs a taint on that slot to reach the
 cluster.
 
-**`helm uninstall` leaves CRDs behind**, as always. `down` removes the cluster, so
+**`helm uninstall` leaves CRDs behind**, as always. `destroy` removes the cluster, so
 it does not matter here; it would on a cluster you keep.
 
 ## Layout

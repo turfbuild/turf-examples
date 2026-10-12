@@ -9,8 +9,10 @@ terraform {
       version = "~> 3.0"
     }
     # Reached only from the child modules, where it carries the containment
-    # declaration. Named here because the root module's requirements are what get
-    # pre-loaded for the walk.
+    # declaration. Named here too because Turf once loaded only the root
+    # module's requirements before planning.
+    # TODO(v1 re-run): init now installs child modules' providers; confirm, then
+    # drop this entry.
     null = {
       source  = "hashicorp/null"
       version = "~> 3.0"
@@ -29,7 +31,7 @@ provider "kind" {}
 # (`kubernetes = { ... }`), not the v2 `kubernetes { ... }` block.
 #
 # None of those values exist until the cluster is applied, so every module in
-# this stack is unplannable on the first walk. Vanilla OpenTofu needs two applies
+# this stack is unplannable in the first round. Vanilla OpenTofu needs two applies
 # (or `-target=kind_cluster.dc`); Turf defers the four releases, applies the
 # cluster, and re-plans them against the now-known connection — one `turf up`.
 provider "helm" {

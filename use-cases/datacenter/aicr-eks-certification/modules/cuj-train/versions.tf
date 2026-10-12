@@ -3,6 +3,6 @@ terraform {
     kubernetes = { source = "hashicorp/kubernetes", version = "~> 3.0" }
 
     # See the root versions.tf.
-    kubewait = { source = "turfbuild/kubewait", version = "~> 0.1" }
+    kubewait = { source = "registry.terraform.io/turfbuild/kubewait", version = "~> 0.1" }
   }
 }

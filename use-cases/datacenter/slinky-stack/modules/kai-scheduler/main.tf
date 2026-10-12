@@ -22,7 +22,7 @@ terraform {
       version = "~> 3.0"
     }
     kubewait = {
-      source  = "turfbuild/kubewait"
+      source  = "registry.terraform.io/turfbuild/kubewait"
       version = "~> 0.1"
     }
   }

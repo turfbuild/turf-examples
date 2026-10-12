@@ -1,3 +1,9 @@
+# Shared by turf-mcp-server and turf-engine, mounted at /data in both: the
+# configurations, the server's scratch directory (vended plans, scratch
+# configurations) and the provider plugin cache. The engine reads a
+# configuration at the path the server names, so both must see the same files.
+# ReadWriteMany needs a storage class that offers it (NFS, EFS, Azure Files);
+# on a single-node cluster ReadWriteOnce also works, both pods on that node.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -5,7 +11,7 @@ metadata:
   namespace: kagent
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 10Gi

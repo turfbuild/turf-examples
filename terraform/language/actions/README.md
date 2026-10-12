@@ -2,8 +2,8 @@
 
 Demonstrates **Terraform Actions** (introduced in Terraform 1.14): `action` blocks
 invoked around a resource's lifecycle via `lifecycle.action_trigger`. Turf runs each
-triggered action as a gating **invoke** effect, ordered relative to the resource
-operation. Credential-free — the `hashicorp/tfcoremock` mock provider is the first to
+triggered action as an **action invocation** that gates what follows it, ordered
+relative to the resource operation. Credential-free — the `hashicorp/tfcoremock` mock provider is the first to
 ship actions and resolves straight from the public registry.
 
 ## What This Demonstrates
@@ -16,7 +16,7 @@ ship actions and resolves straight from the public registry.
   the resource exists, and whose failure won't fail the run (model a non-critical
   announcement).
 
-Turf orders these as effects: `invoke(gate)` → `create(web)` → `invoke(announce)`.
+Turf runs them in this order: `invoke(gate)` → `create(web)` → `invoke(announce)`.
 
 ## Action anatomy
 
@@ -38,14 +38,17 @@ action "tfcoremock_simple_resource" "gate" {                # the action definit
 
 - **`events`** — any of `before_create`, `after_create`, `before_update`,
   `after_update`, `before_destroy`, `after_destroy`.
-- **`on_failure`** — `halt` (default: a failed action stops the run) or `continue`
-  (record the failure and proceed). Gates typically `halt`; post-hooks often `continue`.
+- **`on_failure`** — `halt` (default: a failed action stops the run), `continue`
+  (record the failure and proceed), or `taint` (`after_create` only: the resource is
+  tainted, so the next plan replaces it). Gates typically `halt`; post-hooks often
+  `continue`.
 - An action writes **no state** — it's imperative, not a managed resource.
 
 ## Prerequisites
 
-- **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`) — Turf parses the
-  `action` blocks and runs the invoke effects.
+- **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`; see
+  [Running the examples](../../../README.md#running-the-examples)) — Turf parses the
+  `action` blocks and runs the action invocations.
 - No cloud account, no credentials.
 
 ## Usage
@@ -54,11 +57,32 @@ action "tfcoremock_simple_resource" "gate" {                # the action definit
 turf -C terraform/language/actions up
 ```
 
-The planned invocations show up in the phase's plan (`action_invocations`), and each
-fires as an `invoke` effect in order.
+The planned invocations are in the round's plan document (`action_invocations`), and
+`up` summarizes them at the approval point (`plan.invocations`), per resource in the
+order they run. Approving the plan with `apply` runs each one in that order.
 
-> Turf also ships its own **native** actions — `turf_confirm` (a human gate) and
-> `turf_action` (an agent step) — that need no provider.
+## Turf's own action: `turf_action`
+
+Turf also ships a **native** action that needs no provider, because the agent driving
+Turf performs it. A `turf_action` carries a `prompt` (what to do, and what counts as
+failure) and `inputs` (the values to do it with, evaluated like any action config,
+`caller` included):
+
+```hcl
+action "turf_action" "smoke_test" {
+  config {
+    prompt = "GET inputs.url and expect 200; fail if it does not answer."
+    inputs = { url = "https://${caller.string}/" }
+  }
+}
+```
+
+When an apply reaches one, it stops at `awaiting_actions` and returns each open request
+with its `prompt` and evaluated `inputs`. The agent does the step with its own tools and
+answers every request in one call, `apply(convergence_id, action_results)`, reporting
+`succeeded`, the `progress` it made, and any `diagnostics`; the trigger's `on_failure`
+decides what a failure does. A person's decision is a `turf_action` whose prompt tells
+the agent to ask the user: there is no separate confirmation action.
 
 ## Real providers with actions
 

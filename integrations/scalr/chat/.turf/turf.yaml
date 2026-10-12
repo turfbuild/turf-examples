@@ -65,7 +65,7 @@ branding:
     (`write_file` / `edit_file`), and turf plans whatever the directory holds
     (`turf_skill_authoring` carries the loop):
 
-    1. `turf_config_init` this directory (path = the config dir turf was launched with)
+    1. `turf_init` this directory (path = the config dir turf was launched with)
        to register it.
     2. Write `backend.tf`: a `terraform {}` block holding a `remote` backend —
        `organization` = `turf-demo`, `workspaces { name = "turf-scalr-chat" }` (the
@@ -78,27 +78,26 @@ branding:
        outputs — the identity is fixed, and opening it just locks and rewrites setup
        state.
     3. Write the request's providers, resources, and module calls into `main.tf`.
-       After adding a `module` block, re-run `turf_config_init` (it installs the
-       module, like `tofu init`).
-    4. `turf_workspace_open` — only now, once `main.tf` names its providers: the
-       open loads what the configuration requires at that moment, and a provider
-       added later is loaded only by closing and reopening the workspace. The
-       backend comes from `backend.tf`, so pass no `backend_type`, and no workspace
-       `name` (`workspaces { name }` already addresses exactly one remote
-       workspace). The backend authenticates with a Scalr CLI token (`turf login
-       <acct>.scalr.io` or `TF_TOKEN_<host>`), separate from the SCALR_API_TOKEN
-       the MCP server uses.
+       Then re-run `turf_init`: it installs the modules and providers the
+       configuration names, like `tofu init`.
+    4. `turf_workspace_open`. The backend comes from `backend.tf`, so pass no
+       `backend_type`, and no `workspace_name` (`workspaces { name }` already
+       addresses exactly one remote workspace). The backend authenticates with a
+       Scalr CLI token (`turf login <acct>.scalr.io` or `TF_TOKEN_<host>`),
+       separate from the SCALR_API_TOKEN the MCP server uses.
 
-    Plan with `turf_plan_new`, and `turf_replan` after every later edit — re-run
-    `turf_config_init` first after adding a `module` block, and close and reopen
-    the workspace after adding a provider.
+    Plan with `turf_up`, and `turf_up` again after every later edit — re-run
+    `turf_init` first after adding a `module` block or a provider. `turf_up` stops
+    at the approval point with the plan as a document on disk (`plan.path`, as
+    `tofu show -json` prints it) and its `plan.digest`. Approving is `turf_apply`
+    with that digest; declining is simply not calling it.
 
     Never write or open a LOCAL backend here. The workspace must already exist — if
     it doesn't, tell the user to apply `../setup` first rather than creating it by hand.
 
     Treat Scalr policy as a gate, not a report: before asking the user to approve
     a plan, ask Scalr which policy group governs the workspace's environment,
-    evaluate the exported plan against its rego with OPA, and include the result
+    evaluate the plan document (`plan.path`) against its rego with OPA, and include the result
     in the approval summary. If a hard-mandatory policy denies, say so and
     propose a remedy instead of asking for approval.
 

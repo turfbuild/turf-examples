@@ -1,9 +1,11 @@
 # `kubewait_condition`: a Terraform action that waits on Kubernetes state
 
-**Status: implemented, not on a registry yet.**
+**Status: implemented, on registry.terraform.io.**
 [`turfbuild/kubewait`](https://github.com/turfbuild/terraform-provider-kubewait)
-0.1.0 implements this spec, and this example uses it (installed locally; see
-README.md §Validating and testing). Its waits are tested against a real API server
+0.1.0 implements this spec, and this example uses it, from registry.terraform.io
+only: its `source` is `registry.terraform.io/turfbuild/kubewait`, because OpenTofu
+resolves an unqualified one against registry.opentofu.org, which does not carry
+it. Its waits are tested against a real API server
 (envtest, Kubernetes 1.37), with the NVCRE v0.2.0 Certification and Kubeflow
 Trainer v2.2.0 TrainJob CRDs, and under Terraform 1.16.2. None of the five
 waits here has run against this example's cluster. Where this spec left a
@@ -114,20 +116,19 @@ fail at once: waiting will not fix them.
 - **`taint`** (`after_create` only): the object is tainted, so the next plan replaces it.
 - **`continue`:** a warning, and dependents proceed.
 
-**Engine requirement (new).** A destroy-event invocation must reach the cluster
+**Engine requirement.** A destroy-event invocation must reach the cluster
 through the provider configuration evaluated against **prior state**. This is
 the same rule graceful teardown already applies to destroy RPCs. When the
 cluster itself is being replaced, the planned configuration points at a cluster
-that does not exist yet. Neither Turf engine applies that pin to action
-invocations today.
+that does not exist yet. Turf applies that pin to destroy-event action
+invocations as well: each carries its caller's teardown pin.
 
 Keep destroy-event configs to literals and variables: Terraform restricts what a
 destroy-time action config may reference.
 
 **The Terraform CLI does not honour these gates at full teardown (measured,
-1.16.2).** In a `terraform destroy` walk, Terraform turns a failed destroy-event
-action into a warning whatever `on_failure` says ("a full destroy walk must
-never be blocked"), and the delete proceeds. A failed `before_destroy` gate
+1.16.2).** In a `terraform destroy` run, Terraform turns a failed destroy-event
+action into a warning whatever `on_failure` says, and the delete proceeds. A failed `before_destroy` gate
 halts only a destroy inside an ordinary apply, such as a replace. The table
 above is what an engine has to provide for uses 3 and 5 to hold at teardown.
 
@@ -307,18 +308,17 @@ follows. "Measured" means observed in the provider's tests or under Terraform
     and data sources are unknown there, and checks that need them are skipped.
   - `terraform plan` calls `PlanAction`, which repeats the checks with the
     values known. A violation that arrives through a variable fails there.
-- **Invoke validates again.** Turf's MCP server implements only
-  `InvokeAction`, not `ValidateActionConfig` or `PlanAction`. Under it, a bad
-  wait config therefore fails when the action is invoked, not at plan. Turf's
-  new engine calls all three, as Terraform does.
+- **Invoke validates again.** `InvokeAction` repeats the checks, so a client
+  that skips the first two still fails a bad wait config, only later. Turf
+  calls all three, as Terraform does.
 - **No plan-time deferral yet.** `PlanAction` never contacts the cluster and
-  never defers. The intended shape, now that an engine calls `PlanAction` with
-  `DeferralAllowed` (Turf's new engine does):
+  never defers. The intended shape, now that Turf calls `PlanAction` with
+  `DeferralAllowed`:
   - if the connection is known and discovery says the kind is not served
     (its CRD arrives in the same apply), return `Deferred{AbsentPrereq}`;
   - the engine must defer the trigger along with the action. Otherwise an
     `after_create` hook's dependents would start before the wait has run.
-    Turf's new engine does.
+    Turf does.
 
 ## What it is not
 

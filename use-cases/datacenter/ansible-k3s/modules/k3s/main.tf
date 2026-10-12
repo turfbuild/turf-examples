@@ -14,7 +14,7 @@
 #     .kubeconfig                   Terraform can bind, so the cluster's
 #                                   credentials come back as a file.
 #   ansible_playbook_run.status     triggered by nothing: run it on demand
-#                                   (`turf-driver invoke`, or Terraform's
+#                                   (Turf's `invoke`, or Terraform's
 #                                   `apply -invoke`).
 
 terraform {

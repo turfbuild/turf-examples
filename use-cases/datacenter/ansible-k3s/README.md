@@ -29,8 +29,8 @@ one graph, each step as soon as what it needs exists:
 Some of these steps cannot even be *planned* until the earlier ones have run:
 there is no address to put in the inventory, no credential for the cluster, no
 such resource type yet. Turf plans what it can, applies it, and comes back for
-the rest — three rounds, one command, about three and a half minutes. `down`
-walks the same graph backwards: the objects leave the cluster while it still
+the rest — three rounds, one command, about three and a half minutes. `destroy`
+takes the same graph backwards: the objects leave the cluster while it still
 exists, then the machines go, then the network. Stock Terraform 1.16.2 gets there
 too, but needs three applies, two of them `-target`ed, after two plain applies
 that fail at plan ([below](#on-plain-terraform)).
@@ -164,7 +164,7 @@ certificate names its public address because the inventory adds it to `tls-san`
 
 ### Teardown runs back through the same seam
 
-`down` reaches the cluster the way the apply did. The refreshing destroy
+`destroy` reaches the cluster the way the apply did. The refreshing destroy
 re-reads the kubeconfig file, evaluates the module outputs over it, configures
 the `kubernetes` provider from them, and deletes the custom resource and the CRD
 through the cluster's API. Only then does it delete the hosts, and only after
@@ -191,13 +191,14 @@ internet gateway could not detach while the hosts still held public addresses
 
 ## What it does when you run it
 
-Measured on **Turf** (`turf-engine` at `d0910c1`, driven by
-`turf-driver up -converge`), from empty state, in `us-west-2` on 2026-10-01.
+Measured on **Turf** at engine commit `d0910c1`, through the engine's development
+driver before the v1 tools, from empty state, in `us-west-2` on 2026-10-01.
 
 **Round 1** builds the hosts and runs the playbook. Everything that talks to the
 cluster defers, because the provider's credentials are not known until the file
 is read during this apply:
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 plan for phase p-28812504 (16 of 21 address(es) change):
   actions: 1 invocation(s) planned, 0 deferred
@@ -221,6 +222,7 @@ phase p-28812504: applied (applied 15, failed 0, cancelled 0, invoked 1)
 defers again, because the API does not serve the `Turf` kind until the CRD is
 applied. **Round 3** creates it.
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 round 1 stages: ... plan 30.983s | apply 2m1.722s | ... | total 2m34.011s
 round 2 stages: ... plan 19.127s | apply 5.114s   | ... | total 25.348s
@@ -229,8 +231,8 @@ converged in 3 round(s)
 ```
 
 Three rounds and 204 seconds from nothing to a custom resource on a two-node
-cluster; a fourth `up` plans 0 of 21 addresses. `down` removes all 21 in one
-phase, in 51 seconds.
+cluster; a fourth `up` plans 0 of 21 addresses. `destroy` removes all 21 in one
+round, in 51 seconds.
 
 ## On plain Terraform
 
@@ -250,8 +252,8 @@ The same configuration on Terraform 1.16.2, from empty:
 reach the route out of the subnet, or the playbook cannot reach the hosts. The
 instances' `depends_on` on the route table association is what makes it reach.
 
-`terraform destroy` re-reads every data source first, as the engine's `down`
-re-reads the kubeconfig. Unlike the engine, it also re-reads the ones no
+`terraform destroy` re-reads every data source first, as Turf's `destroy`
+re-reads the kubeconfig. Unlike Turf, it also re-reads the ones no
 teardown needs, such as `data.kubernetes_nodes`, so a destroy against a cluster
 that is already unreachable fails on that read; `-refresh=false` gets past it.
 
@@ -283,28 +285,51 @@ from the server.
 
 ## Prerequisites
 
-- **An AWS account**, with credentials in the environment of the engine process
-  (provider plugins inherit it). The run above used `AWS_PROFILE`. Two
-  `t3.small` instances for a few minutes.
-- **The Ansible controller**, Python 3.12 or later, in a virtualenv here:
+- **Turf**, installed and running as
+  [Running the examples](../../../README.md#running-the-examples) describes.
+  `ansible/ansible` is an action provider that serves plugin protocol 5 only.
+- **An AWS account**, for two `t3.small` instances for a few minutes.
+- **[mise](https://mise.jdx.dev)**, which builds the Ansible controller here and
+  hands it, with your AWS account, to the providers Turf runs for this
+  configuration. Once, in this directory:
 
   ```bash
   cd use-cases/datacenter/ansible-k3s
-  python3 -m venv .venv
-  .venv/bin/pip install -r requirements.txt
-  .venv/bin/ansible-galaxy collection install -r requirements.yml -p collections
+  mise trust && mise install && mise run setup
+  ```
+
+  The committed `mise.toml` pins Python, keeps a virtualenv in `.venv` and puts
+  it on `PATH`, and its `setup` task installs `requirements.txt` into the venv and
+  `requirements.yml`'s collections into `collections/`. Then name the account in
+  a `mise.local.toml` beside it, which git ignores:
+
+  ```toml
+  [env]
+  AWS_PROFILE = "my-profile"
   ```
 
   The `ansible/ansible` provider runs `ansible-playbook` from `PATH`, in this
-  directory, so this `ansible.cfg` and `collections/` are the ones it uses. Put
-  `.venv/bin` on the engine's `PATH`.
+  directory, so the venv's `ansible-playbook`, this `ansible.cfg` and
+  `collections/` are the ones it uses, and the venv's Python carries `netaddr`.
+  Skip `mise run setup` and the venv stays empty (Turf's evaluation of
+  `mise.toml` creates `.venv` if it is missing), so the apply fails with the
+  provider's own "ansible-playbook: not found".
+- **Without mise**, build the venv by hand (`python3 -m venv .venv`, then
+  `.venv/bin/pip install -r requirements.txt` and
+  `.venv/bin/ansible-galaxy collection install -r requirements.yml -p collections`),
+  and give the engine both in `~/.homebrew/services/turf.env`: `AWS_PROFILE`, and
+  a `PATH` with this directory's `.venv/bin` first. A `PATH` there replaces the
+  service's, so follow it with Homebrew's `bin` and the system directories. Then
+  `brew services restart turf`.
+- **Against a remote engine** (`TURF_RESTATE_URL`), the engine's image carries
+  mise and Python, and the configuration's trust is the engine's
+  `MISE_TRUSTED_CONFIG_PATHS`. The engine never installs anything, so run
+  `mise run setup` where the checkout is made, in the engine's own image so the
+  venv matches its architecture (an init container, or the job that makes the
+  checkout).
 - **`kubectl` is optional.** k3s-ansible copies a kubeconfig to the control node
   only when `kubectl` is installed there, and that step needs `netaddr` (pinned
   in `requirements.txt`). The example's own fetch does not depend on it.
-- **Turf** (`turf-engine` and `turf-driver`), `turf-engine` at `c1c61dd` or
-  later, the first to take `count` on a data source (`25527d0` was the first to
-  take `ignore_changes`). `ansible/ansible` is an action provider that serves
-  plugin protocol 5 only.
 - By default the security group admits only this machine's public address, as
   `checkip.amazonaws.com` reports it. Set `operator_cidr` in `terraform.tfvars`
   (see `terraform.tfvars.example`) if you run from behind a NAT whose egress
@@ -313,12 +338,12 @@ from the server.
 
 ## Usage
 
-With `turf-engine` running, started with the AWS credentials and `.venv/bin` on
-its `PATH`:
-
 ```bash
-turf-driver up -converge -auto-approve use-cases/datacenter/ansible-k3s
+turf -C use-cases/datacenter/ansible-k3s up
 ```
+
+Or from any MCP client: `init` the directory, `workspace_open`, then `up`, and
+approve each round's plan with `apply`.
 
 ## Verify
 
@@ -332,8 +357,9 @@ jq '.outputs | map_values(.value)' terraform.tfstate
 kubectl --kubeconfig .k3s/k3s.yaml --server "https://$(jq -r .outputs.server_public_ip.value terraform.tfstate):6443" \
   get nodes,turfs -A
 
-# The nodes as the server sees them, through Ansible.
-turf-driver invoke -auto-approve . module.k3s.action.ansible_playbook_run.status
+# The nodes as the server sees them, through Ansible: from an MCP client,
+#   invoke({ action_addr: "module.k3s.action.ansible_playbook_run.status" })
+# then approve its plan with apply.
 
 # Log in to the server yourself.
 $(jq -r .outputs.ssh.value terraform.tfstate)
@@ -344,11 +370,11 @@ The fetched kubeconfig names `127.0.0.1` as its server, hence the `--server`.
 ## Cleanup
 
 ```bash
-turf-driver down -auto-approve use-cases/datacenter/ansible-k3s
+turf -C use-cases/datacenter/ansible-k3s destroy
 rm -rf use-cases/datacenter/ansible-k3s/.k3s
 ```
 
-`down` deletes the cluster objects through the cluster's API before it deletes
+`destroy` deletes the cluster objects through the cluster's API before it deletes
 the hosts, so nothing is left in AWS or orphaned in state.
 
 ## Notes and known gaps
@@ -366,11 +392,12 @@ the hosts, so nothing is left in AWS or orphaned in state.
 - **`hashicorp/aws` is `~> 6.66`.** Turf installs from
   registry.opentofu.org, which publishes a release or so behind
   registry.terraform.io; a constraint it cannot match yet stalls the install.
-- **The root module names every provider**, including those reached only from
-  child modules (`tls`, `random`, `local`, `http`), because the root's
-  requirements are what get loaded before the walk. A module that uses
-  `ansible/ansible` names it in its own `required_providers` too, since it is
-  not a HashiCorp source.
+- **The root module names every provider**, including `tls`, `random` and
+  `local`, which only child modules use, because Turf once loaded only the
+  root's requirements before planning; `init` now installs child modules'
+  providers too. A module that uses `ansible/ansible` names it in its own
+  `required_providers` too, since it is not a HashiCorp source.
+  <!-- TODO(v1 re-run): confirm the root no longer needs tls, random and local, then drop them from providers.tf and this note -->
 - **k3s-ansible's own defaults** that this example overrides: `k3s_version` has
   no default and is used unguarded, so it is always set; the control node's
   kubeconfig merges into `~/.kube/config` at its default path, so the inventory

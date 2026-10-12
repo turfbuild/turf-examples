@@ -93,10 +93,9 @@ variable "cluster_endpoint" {
 # the module boundary: the caller passes the cluster's endpoint in, and this
 # resource turns it into something the release can point at.
 #
-# null_resource and not the built-in terraform_data, which would be the modern
-# spelling: Turf does not serve the built-in "terraform" provider, so a
-# terraform_data here fails the walk with "provider \"terraform\" is not a
-# required provider of this workspace".
+# null_resource, though the built-in terraform_data would be the modern
+# spelling and Turf serves the built-in "terraform" provider as well
+# (use-cases/datacenter/aicr-stack uses it).
 resource "null_resource" "cluster" {
   triggers = {
     endpoint = var.cluster_endpoint

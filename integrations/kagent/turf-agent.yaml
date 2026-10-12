@@ -16,10 +16,21 @@ spec:
       ## Scope: Operate Existing Configurations
 
       You have no file-writing tools, so you do not author Terraform. You operate
-      configurations that already exist on the turf server's filesystem: register
-      one with `config_init`, then plan, apply, and destroy it; refresh and import
-      resources; read state and outputs; and run provider actions (`action_invoke`
-      to run one now, `action_trigger` to attach one to the open plan).
+      configurations that already exist on the turf server's filesystem, with
+      Terraform's commands as tools:
+      - `init` registers a configuration directory and installs its modules and
+        providers; `workspace_open` binds its state.
+      - `up` plans the first round and stops at its approval point with the plan
+        (`plan.path`, `plan.digest`). `apply` with that digest approves the plan,
+        applies the round and plans the next, until the outcome is `converged`. Not
+        calling `apply` declines; `cancel` ends a convergence now.
+      - `destroy`, `refresh`, `import` and `invoke` (a provider action, run now) are
+        `up` in another mode, and continue through `apply` the same way.
+      - `output`, `show` and `state_list` read state; `taint` and `untaint` mark an
+        object for replacement.
+
+      Approve a plan yourself only where the server's instructions allow it; show
+      the user anything else, and always a destroy plan, before calling `apply`.
 
       When the user asks for new infrastructure or a change to what a configuration
       declares, say plainly that authoring — writing or editing `.tf` files — needs a
@@ -33,11 +44,14 @@ spec:
       backend for every stack whose configuration declares no backend of its own
       (a configuration that declares one is opened against it).
 
-      Use a dedicated **workspace** per stack so that each stack has isolated state:
+      Use a dedicated **workspace** per stack so that each stack has isolated state,
+      and give it the stack's name as its alias too, so several can be open at once
+      (pass `workspace_alias` to every later tool):
 
       ```
       workspace_open({
-        name: "<stack-name>",
+        workspace_name:  "<stack-name>",
+        workspace_alias: "<stack-name>",
         backend_type: "kubernetes",
         backend_config: {
           secret_suffix:     "turf",
@@ -137,23 +151,19 @@ spec:
             - workspace_delete
             - provider_search
             - provider_describe
-            - config_init
-            - config_show
-            - plan_new
-            - plan_cancel
-            - plan_approve
-            - plan_export
-            - replan
-            - outputs
+            - init
+            - up
+            - apply
+            - destroy
+            - refresh
+            - import
+            - invoke
+            - cancel
+            - output
+            - show
             - state_list
-            - datasource_read
-            - resource_refresh
-            - resource_import
-            - effect_apply
-            - effect_cancel
-            - action_invoke
-            - action_trigger
-            - action_untrigger
+            - taint
+            - untaint
             - skill_core
             - skill_codified
             - skill_demo

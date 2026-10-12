@@ -22,7 +22,7 @@ provider "kind" {}
 
 # Bound to the cluster's computed attributes, so the provider configuration is
 # unknown until the cluster is applied. That is the point of the example: every
-# release in bundle/ is unplannable on the first walk.
+# release in bundle/ is unplannable in the first round.
 provider "helm" {
   kubernetes = {
     host                   = kind_cluster.dc.endpoint

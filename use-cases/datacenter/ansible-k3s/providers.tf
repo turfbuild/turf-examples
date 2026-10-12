@@ -17,8 +17,11 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 3.2"
     }
-    # Reached only from the child modules. Named here because the root module's
-    # requirements are what get pre-loaded for the walk.
+    # tls, random and local are reached only from the child modules, and named
+    # here too because Turf once loaded only the root module's requirements
+    # before planning. http is the root's own (data.http.operator_ip).
+    # TODO(v1 re-run): init now installs child modules' providers; confirm, then
+    # drop tls, random and local.
     tls = {
       source  = "hashicorp/tls"
       version = "~> 4.4"

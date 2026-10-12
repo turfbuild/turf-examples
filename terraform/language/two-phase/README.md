@@ -33,7 +33,7 @@ the commit fails, the run stops rather than leaving downstream changes half-appl
   public provider. Swap `tfcoremock` for a real device provider and the `commit` action
   for that provider's real commit/publish action, and the structure is identical.
 - **Isn't:** a real device integration, and not a demonstration of Turf splitting the
-  stage and commit across separate convergence *phases*. For a genuine **cross-phase**
+  stage and commit across separate convergence *rounds*. For a genuine **cross-round**
   provider workflow — where a later step can't even be planned until an earlier one is
   applied, and Turf converges it automatically — see
   [`../../kubernetes/kind-crd`](../../kubernetes/kind-crd) (cluster → CRD → custom

@@ -4,6 +4,6 @@ terraform {
 
     # See the root versions.tf. Every module that declares a kubewait action
     # repeats the binding.
-    kubewait = { source = "turfbuild/kubewait", version = "~> 0.1" }
+    kubewait = { source = "registry.terraform.io/turfbuild/kubewait", version = "~> 0.1" }
   }
 }
