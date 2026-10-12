@@ -1,0 +1,9 @@
+[tools]
+python = "3.13"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.setup]
+run = ["pip install -r requirements.txt",
+       "ansible-galaxy collection install -r requirements.yml -p collections"]
