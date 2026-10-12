@@ -8,8 +8,8 @@
 # on the edge it guards, and teardown is the graph in reverse.
 #
 # This configuration is a target-state spec: it validates and its mocked tests
-# pass, but no engine runs it end to end today. README.md §Prerequisites says
-# exactly what is missing.
+# pass, but it has never run end to end. README.md §Prerequisites says what it
+# needs, and the one thing not yet verified.
 
 module "eks_cluster" {
   source = "./modules/eks-cluster"

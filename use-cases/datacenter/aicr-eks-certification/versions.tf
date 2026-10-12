@@ -12,9 +12,10 @@ terraform {
     http       = { source = "hashicorp/http", version = "~> 3.5" }
     tls        = { source = "hashicorp/tls", version = "~> 4.1" }
 
-    # kubewait_condition (kubewait-action.md). Not on the public registry yet:
-    # install it locally until it is (README.md §Validating and testing).
-    kubewait = { source = "turfbuild/kubewait", version = "~> 0.1" }
+    # kubewait_condition (kubewait-action.md). Published on registry.terraform.io
+    # only, so the source names that host: OpenTofu resolves an unqualified
+    # source against registry.opentofu.org, which does not carry it.
+    kubewait = { source = "registry.terraform.io/turfbuild/kubewait", version = "~> 0.1" }
   }
 
   # Every turf-examples configuration keeps state locally. Upstream keyed an S3

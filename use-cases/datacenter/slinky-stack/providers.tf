@@ -10,10 +10,13 @@ terraform {
     }
     # kubewait_condition: waits on the state of Kubernetes objects, attached to
     # lifecycle events. Named here as well as in the modules that use it,
-    # because the root module's requirements are what get pre-loaded for the
-    # walk. Not on a registry yet — see the README's Prerequisites.
+    # because the root configures it (provider "kubewait" below) and a
+    # non-HashiCorp source is named in every module that uses it. Published on
+    # registry.terraform.io only, so the source names that host: OpenTofu
+    # resolves an unqualified source against registry.opentofu.org, which does
+    # not carry it.
     kubewait = {
-      source  = "turfbuild/kubewait"
+      source  = "registry.terraform.io/turfbuild/kubewait"
       version = "~> 0.1"
     }
   }

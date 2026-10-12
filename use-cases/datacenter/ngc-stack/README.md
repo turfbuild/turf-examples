@@ -85,7 +85,7 @@ rule is the one that proves the webhook is live.)
 
 The `helm` provider is configured from the kind cluster's **computed** connection
 details, which do not exist until the cluster is applied. All four releases are
-therefore unplannable on the first walk. Vanilla OpenTofu needs two applies;
+therefore unplannable in the first round. Vanilla OpenTofu needs two applies;
 Turf defers them, applies the cluster, and re-plans against the now-known
 connection.
 
@@ -124,8 +124,9 @@ Three details in those modules are load-bearing and easy to get wrong:
   at nothing. A module cannot name a resource in its caller and
   `replace_triggered_by` only accepts same-module references, so the caller
   passes the endpoint in and the module turns it into something the release can
-  point at. (`null_resource` rather than the modern `terraform_data`: Turf does
-  not serve the built-in `terraform` provider.)
+  point at. (`null_resource` here, though Turf serves the built-in `terraform`
+  provider, so the modern `terraform_data` works too; [`../aicr-stack`](../aicr-stack/README.md)
+  uses it.)
 
 ## Resources Created
 
@@ -139,7 +140,8 @@ Nine addresses, nine pods, ~2.7 GB of images.
 ## Prerequisites
 
 - Docker, `kind`, and `kubectl` on your PATH.
-- The Turf CLI, or any MCP client pointed at `turf-mcp-server`.
+- The Turf CLI, or any MCP client pointed at `turf-mcp-server` (see
+  [Running the examples](../../../README.md#running-the-examples)).
 - **No NGC account, no API key, no cloud credentials.**
 - If you run **more than one container engine** (OrbStack *and* Docker Desktop,
   say), pin the one you mean before starting — `kind` silently builds into
@@ -275,23 +277,25 @@ NGC account, and they are deliberately not created here.
 The GPU Operator's `ClusterPolicy` will switch off `NoGPUNodes` on its own the
 moment a labelled node joins; it is already watching.
 
-## Notes on Turf's Restate engine
+## Notes on how Turf runs it
 
-This example runs on both Turf engines. One constraint on the HCL is worth
-knowing if you write your own, and one behaviour is worth watching for, because
-it is what lets the stack converge in two rounds rather than failing in one.
+One constraint on the HCL is worth knowing if you write your own, and one
+behaviour is worth watching for, because it is what lets the stack converge in
+two rounds rather than failing in one.
 
 - **Modules must live under the configuration directory.** `source =
-  "../modules/cert-manager"` is refused — *"this engine walks the directory a
-  user names and what lives under it"* — which is why `modules/` sits inside
-  `ngc-stack/` rather than being shared across the `use-cases/datacenter/` tree.
+  "../modules/cert-manager"` is refused (*"… outside the configuration"*): Turf
+  plans the directory a user names and what lives under it, which is why
+  `modules/` sits inside `ngc-stack/` rather than being shared across the
+  `use-cases/datacenter/` tree.
 - **A deferral travels over `depends_on`.** `module.nim_operator` names two
-  modules it takes no value from. Those modules are themselves unplannable on
-  the first walk, because the `helm` provider is configured from the cluster's
+  modules it takes no value from. Those modules are themselves unplannable in
+  the first round, because the `helm` provider is configured from the cluster's
   computed endpoint. So the NIM module is ordered after something that does not
-  exist yet *and* reads nothing from it — and the engine defers the whole
-  subtree on that basis alone:
+  exist yet *and* reads nothing from it — and Turf defers the whole subtree on
+  that basis alone:
 
+  <!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
   ```
   plan for phase p-f168bc75 (8 of 8 address(es) change):
     create    kind_cluster.dc
@@ -305,7 +309,7 @@ it is what lets the stack converge in two rounds rather than failing in one.
   that module is planned this round, not even its `null_resource`, which has
   everything it needs. `absent_prereq` is the engine's word for *waiting on
   something that is itself waiting*. Round two plans the subtree for real and
-  applies all four releases in one phase.
+  applies all four releases in one round.
 
 The ordering is visible in the cluster while it happens. cert-manager,
 gpu-operator and external-dns install in parallel — ExternalDNS names no

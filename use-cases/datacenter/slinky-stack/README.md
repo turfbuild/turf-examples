@@ -14,9 +14,10 @@ plane, is replaced by [KAI Scheduler](https://github.com/kai-scheduler/KAI-Sched
 the scheduler inside Run:ai that NVIDIA open-sourced.
 
 ```bash
-turf-driver up -converge -auto-approve use-cases/datacenter/slinky-stack
+turf -C use-cases/datacenter/slinky-stack up
 ```
 
+(or from any MCP client; see [Running the examples](../../../README.md#running-the-examples)).
 Two rounds, 12 to 15 minutes from nothing on a cold image cache, and at the end
 a Slurm cluster that answers `srun`:
 
@@ -136,20 +137,24 @@ Everything up to that line is what a GPU cluster runs: the GRES configuration
 DCGM job-mapping directory. Everything after it needs silicon.
 
 `gpu_nodes_up` is the same question asked of Slurm, as a wait triggered by
-nothing. Invoke it when you want to know:
+nothing. Invoke it when you want to know, as Terraform's `apply -invoke` would:
 
 ```
-$ turf-driver invoke -auto-approve use-cases/datacenter/slinky-stack \
-    module.slurm.action.kubewait_condition.gpu_nodes_up
+invoke({ action_addr: "module.slurm.action.kubewait_condition.gpu_nodes_up" })
+apply({ convergence_id: "<from invoke>", plan_digest: "<plan.digest>" })
+```
+
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
+```
 ...
 kubewait_condition timed out: No verdict on slinky.slurm.net/v1beta1 NodeSet settled within timeout (1m).
 pending: slurm/slurm-worker-gpu: expression false · 1m elapsed, 0s left
   slurm/slurm-worker-gpu status.replicas=1 status.unavailableReplicas=1 status.slurmIdle=<none>
 ```
 
-On a cluster with GPUs it passes as soon as the GPU nodes register. A failed
-invoke leaves its phase holding the workspace, by design; `turf-driver cancel
-use-cases/datacenter/slinky-stack` releases it.
+On a cluster with GPUs it passes as soon as the GPU nodes register. On this one
+the invocation fails, and the convergence ends `failed` with the provider's
+words; nothing is retried.
 
 ## The waits
 
@@ -162,6 +167,7 @@ and queue controller. The queue controller serves a validating webhook for
 `Queue` objects that fails closed. With helm's wait alone, this happened
 (measured):
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 effect module.kai_scheduler[0].helm_release.queues:create failed: apply errors: Helm release error:
   * Internal error occurred: failed calling webhook "queue-validation.kai.scheduler": failed to call
@@ -184,6 +190,7 @@ action "kubewait_condition" "kai_ready" {
 }
 ```
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 invoke    module.kai_scheduler[0].action.kubewait_condition.kai_ready  (after_create …): invoked
     > pending: kai-config: Ready=False (not_ready) · 0s elapsed, 10m left
@@ -222,6 +229,7 @@ It runs `after_create` with `on_failure = taint` (a cluster that never came up
 is reinstalled by the next `up` rather than left in state looking finished), and
 `after_update` without.
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 invoke    module.slurm.action.kubewait_condition.cpu_nodes_up  (after_create of module.slurm.helm_release.this): invoked
     > pending: slurm/slurm-worker-slinky: expression false · 0s elapsed, 15m left
@@ -255,8 +263,9 @@ off between tries. It cost 36 seconds here and two minutes in an earlier run.
 and returns at once; it is the operator that then removes the pods. The slurm
 release's `after_destroy` drain holds its destroy until the namespace has no
 pods, and the operator's module depends on this one, so the operator outlives
-everything it has to clean up (measured, `turf-driver down`):
+everything it has to clean up (measured on `destroy`):
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
   invoke    module.slurm.action.kubewait_condition.slurm_pods_drained  (after_destroy of module.slurm.helm_release.this): invoked
       > pending: 5 still match: slurm/slurm-controller-0; slurm/slurm-login-slinky-…; slurm/slurm-restapi-…;
@@ -271,13 +280,14 @@ cluster.
 
 ## What it does when you run it
 
-Measured from empty on Turf (`turf-engine` `e71ee93`, `turf-driver up
--converge`), kind on Docker Desktop, 2026-10-01.
+Measured from empty on Turf at engine commit `e71ee93`, through the engine's
+development driver before the v1 tools, with kind on Docker Desktop, 2026-10-01.
 
 **Round 1** creates the cluster and the containment anchors. Every release defers,
 because the `helm` provider is configured from the cluster's computed endpoint;
 `slurm_operator` and `slurm` defer whole, on `depends_on` alone:
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 plan for phase p-8c08a794 (15 of 15 address(es) change):
   create    kind_cluster.dc
@@ -291,6 +301,7 @@ plan for phase p-8c08a794 (15 of 15 address(es) change):
 **Round 2** plans the remaining nine creates and both hooks at once (`no_op`
 rows left out):
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 plan for phase p-113c7640 (9 of 13 address(es) change):
   actions: 2 invocation(s) planned, 0 deferred
@@ -310,6 +321,7 @@ phase p-113c7640: applied (applied 9, failed 0, cancelled 0, invoked 2)
 
 One command, from empty:
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 round 1 stages: reconcile 563ms | plan 16.145s | approve 0s | apply 2m22.154s | drain 996ms  | total 2m39.706s
 round 2 stages: reconcile 813ms | plan 36.919s | approve 0s | apply 11m9.818s | drain 7.328s | total 11m49.059s
@@ -325,10 +337,9 @@ address(es) change`, invokes nothing, and takes 49 seconds.
 
 Change something a Run:ai administrator would: the project's GPU quota.
 
-```bash
-turf-driver up -converge -auto-approve -var queue_gpu_quota=2 use-cases/datacenter/slinky-stack
-```
+Run `up` again with `queue_gpu_quota = 2` (from an MCP client, `up({ var: { queue_gpu_quota: 2 } })`).
 
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
 plan for phase p-f32b7ea0 (1 of 13 address(es) change):
   update    module.kai_scheduler[0].helm_release.queues
@@ -372,29 +383,23 @@ Three edges into `module.slurm`, three kinds:
 - Docker, `kind` and `kubectl`. If you run more than one container engine, pin
   the one you mean (`export DOCKER_CONTEXT=…`); kind builds into whichever is
   current.
-- **Turf**: `turf-engine` and `turf-driver`, and a `restate-server` (`make
-  restate-dev` in the engine's checkout).
-- **`turfbuild/kubewait` 0.1**, which is on no registry yet. Build it and lay it
-  out where the engine looks:
-
-  ```bash
-  make -C ../terraform-provider-kubewait mirror     # → .mirror/registry.terraform.io/…
-  mkdir -p ~/.cache/turf-mirror/registry.opentofu.org/turfbuild
-  cp -R ../terraform-provider-kubewait/.mirror/registry.terraform.io/turfbuild/kubewait \
-        ~/.cache/turf-mirror/registry.opentofu.org/turfbuild/
-  TF_PROVIDER_MIRROR_DIR=~/.cache/turf-mirror bin/turf-engine    # in the engine's checkout
-  ```
-
-  The engine resolves an unqualified `turfbuild/kubewait` against
-  registry.opentofu.org, so the mirror entry goes under that hostname.
+- **Turf**, installed and running as
+  [Running the examples](../../../README.md#running-the-examples) describes.
+- **`turfbuild/kubewait` 0.1**, which `init` installs from registry.terraform.io.
+  It is published there only, so every `source` here names that host
+  (`registry.terraform.io/turfbuild/kubewait`): OpenTofu resolves an unqualified
+  source against registry.opentofu.org, which does not carry it.
 - No NGC account, no Run:ai tenant, no cloud credentials. About 3.5 GB of
   images across the three kind nodes.
 
 ## Usage
 
 ```bash
-turf-driver up -converge -auto-approve use-cases/datacenter/slinky-stack
+turf -C use-cases/datacenter/slinky-stack up
 ```
+
+Or from any MCP client: `init` the directory, `workspace_open`, then `up`, and
+approve each round's plan with `apply`.
 
 ## Verify
 
@@ -426,7 +431,7 @@ ssh -p 2222 root@127.0.0.1
 ## Cleanup
 
 ```bash
-turf-driver down -auto-approve use-cases/datacenter/slinky-stack
+turf -C use-cases/datacenter/slinky-stack destroy
 ```
 
 ## Pointing this at real GPUs, or a real Run:ai
@@ -454,12 +459,13 @@ turf-driver down -auto-approve use-cases/datacenter/slinky-stack
 
 ## Notes, measured
 
-Everything below was observed on `turf-engine` `e71ee93` with `turf-driver`,
-kind `v1.36.1` on Docker Desktop, on 2026-10-01.
+Everything below was observed on Turf at engine commit `e71ee93`, through the
+engine's development driver before the v1 tools, with kind `v1.36.1` on Docker
+Desktop, on 2026-10-01.
 
 - **No `depends_on` on a module output.** The first version ordered
   `dcgm_job_mapping_dir` and the KAI `queue` output after their releases with
-  `depends_on`. The engine refuses that outright, before planning anything:
+  `depends_on`. Turf refuses that outright, before planning anything:
   *"this engine milestone does not walk depends_on on outputs (found:
   [dcgm_job_mapping_dir]); the construct is refused rather than skipped"*. Both
   outputs now read their value back from the release itself
@@ -474,13 +480,12 @@ kind `v1.36.1` on Docker Desktop, on 2026-10-01.
   so — *"Helm release … was created but has a failed status … run Terraform
   again."* The next install of the same name meets the leftover; `helm
   uninstall` it, or replace the cluster.
-- **A failed phase holds the workspace.** A create that fails, an invoke that
-  times out, or a plan staled by an edit leaves its phase open (*"one phase at a
-  time — drive it to a verdict, or `turf-driver cancel` it"*). Terraform just
-  exits; here, `turf-driver cancel use-cases/datacenter/slinky-stack` releases
-  it. Editing a `.tf` under the directory while a round is planning stales that
-  round's plan (*"plan is stale: the configuration changed after it was
-  planned"*): nothing applies, and the next `up` re-plans.
+- **A failure ends the convergence.** A create that fails, an invoke that times
+  out, or a plan staled by an edit ends its round, and the convergence with it,
+  as `failed`: nothing is retried, and the next `up` plans again from what was
+  applied. Editing a `.tf` under the directory while a round is planning stales
+  that round's plan (*"plan is stale: the configuration changed after it was
+  planned"*): nothing applies.
 - **The CPU wait's first minutes are the cluster, not the wait.** See
   [What it does when you run it](#what-it-does-when-you-run-it). Slinky's NodeSet
   controller is created alongside the Controller, fails every reconcile until

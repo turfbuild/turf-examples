@@ -44,7 +44,7 @@ resource "aws_vpc" "main" {
   tags = { Name = "${local.prefix}-vpc" }
 
   # #8 (upstream): the account precondition that lived here is now the root
-  # provider's `allowed_account_ids`. Same check, and neither Turf engine models
+  # provider's `allowed_account_ids`. Same check, and Turf does not take
   # resource preconditions.
 }
 
