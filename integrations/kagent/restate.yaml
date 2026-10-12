@@ -1,0 +1,70 @@
+# restate-server, the durable-execution server Turf's engine runs on: Restate's
+# own image, one node, its data on a PersistentVolume. turf-mcp-server talks to
+# its ingress (8080); turf-engine registers with its admin API (9070).
+#
+# The engine needs restate-server 1.7.7 or later with the three experimental
+# features below, and checks both at startup. 1.7.13 is the version Turf is
+# tested against. The partition count is fixed when the node first provisions.
+apiVersion: v1
+kind: Service
+metadata:
+  name: restate
+  namespace: kagent
+spec:
+  selector:
+    app: restate
+  ports:
+    - name: ingress
+      port: 8080
+    - name: admin
+      port: 9070
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: restate
+  namespace: kagent
+spec:
+  serviceName: restate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restate
+  template:
+    metadata:
+      labels:
+        app: restate
+    spec:
+      containers:
+        - name: restate
+          image: docker.io/restatedev/restate:1.7.13
+          env:
+            - name: RESTATE_BASE_DIR
+              value: /restate-data
+            - name: RESTATE_EXPERIMENTAL_ENABLE_PROTOCOL_V7
+              value: "true"
+            - name: RESTATE_EXPERIMENTAL_ENABLE_VQUEUES
+              value: "true"
+            - name: RESTATE_EXPERIMENTAL_ENABLE_SCOPED_VIRTUAL_OBJECTS
+              value: "true"
+            - name: RESTATE_DEFAULT_NUM_PARTITIONS
+              value: "8"
+          ports:
+            - name: ingress
+              containerPort: 8080
+            - name: admin
+              containerPort: 9070
+            - name: node
+              containerPort: 5122
+          volumeMounts:
+            - name: restate-data
+              mountPath: /restate-data
+  volumeClaimTemplates:
+    - metadata:
+        name: restate-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

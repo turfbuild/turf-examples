@@ -9,20 +9,27 @@ spec:
     targetPort: 3000
     path: /mcp
   deployment:
-    image: turf-mcp-server:local
-    imagePullPolicy: Never
+    # The same image as turf-engine.yaml: keep the two tags equal.
+    image: ghcr.io/turfbuild/turf-mcp-server:v0.18.0
     cmd: /docker-entrypoint.sh
     args:
       - --transport
       - http
       - --addr
       - :3000
-      - --data-dir
-      - /data
       - --tmp-dir
       - /data/providers
+      - --plugin-cache-dir
+      - /data/plugins
+    # The engine this server drives: restate-server's ingress (restate.yaml),
+    # with turf-engine (turf-engine.yaml) registered behind it.
+    env:
+      TURF_RESTATE_URL: http://restate.kagent.svc:8080
     secretRefs:
       - name: kagent-azure
+    # turf-data is shared with turf-engine and mounted at the same path in
+    # both: the engine reads each configuration directory itself, so the
+    # configurations this server operates live under /data.
     volumes:
       - name: data
         persistentVolumeClaim:

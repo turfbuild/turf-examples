@@ -1,0 +1,64 @@
+# turf-engine: Turf's planning and execution, served to restate-server
+# (restate.yaml) and registered with it at startup. It runs from the server's
+# image with its own command, and it is where provider plugins run, so the
+# providers' credentials go here (the kagent-azure Secret's ARM_* variables).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: turf-engine
+  namespace: kagent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: turf-engine
+  namespace: kagent
+spec:
+  selector:
+    app: turf-engine
+  ports:
+    - name: restate
+      port: 9080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: turf-engine
+  namespace: kagent
+spec:
+  # One engine per restate-server: restate routes every new invocation to the
+  # deployment registered last.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: turf-engine
+  template:
+    metadata:
+      labels:
+        app: turf-engine
+    spec:
+      serviceAccountName: turf-engine
+      containers:
+        - name: turf-engine
+          # The same image as turf-mcpserver.yaml: keep the two tags equal.
+          image: ghcr.io/turfbuild/turf-mcp-server:v0.18.0
+          command: ["/turf-engine"]
+          args:
+            - --addr=0.0.0.0:9080
+            - --advertise=http://turf-engine.kagent.svc:9080
+            - --admin-addr=http://restate.kagent.svc:9070
+            - --plugin-cache-dir=/data/plugins
+          envFrom:
+            - secretRef:
+                name: kagent-azure
+                optional: true
+          ports:
+            - name: restate
+              containerPort: 9080
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: turf-data
