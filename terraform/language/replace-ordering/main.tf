@@ -1,7 +1,7 @@
 # A dependency chain: random_pet.server references both random_integer.port and
 # random_password.secret through its keepers. The keeper references make `server`
-# depend on `port` and `secret`, so the effect compiler must order any
-# replacement of all three correctly.
+# depend on `port` and `secret`, so the apply must order any replacement of all
+# three correctly.
 resource "random_integer" "port" {
   min = 10000
   max = 20000

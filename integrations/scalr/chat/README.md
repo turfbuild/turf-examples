@@ -8,8 +8,8 @@ evaluates policy through an **OPA MCP server**, all inside the agent loop.
 A walkthrough of a real run, with screenshots: **[turf.build/demo/scalr](https://turf.build/demo/scalr/)**
 
 This directory ships **no configuration at all** — only this README and `.turf/`
-(turf.yaml, the `scalr` skill, the banner). On your first prompt the agent `config_init`s
-this directory and writes an ordinary Terraform configuration into it with its file tools:
+(turf.yaml, the `scalr` skill, the banner). On your first prompt the agent registers
+this directory with `init` and writes an ordinary Terraform configuration into it with its file tools:
 a `backend.tf` holding a `remote` backend bound to the `turf-scalr-chat` workspace
 `../setup` created — a *state-storage-only* remote workspace, so Turf still plans/applies
 locally while Scalr holds the state — then a `main.tf` with the `aws` provider and the VPC
@@ -24,7 +24,7 @@ sees three tool namespaces at once:
 
 | Prefix | Server | Role |
 |--------|--------|------|
-| `turf_*`  | built-in turf-mcp-server | plan/apply engine (incl. `turf_plan_export`) |
+| `turf_*`  | built-in turf-mcp-server | plan and apply (`turf_up` vends each plan as a document at `plan.path`; `turf_apply` approves it) |
 | `scalr_*` | `scalr/mcp-server` (docker) | read the Scalr API — variables, modules, policy |
 | `opa_*`   | `orygn/opa-mcp` (docker/npx) | evaluate the plan against rego |
 
@@ -35,9 +35,10 @@ The same file also carries a `branding:` section, giving this directory a Scalr 
 voice: the `SCALR` banner (`.turf/scalr-banner.txt`), the `surf` theme, a Scalr welcome,
 and standing instructions to treat policy as a pre-approval gate. Because no configuration
 is checked in, those `branding.additional_instructions` are also where the session is told
-to `config_init` this directory, write a `remote` backend for the `turf-scalr-chat`
-workspace (state-storage-only) into `backend.tf`, write `main.tf` from the request, and only
-then open it (the open loads the providers `main.tf` names) — never a local backend.
+to `init` this directory, write a `remote` backend for the `turf-scalr-chat`
+workspace (state-storage-only) into `backend.tf`, write `main.tf` from the request, re-run
+`init` to install the module and providers `main.tf` names, and only then open the
+workspace — never a local backend.
 Branding is look and voice only — turf is not renamed (the binary, status bar, and agent
 badge still say `turf`), the tool namespace stays `turf_*`, and no approval gate is relaxed.
 Your own `/theme` pick still overrides the branded default.
@@ -86,7 +87,7 @@ Paste this prompt:
 > provider for it, and add `<module_source>` (`~> 5.0`) as `vpc` — a minimal VPC
 > named `turf-demo` with a `Name` tag only. Plan it. Before approving, ask Scalr which
 > policy group governs this workspace's environment, read each policy's rego from the
-> repo it points at, evaluate the exported plan with OPA, and gate approval on each
+> repo it points at, evaluate the plan document with OPA, and gate approval on each
 > policy's enforced level. Don't apply.
 
 The module doesn't inject an `Environment` tag, and `require_environment_tag` is
@@ -94,8 +95,8 @@ The module doesn't inject an `Environment` tag, and `require_environment_tag` is
 
 ### Prompt 2 — remedy with the module's tag
 
-> Add `Environment = "dev"` to the vpc module's `tags`, replan, re-export, and re-check
-> the policy. If `deny` is empty, show me the clean gate. Still don't apply.
+> Add `Environment = "dev"` to the vpc module's `tags`, plan again, and re-check the
+> policy against the new plan. If `deny` is empty, show me the clean gate. Still don't apply.
 
 One `tags` input, propagated by the module's `merge(var.tags, …)`, fixes all four
 resources; OPA returns an empty `deny` and the gate clears — governance caught at the

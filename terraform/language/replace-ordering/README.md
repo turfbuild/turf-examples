@@ -1,8 +1,8 @@
 # Replace & teardown ordering
 
 A minimal, credential-free example (the `random` provider only) that demonstrates
-how Turf's effect compiler orders a **replacement** of a dependent and its
-dependencies — matching Terraform/OpenTofu semantics.
+how Turf orders a **replacement** of a dependent and its dependencies — matching
+Terraform/OpenTofu semantics.
 
 `random_pet.server` references `random_integer.port` and `random_password.secret`
 through its `keepers`, so `server` **depends on** both. When all three are
@@ -17,22 +17,23 @@ Create the three resources:
 turf -C terraform/language/replace-ordering up
 ```
 
-Then force-replace all three and inspect the compiled DAG via the MCP tools:
+Then force-replace all three through the MCP tools, and read the order from the round's
+plan document and from the apply:
 
 ```text
-config_init({ path: "terraform/language/replace-ordering" })
-# workspace_open (the walk configures each provider from the configuration), then:
-plan_new({ replace: ["random_integer.port", "random_password.secret", "random_pet.server"] })
-# plan_new's initial walk plans the whole tree in the same call
-plan_approve({})
-# read turf://workspaces/default/phases/<id>/execution?state=all
+init({ path: "terraform/language/replace-ordering" })
+workspace_open({})
+up({ replace: ["random_integer.port", "random_password.secret", "random_pet.server"] })
+# → awaiting_approval: plan.path is the round's plan, as `tofu show -json` prints it
+apply({ convergence_id: "<from up>", plan_digest: "<plan.digest>" })
 ```
 
 ## Scenario A — delete-then-create (the default config)
 
 With no `lifecycle` block every replacement is **delete-then-create** (`∓`). The
-compiled execution:
+execution order:
 
+<!-- TODO(v1 re-run): re-derive this from a real v1 run: the plan document at plan.path (each replace's action order and create_before_destroy) and the round's results -->
 ```
 ∓/random_pet.server/delete        deps: []                          ← ready (leads)
 ∓/random_integer.port/delete      deps: [server/delete]             ← old port waits on old server
@@ -56,12 +57,13 @@ down before its dependencies.
 
 Set `create_before_destroy = true` on `server` only. `server` is now CBD (`±`),
 but `port`/`secret` are still plain in config. Turf applies Terraform's
-**infectious-CBD** rule at seal: a CBD dependent forces its replaced dependencies
-to CBD too, otherwise the mixed pair would form a destroy-order cycle
+**infectious-CBD** rule: a CBD dependent forces its replaced dependencies to CBD
+too, otherwise the mixed pair would form a destroy-order cycle
 (`port.create → port.delete → server.delete → server.create → port.create`).
 
-All three compile as `±`, and the new objects lead:
+All three apply as `±`, and the new objects lead:
 
+<!-- TODO(v1 re-run): re-derive this from a real v1 run: the plan document at plan.path (each replace's action order and create_before_destroy) and the round's results -->
 ```
 ±/random_integer.port/create     deps: []                          ← ready (new before old)
 ±/random_password.secret/create  deps: []                          ← ready
@@ -80,9 +82,10 @@ Apply order:
 
 ### Note: where the CBD flip happens
 
-Turf finalizes the forced-CBD ordering **at seal** (`plan_approve`), not during
-the draft walk (`plan_new` / `replan`). So the walk-summary projection on the
-*draft* shows `port`/`secret` as plain delete-then-create; the forced `±` ordering
-appears once the phase is approved and compiled. Terraform bakes the same flip
-into the plan during graph construction (its plan is atomic, so it has no
-equivalent intermediate view). The *sealed* plan and the execution agree.
+<!-- TODO(v1 re-run): confirm against plan.path whether the vended plan document already shows port/secret as create-before-destroy, and rewrite this note to match -->
+Turf finalized the forced-CBD ordering when the plan was approved, not when it was
+first planned, so the plan shown before approval listed `port`/`secret` as plain
+delete-then-create and the forced `±` ordering appeared only once the round was
+approved. Terraform bakes the same flip into the plan during graph construction
+(its plan is atomic, so it has no equivalent intermediate view). The approved plan
+and the execution agree.

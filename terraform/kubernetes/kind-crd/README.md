@@ -21,7 +21,7 @@ reverse order.
 
 ## What This Demonstrates
 
-This is the clearest showcase of **Turf's cross-phase convergence**. Three things must
+This is the clearest showcase of **Turf's convergence across rounds**. Three things must
 happen in order, and each depends on the previous one existing:
 
 1. The **cluster** is created — its API endpoint and certificates are computed.

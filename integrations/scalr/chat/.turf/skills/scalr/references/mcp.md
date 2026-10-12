@@ -3,10 +3,10 @@
 The turf agent connects to two external MCP servers (wired in `.turf/turf.yaml` under
 `mcps:`): **`scalr`** (`scalr/mcp-server`, reads the Scalr API) and **`opa`**
 (`orygn/opa-mcp`, evaluates rego). Their tools are prefixed `scalr_*` and `opa_*`;
-Turf's own engine is `turf_*`. Export `SCALR_API_TOKEN` and `SCALR_API_URL` before
+Turf's own tools are `turf_*`. Export `SCALR_API_TOKEN` and `SCALR_API_URL` before
 launching turf so the Scalr server authenticates.
 
-These sequences are verified against the live account — use them verbatim. Note the
+The Scalr and OPA calls below are verified against the live account — use them verbatim. Note the
 Scalr list tools filter by **ID**, not name: resolve a name to its ID first.
 
 ## Playbook 1 — pull a variable, feed a module
@@ -32,12 +32,10 @@ Scalr running the plan.
    as an input — with a comment naming the Scalr variable it came from. Write the module's
    provider (e.g. a `provider "aws"` block, plus its `required_providers` entry) with the
    same region — provider creds come from the **local** environment, since Scalr isn't
-   executing this run. Re-run `turf_config_init` to install the new module (it is turf's
-   `tofu init`).
-4. `turf_plan_new` (or `turf_replan`, if a plan is already open) and review — the planned
-   module inputs carry the Scalr-sourced value. If the workspace was opened before the
-   provider block existed, `turf_workspace_close` and `turf_workspace_open` first: the open
-   loads only what the configuration required at that moment.
+   executing this run. Re-run `turf_init` to install the new module and its provider (it
+   is Turf's `tofu init`).
+4. `turf_up` and review — the planned module inputs carry the Scalr-sourced value. A
+   later `turf_up`, after another edit, supersedes a plan still waiting for approval.
 
 ## Playbook 2 — discover the Scalr policy group, enforce it locally
 
@@ -77,8 +75,9 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    policies sit in otherwise fails the same way. A `chat/policies` symlink does not help —
    the file tools resolve symlinks on both sides of the check. (No local checkout? Fetch
    the file from the repo over the network — creds permitting.)
-3. **Export the plan.** `turf_plan_export` → the standard `tofu show -json` document
-   (`resource_changes[].change.after`, …).
+3. **Read the plan.** `turf_up` stops at the approval point with the plan as a document
+   on disk, at `plan.path`: the standard `tofu show -json` document
+   (`resource_changes[].change.after`, …). Read the file with your file tools.
 4. **Evaluate** each policy against the plan. **Pass BOTH the rego and the plan
    inline** — the rego as `source`, the plan as `input` — never the file-path
    variants (`paths`/`inputPath`). The OPA server runs in a container and cannot read
@@ -88,14 +87,14 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    opa_rego_eval {
      "query": "data.terraform.deny",
      "source": "<the rego bytes from step 2>",
-     "input": { "tfplan": <the plan JSON from turf_plan_export> }
+     "input": { "tfplan": <the plan JSON read from plan.path> }
    }
    ```
    The `input` MUST wrap the plan under `tfplan` — a bare plan silently yields no
    violations (a false pass). Result shape:
    `{ "ok": true, "data": { "result": [ { "expressions": [ { "value": <deny array> } ] } ] } }`;
    the `deny` strings are that `value`.
-5. **Gate on `enforced-level`** — refuse by simply **not calling `turf_plan_approve`**:
+5. **Gate on `enforced-level`** — refuse by simply **not calling `turf_apply`**:
 
    | `enforced-level` | `deny` non-empty → |
    |---|---|
@@ -103,7 +102,7 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    | `soft-mandatory` | **Block, overridable.** Do not approve unless the user explicitly overrides via `user_prompt`. |
    | `advisory` | **Warn.** Surface the reasons; may proceed. |
 
-   Approve (`turf_plan_approve`) only when every enabled policy passes, or an override is
+   Approve (`turf_apply` with the plan's `plan_digest`) only when every enabled policy passes, or an override is
    granted for a soft/advisory violation. An empty `deny` across all policies is a clean
    pass.
 

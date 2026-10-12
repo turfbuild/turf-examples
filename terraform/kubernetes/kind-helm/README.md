@@ -8,7 +8,7 @@ install a Helm chart onto it — entirely locally, no cloud account or credentia
 The Helm provider is configured from the kind cluster's **computed** connection
 details (`endpoint`, client certs). Those values don't exist until the cluster is
 created, so the `helm_release` can't be planned up front. Turf converges it in a
-single run: it defers the release to a later phase, applies the cluster, then
+single run: it defers the release to a later round, applies the cluster, then
 re-plans the release against the now-known connection.
 
 ## Replacing the cluster

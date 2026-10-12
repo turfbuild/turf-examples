@@ -20,9 +20,10 @@ backend "kubernetes" {
 - **Locking** uses a Coordination Lease alongside it, so concurrent runs can't
   clobber each other.
 - **Auth is out-of-band.** Backend blocks can't reference HCL variables, so the
-  backend authenticates from the environment — `KUBE_CONFIG_PATH`,
-  `KUBE_IN_CLUSTER_CONFIG`, `KUBE_CONFIG_PATHS`, etc. — or from
-  `tofu init -backend-config=...` flags. This is independent of how the
+  backend authenticates from the session's environment (the shell you start the
+  Turf CLI or MCP client from) — `KUBE_CONFIG_PATH`, `KUBE_IN_CLUSTER_CONFIG`,
+  `KUBE_CONFIG_PATHS`, etc. — or from `workspace_open`'s `backend_config`, Turf's
+  `tofu init -backend-config=...`. This is independent of how the
   `kubernetes` *provider* authenticates (which does use variables, here
   `kubeconfig_path` / `kubeconfig_context`).
 
@@ -50,8 +51,14 @@ turf -C integrations/kubernetes-backend up
 ```bash
 kubectl -n turf-state get secret,lease
 # secret/tfstate-default-demo   … the state
-# lease/lock-tfstate-default-demo … the lock (held only during a run)
+# lease/lock-tfstate-default-demo … the lock
 ```
+
+The lock is held while a session follows a convergence, including one paused at its
+approval point, as `tofu apply` holds it at its prompt. It is released when the
+convergence ends, or when the session lets go of it: `workspace_close`, the server
+exiting, or a pause longer than a day. The convergence itself waits in the engine,
+and the next `apply` takes the lock again.
 
 ## Cleanup
 
@@ -68,8 +75,9 @@ kubectl delete namespace turf-state
 
 ## Running Turf in-cluster
 
-To run Turf *inside* the cluster (a pod using its ServiceAccount token for both
-backend and provider auth), you need a Role granting access to `secrets` and
-`leases`. That operational setup — ServiceAccount, RBAC, and deployment manifests —
-lives in [`integrations/kagent/`](../kagent/) (see `turf-rbac.yaml`), which deploys
-the Turf MCP server in-cluster via the kagent operator.
+To run Turf *inside* the cluster, the MCP server's pod uses its ServiceAccount token
+for the backend, which needs a Role granting access to `secrets` and `leases`, and
+the engine's pod uses its own for the providers it runs. That operational setup —
+ServiceAccounts, RBAC, and deployment manifests — lives in
+[`integrations/kagent/`](../kagent/) (see `turf-rbac.yaml`), which deploys the Turf
+MCP server, its engine and restate-server in-cluster via the kagent operator.

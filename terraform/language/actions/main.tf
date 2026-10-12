@@ -4,7 +4,8 @@
 # writes no state). A resource's `lifecycle.action_trigger` invokes one or more
 # actions around a lifecycle event (before_create, after_create, before_update,
 # after_update, before_destroy, after_destroy). Turf runs each triggered action
-# as a gating "invoke" effect, ordered relative to the resource operation.
+# as an action invocation that gates what follows it, ordered relative to the
+# resource operation.
 
 resource "tfcoremock_simple_resource" "web" {
   id     = var.resource_id
