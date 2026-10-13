@@ -1,11 +1,5 @@
 # Nodes in maintenance, declared
 
-> **Draft.** This runs on Terraform 1.16.2, and everything below was measured
-> that way on a kind cluster. Turf's engine cannot run it yet: it rejects one
-> line, a trigger that picks each node's action by `each.key`. With that key
-> written as a constant, the rest of the configuration runs on the engine. See
-> [On Turf](#on-turf).
-
 Which nodes are out of service is a set of names. Add a node to it, and it is
 cordoned, drained, and confirmed empty. Take it out, and it is uncordoned.
 
@@ -216,28 +210,36 @@ uncordon, a destroy looks like a retry, because the node is still in
 
 ## On Turf
 
-Measured with `turf-engine` (`v0.3.0-16-ge71ee93`, the same Go code as `main`
-at `c2ed51c`), driven by `turf-driver up --converge`:
+The configuration runs on Turf unchanged. Measured with `turf-engine` at
+`d67b1db` plus the change that admits keyed action references in a trigger
+(opentofu fork `v1.12.6-turf.10`), driven by `turf-driver up --converge`, on a
+fresh cluster of the same shape. Each story above gave the same plan and the
+same actions:
 
-- **The configuration does not parse.** The engine accepts an action reference
-  in a trigger only with a constant key, and stops at the first `[each.key]`:
+- **Into maintenance.** One create and three actions in order, 39 s end to end:
 
   ```
-  main.tf:31,9-46: Invalid expression; A single static variable reference is required: only attribute access and indexing with constant keys.
+  create    terraform_data.maintenance["node-maint-worker"]
+    invoke    action.local_command.cordon["node-maint-worker"]  (after_create, on_failure = taint)
+    invoke    action.local_command.drain["node-maint-worker"]  (after_create, on_failure = taint)
+    invoke    action.kubewait_condition.drained["node-maint-worker"]  (after_create, on_failure = taint)
+  round p-fb103d75: applied (applied 1, failed 0, cancelled 0, invoked 3)
   ```
 
-- **The rest runs.** With the key written as a constant
-  (`cordon["node-maint-worker"]` and so on), the same configuration ran end to
-  end on the engine: `terraform_data`, keyed actions with `each.key` in their
-  config, `kubewait` installed from `registry.terraform.io`, the ordered steps,
-  `on_failure = taint` on a failed drain, the replace that retries it with
-  `release` as a no-op, and `release` through `caller` on removal.
-- **A failed run leaves its phase open.** Before the retry, `turf-driver cancel
-  .` ends it ("phase … ended partial"); the next `up` then replaces the tainted
-  instance.
+- **A drain that fails.** Under the same budget the drain fails, the wait does
+  not run, the run exits 1, and the instance is tainted. Once the budget is
+  removed, the next `up` replaces the instance with four actions, `release` the
+  no-op among them. No cancel is needed between the two runs.
+- **Out of maintenance.** One delete, and `release` prints
+  `node/node-maint-worker2 uncordoned`.
+- **A node that left the cluster.** With `ghost` deleted, the next plan leaves
+  its instance alone, as Terraform does. Removing the name runs `release`,
+  which prints `node/ghost is gone; nothing to uncordon`.
+- **A typo fails the plan**, in Terraform's words:
 
-The keyed trigger reference is on the engine's backlog. Until it lands, this
-example stays a draft.
+  ```
+  terraform_data.maintenance["node-maint-workr"]: Reference to non-existent action instance: The address action.local_command.cordon["node-maint-workr"] does not identify an instance of action.local_command.cordon
+  ```
 
 ## Appendix: the imperative alternative, actions only
 
@@ -270,9 +272,9 @@ the same cluster:
 
 On Turf the equivalent is `turf-driver invoke`, which takes the same addresses
 (`turf-driver invoke --auto-approve . 'action.local_command.drain["worker-3"]'`).
-It ran a keyed action instance on the engine, measured with a stub
-configuration. It cannot run here yet, because the engine parses the whole
-directory, `main.tf` included.
+Measured on the same cluster, the drain, the wait and the uncordon each ran as
+one invoke of 16 to 26 s, and a misspelled instance failed the plan with
+`invoked target … not found`.
 
 Don't invoke `release`. It reads `caller`, which only a trigger defines, yet
 `-invoke` does not refuse it: Terraform 1.16.2 fills `caller` from an instance
