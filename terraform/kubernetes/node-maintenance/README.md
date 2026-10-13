@@ -118,10 +118,11 @@ cordoned.
   tolerates the cordon — a toleration with no key, or for
   `node.kubernetes.io/unschedulable` — is evicted by the drain and may be
   scheduled straight back, so the wait does not count it, as it does not count
-  DaemonSet pods. The AICR kind recipe gives every operator exactly that
-  toleration (its overlay is written for nvkind), so on that cluster the drain
-  moves little and the record is what matters; on a datacenter cluster the
-  workloads move.
+  DaemonSet pods. AICR's component defaults give its runtime operators exactly
+  that toleration on every platform (the registry's `nodeScheduling`; a recipe
+  narrows it with `--system-node-toleration`), so on an AICR cluster the drain
+  moves the tenant's workloads and the runtime's own operators come back; the
+  record is what says the node is mid-runbook.
 
 ## Prerequisites
 

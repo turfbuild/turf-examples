@@ -69,9 +69,9 @@ action "local_command" "drain" {
 # the node. DaemonSet pods, static (mirror) pods and finished pods do not
 # count, and neither does a pod that tolerates the cordon (a toleration with
 # no key, or for node.kubernetes.io/unschedulable): the drain evicts it and
-# the scheduler may put its replacement straight back. The AICR kind recipe
-# gives its operators exactly that toleration. It only reads, and the verdict
-# must hold for `settle` before it counts.
+# the scheduler may put its replacement straight back. AICR's component
+# defaults give its runtime operators exactly that toleration. It only reads,
+# and the verdict must hold for `settle` before it counts.
 action "kubewait_condition" "drained" {
   config {
     api_version     = "v1"
