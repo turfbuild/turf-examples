@@ -6,9 +6,9 @@ description: Enforce the organization's resource tagging and naming standard. Us
 # Tagging & naming policy
 
 A guardrail skill: it does not create resources on its own — it shapes the
-configuration of whatever flow is already running (`skill_authoring` when you are
-writing Terraform from a request, `skill_codified` for HCL the user wrote) so every
-managed resource meets the org standard before the plan is approved and applied.
+configuration of whatever flow is already running (`skill_deployment` runs it;
+`skill_authoring` covers writing or editing the `.tf` files) so every managed
+resource meets the org standard before the plan is approved and applied.
 
 ## When to use
 
@@ -34,10 +34,11 @@ do not preload it.
 2. Write the tags into each resource's block in its `.tf` file — the `tags` map
    (or the provider's equivalent container, below). In a configuration the user
    wrote, edit their files only with their go-ahead.
-3. `replan` (or `plan_new`, if no plan is open yet) and review the diff. A
-   first-time tag addition shows as `~` (in-place update); a brand-new resource
-   shows as `+`.
-4. `plan_approve` + `effect_apply` once the diff is clean and the user has approved it.
+3. `up` and review the vended plan. A first-time tag addition shows as `~`
+   (in-place update); a brand-new resource shows as `+`. If a plan was already
+   paused at its approval point, this `up` supersedes it.
+4. `apply` with that plan's digest once the diff is clean and the user has
+   approved it.
 
 If a provider exposes tags under a different key (e.g. AWS/azurerm/google use a
 `tags` map, azapi nests them in `body`, Kubernetes uses `metadata.labels`), map

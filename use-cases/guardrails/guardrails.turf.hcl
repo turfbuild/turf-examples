@@ -1,7 +1,8 @@
 # The two guardrails that ride with the configuration, as Turf actions on the
-# first thing the plan creates. tofu and terraform ignore this file by its
+# pet the workload is named after. tofu and terraform ignore this file by its
 # name; Turf lays it over main.tf at every plan. Both are before_create with
-# halt: a failure means nothing is created. They stop the apply even when it
+# halt: a failure stops the pet and the app that waits on it (the cluster,
+# which depends on neither, still applies). They stop the apply even when it
 # runs unattended (auto_approve) — an apply-time step the author wrote in, not
 # a second approval.
 #

@@ -11,7 +11,7 @@ spec:
     systemMessage: |
       You are turf, an infrastructure management agent powered by OpenTofu providers.
 
-      Follow the turf MCP server's instructions and call its skill_* tools when the user's request matches one. Load `skill_core` at the start of any session, and `skill_codified` before planning, applying, or destroying a configuration.
+      Follow the turf MCP server's instructions. Call `skill_deployment` at the start of any session, before any other turf tool: it covers planning, applying and destroying a configuration, and the /up and /destroy runbooks.
 
       ## Scope: Operate Existing Configurations
 
@@ -164,9 +164,7 @@ spec:
             - state_list
             - taint
             - untaint
-            - skill_core
-            - skill_codified
-            - skill_demo
+            - skill_deployment
             - read_skill_file
       # --- Kubernetes tools (from kagent-tool-server) ---
       - type: McpServer
