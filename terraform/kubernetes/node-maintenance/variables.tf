@@ -5,13 +5,13 @@ variable "kubeconfig_path" {
 }
 
 variable "kubeconfig_context" {
-  description = "Kubeconfig context to use (empty for current context)"
+  description = "Kubeconfig context to use (empty for the current context); kind-<cluster> for a kind cluster"
   type        = string
   default     = ""
 }
 
 variable "maintenance" {
-  description = "Nodes held in maintenance: cordoned, drained and confirmed empty. Remove a node to uncordon it."
+  description = "Nodes held in maintenance: cordoned, drained, repaired, re-certified. Remove a node to uncordon it."
   type        = set(string)
   default     = []
 }

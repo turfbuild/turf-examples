@@ -1,10 +1,11 @@
 # A node is in maintenance while its name is in var.maintenance. Adding a name
-# cordons the node, drains it and waits until it is empty. Removing the name
-# uncordons it. terraform_data.maintenance holds one instance per node in
-# maintenance, and its lifecycle triggers run the steps.
+# cordons the node, drains it, waits until it is empty, hands the repair to
+# the agent and waits for the node to report Ready. Removing the name
+# uncordons it. terraform_data.maintenance holds one record per node in
+# maintenance, and its lifecycle triggers run the steps, in order.
 
 # Every node in the cluster. The steps are keyed by these names, so a name in
-# var.maintenance that is not a node fails the plan.
+# var.maintenance that is not a node fails the plan: there is no step for it.
 data "kubernetes_nodes" "all" {}
 
 locals {
@@ -22,9 +23,13 @@ resource "terraform_data" "maintenance" {
   input    = each.key
 
   lifecycle {
-    # The steps run in order, and the first failure stops the rest. It also
-    # fails the run and taints the instance, so the next run replaces it and
-    # starts again from the cordon.
+    # The first half of the runbook, in order, each record picking its own
+    # node's step. The first failure stops the rest, fails the run and taints
+    # the record, so the next run replaces it and starts again from the
+    # cordon. The second half — the repair, then the re-certification — is
+    # bound in maintenance.turf.hcl, which Turf splices after this block; so
+    # is the window gate before the create. Plain Terraform ignores that file
+    # and runs this half alone.
     action_trigger {
       events = [after_create]
       actions = [
@@ -35,7 +40,7 @@ resource "terraform_data" "maintenance" {
       on_failure = taint
     }
 
-    # Before the instance goes. If the uncordon fails, the destroy does not
+    # Before the record goes: uncordon. If that fails, the destroy does not
     # happen, and the next run tries again.
     action_trigger {
       events  = [before_destroy]
@@ -61,9 +66,13 @@ action "local_command" "drain" {
   }
 }
 
-# Confirms what the drain should have left: nothing but DaemonSet pods, static
-# (mirror) pods and pods that have finished. It only reads, and the verdict must
-# hold for `settle` before it counts.
+# Confirms what the drain should have left: nothing an eviction can keep off
+# the node. DaemonSet pods, static (mirror) pods and finished pods do not
+# count, and neither does a pod that tolerates the cordon (a toleration with
+# no key, or for node.kubernetes.io/unschedulable): the drain evicts it and
+# the scheduler may put its replacement straight back. AICR's component
+# defaults give its runtime operators exactly that toleration. It only reads,
+# and the verdict must hold for `settle` before it counts.
 action "kubewait_condition" "drained" {
   for_each = local.nodes
   config {
@@ -73,7 +82,9 @@ action "kubewait_condition" "drained" {
     filter          = <<-CEL
       !(has(object.metadata.ownerReferences) && object.metadata.ownerReferences.exists(r, r.kind == 'DaemonSet')) &&
       !(has(object.metadata.annotations) && 'kubernetes.io/config.mirror' in object.metadata.annotations) &&
-      !(has(object.status.phase) && object.status.phase in ['Succeeded', 'Failed'])
+      !(has(object.status.phase) && object.status.phase in ['Succeeded', 'Failed']) &&
+      !(has(object.spec.tolerations) && object.spec.tolerations.exists(t,
+          (!has(t.key) || t.key == 'node.kubernetes.io/unschedulable') && (!has(t.operator) || t.operator == 'Exists')))
     CEL
     min_matching    = 0
     max_matching    = 0
@@ -83,11 +94,28 @@ action "kubewait_condition" "drained" {
   }
 }
 
-# Uncordons the node whose instance is being destroyed. `caller` is that
-# instance, so this works for any node in state, including one that has since
-# left the cluster: such a node has nothing to uncordon.
+# Re-certification: the node reports Ready, and keeps reporting it for
+# `settle`. A node that has left the cluster fails the step. Bound by
+# maintenance.turf.hcl, after the repair.
+action "kubewait_condition" "ready" {
+  for_each = local.nodes
+  config {
+    api_version        = "v1"
+    kind               = "Node"
+    name               = each.key
+    success_conditions = [{ type = "Ready", status = "True" }]
+    absent             = "failure"
+    settle             = "10s"
+    timeout            = "5m"
+    progress_fields    = ["status.conditions", "spec.unschedulable"]
+  }
+}
+
+# Uncordons the node whose record is being destroyed. `caller` is that record,
+# so this works for any node in state, including one that has since left the
+# cluster: such a node has nothing to uncordon.
 #
-# A retry replaces a tainted instance, and the replace destroys the old one
+# A retry replaces a tainted record, and the replace destroys the old one
 # first. The node is still in var.maintenance then, so the command is `true`,
 # a no-op. A trigger `condition` cannot do this, because Terraform rejects
 # conditions on destroy events.

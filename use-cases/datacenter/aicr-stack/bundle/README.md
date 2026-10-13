@@ -95,6 +95,31 @@ The `NNN-<component>/` folders are the standard AICR bundle layout, written by
 the same code that writes them for `--deployer helm` and `--deployer helmfile`.
 `install.sh` in each folder is part of that layout and is unused here.
 
+## Addressing a component
+
+The names in this bundle are a contract, so that configuration outside it can
+refer in. A component `foo-bar` is `module.foo_bar` (its name with every
+character outside `[A-Za-z0-9_]` replaced by `_`), and inside it the releases
+are `helm_release.this` (the chart), with `helm_release.pre`, `helm_release.post`
+and `helm_release.readiness` beside it where the bundle emitted those folders
+(each `count`ed, so `[0]` when present). A lifecycle trigger, a policy rule or a
+dependency from elsewhere in the configuration targets those addresses, as in
+`module.stack.module.gpu_operator.helm_release.this` from a root that calls this
+bundle as `module "stack"`. Each module also outputs `name`, `namespace`,
+`version` and `releases`. Regenerating keeps these names.
+
+## Scheduling
+
+Unless the recipe was bundled with `--system-node-toleration` (or a
+`scheduling.systemNodeTolerations` block), AICR's component defaults give every
+runtime operator `tolerations: [{operator: Exists}]`: it tolerates every taint,
+the control plane's and a cordon's included. That is what keeps the runtime
+running on a small or a tainted cluster, and it is also why `kubectl drain`
+moves the tenant's workloads but not these operators — an evicted operator can
+be scheduled straight back onto the cordoned node. A node-maintenance step that
+waits for a node to empty should not count pods that tolerate the cordon, or
+the recipe should narrow the toleration to the system nodes it means.
+
 ## Editing
 
 `main.tf`, `versions.tf`, `variables.tf`, `outputs.tf` and `modules/component/`

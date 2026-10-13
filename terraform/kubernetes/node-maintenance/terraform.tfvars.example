@@ -1,7 +1,7 @@
 # Copy this file to terraform.tfvars and customize values
 
 # kubeconfig_path    = "~/.kube/config"
-# kubeconfig_context = ""
+kubeconfig_context = "kind-aicr-1" # the cluster use-cases/datacenter/aicr-stack creates
 
 # Nodes to hold in maintenance. Remove a name to put the node back in service.
 maintenance = []
