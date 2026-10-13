@@ -107,19 +107,25 @@ Each `terraform/<...>` directory is a self-contained, ordinary Terraform configu
 plain `.tf` files. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP
 tools (`init` against the directory, then `up`), as
 [Running the examples](#running-the-examples) describes. See each example's
-`README.md` for prerequisites, usage, and cleanup.
+`README.md` for prerequisites, usage, and cleanup. An example may carry a
+`*.turf.hcl` file beside its `.tf`: Turf actions — steps the agent driving Turf
+performs, a check, a notice or a question for the user — that tofu and terraform
+ignore and Turf lays over the configuration at every plan.
 
 | Example                        | Providers                     | Local? | Notes                                              |
 |--------------------------------|-------------------------------|--------|----------------------------------------------------|
 | `kubernetes/kind-crd`          | tehcyx/kind, hashicorp/kubernetes | ✅ | CRD-then-CR convergence in one run                 |
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
+| `kubernetes/node-maintenance`  | hashicorp/kubernetes, hashicorp/local, turfbuild/kubewait | ⎈ | A node through the maintenance runbook: cordon, drain, confirm, repair, re-certify, uncordon — every step an action |
 | `aws/lambda-fleet`             | hashicorp/aws, hashicorp/archive | ☁️ AWS | fleet of Lambdas patched in place (`count`)        |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
 | `language/actions`             | hashicorp/tfcoremock, hashicorp/local | ✅ | Terraform Actions (gating invokes)          |
 | `language/two-phase`           | hashicorp/tfcoremock          | ✅ | staged-then-commit via actions (advanced)          |
 | `language/replace-ordering`    | hashicorp/random              | ✅ | replace teardown ordering + infectious CBD         |
+| `language/environments`        | hashicorp/random, hashicorp/tfcoremock | ✅ | one configuration, a workspace per environment, promotion with a gate |
+| `modules/podinfo`              | hashicorp/helm (v3+)          | — | podinfo as a child module, to call at a pinned ref  |
 
 ✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
 Kubernetes cluster + kubeconfig.
@@ -137,6 +143,8 @@ than a single-idea example. Drive them the same way (`turf -C <dir> up`).
 | `datacenter/aicr-eks-certification` | hashicorp/aws, hashicorp/kubernetes, hashicorp/helm (v3+) | 📐 | Target-state spec: a real GPU cluster, its stack and its NVCRE certification as one graph; the waits are a specified action |
 | `datacenter/ansible-k3s` | hashicorp/aws, ansible/ansible, hashicorp/kubernetes | ☁️ AWS | Hosts by Terraform, k3s by Ansible, a custom resource by Terraform again — one graph, three rounds on Turf |
 | `datacenter/slinky-stack` | tehcyx/kind, hashicorp/helm (v3+), turfbuild/kubewait | ✅ | A Slurm cluster in a "Run:ai project" with KAI Scheduler as the open Run:ai — `srun` works, the GPU partition pends; two rounds on Turf |
+| `products/data-lake-installer` | hashicorp/aws | ✅ plan | A product's installer: a data lake reference architecture that plans with no credentials, with the installer's own steps as Turf actions |
+| `guardrails`             | tehcyx/kind, hashicorp/helm (v3+), hashicorp/random | ✅ | Scan every provider before it runs, pin the workload to a commit, check every plan against policy — and make two of those a step of the apply |
 
 The NGC stack is worth reading for what it proves about NVIDIA's operators: the
 GPU Operator and the NIM Operator both install and reach a healthy state with no

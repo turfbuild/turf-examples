@@ -1,0 +1,10 @@
+# Optional: the scanners as MCP servers, so the Turf CLI's session has them as
+# tools (grype_* and opa_*) beside turf_*. Both run as containers; without
+# Docker the agent uses trivy/grype and opa/conftest from the PATH instead.
+mcps:
+  grype:
+    command: docker
+    args: ["run", "--rm", "-i", "-v", "${HOME}:${HOME}", "anchore/grype-mcp:latest"]
+  opa:
+    command: npx
+    args: ["-y", "@orygn/opa-mcp"]

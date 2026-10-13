@@ -1,0 +1,7 @@
+# Copy this file to terraform.tfvars and customize values. These three are the
+# install questionnaire: init reports them as variables without defaults.
+product_name = "lakehouse"
+tenant       = "acme"
+region       = "us-east-1"
+
+# plan_only = true   # the default: plans with no credentials, never apply
