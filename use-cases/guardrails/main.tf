@@ -21,7 +21,7 @@ resource "random_pet" "name" {
 # cannot read a variable, so the ref is spelled here; var.app_ref records it
 # for the plan and the README.
 module "app" {
-  source = "git::https://github.com/turfbuild/turf-examples.git//terraform/modules/podinfo?ref=main"
+  source = "git::https://github.com/turfbuild/turf-examples.git//terraform/modules/podinfo?ref=21fd4fb6967e2870f6ee3436d68be6f12465d614"
 
   name             = "podinfo-${random_pet.name.id}"
   cluster_endpoint = kind_cluster.demo.endpoint
