@@ -15,6 +15,8 @@ terraform/        Standard Terraform/HCL configurations
     kind-crd/       kind cluster → CustomResourceDefinition → custom resource
     kind-helm/      kind cluster → Helm release (podinfo)
     hpa-walkthrough/  php-apache + HorizontalPodAutoscaler on an existing cluster
+    node-maintenance/  a set of nodes held in maintenance, the runbook's steps
+                    as actions (kubectl + kubewait + the agent)
   aws/
     lambda-fleet/   a fleet of Lambda functions, patched in place by one variable
   azure/
@@ -117,7 +119,7 @@ ignore and Turf lays over the configuration at every plan.
 | `kubernetes/kind-crd`          | tehcyx/kind, hashicorp/kubernetes | ✅ | CRD-then-CR convergence in one run                 |
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
-| `kubernetes/node-maintenance`  | hashicorp/kubernetes, hashicorp/local, turfbuild/kubewait | ⎈ | A node through the maintenance runbook: cordon, drain, confirm, repair, re-certify, uncordon — every step an action |
+| `kubernetes/node-maintenance`  | hashicorp/kubernetes, hashicorp/local, turfbuild/kubewait | ⎈ | nodes in maintenance as a set, every step of the runbook an action — cordon, drain, confirm, repair, re-certify, uncordon; Terraform 1.16+ runs the kubectl half, Turf the whole runbook |
 | `aws/lambda-fleet`             | hashicorp/aws, hashicorp/archive | ☁️ AWS | fleet of Lambdas patched in place (`count`)        |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
