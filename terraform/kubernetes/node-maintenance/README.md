@@ -1,11 +1,11 @@
-# A node in maintenance, declared
+# Nodes in maintenance, declared
 
-Which node is out of service is a set with one name. Put the node in it, and
-it is cordoned, drained, confirmed empty, handed to the agent for the repair,
-and waited on until it reports Ready again. Take it out, and it is uncordoned.
+Which nodes are out of service is a set of names. Put a node in it, and it is
+cordoned, drained, confirmed empty, handed to the agent for the repair, and
+waited on until it reports Ready again. Take it out, and it is uncordoned.
 
 ```hcl
-maintenance = ["aicr-1-worker"]
+maintenance = ["aicr-1-worker", "aicr-1-worker2"]
 ```
 
 The steps are Terraform actions, run by `kubectl`
@@ -27,13 +27,14 @@ Nothing records which nodes are mid-runbook, so a node can stay cordoned long
 after anyone remembers why; and when the drain fails halfway, the node is left
 cordoned and half-drained.
 
-Here the set *is* the record. The plan says whether the node goes in or comes
-out. A failed step fails the run and marks the node as not done, so the next
-run starts again from the cordon.
+Here the set *is* the record. The plan says which node goes in and which comes
+out. A failed step fails the run and marks that node as not done, so the next
+run starts it again from the cordon, and the others are untouched.
 
 ### The gist
 
-`main.tf` is plain Terraform — cordon, drain, confirm:
+`main.tf` is plain Terraform — cordon, drain, confirm, each record picking its
+own node's step by key:
 
 ```hcl
 resource "terraform_data" "maintenance" {
@@ -43,8 +44,8 @@ resource "terraform_data" "maintenance" {
   lifecycle {
     action_trigger {
       events  = [after_create]
-      actions = [action.local_command.cordon, action.local_command.drain,
-                 action.kubewait_condition.drained]
+      actions = [action.local_command.cordon[each.key], action.local_command.drain[each.key],
+                 action.kubewait_condition.drained[each.key]]
       on_failure = taint
     }
     action_trigger {
@@ -62,7 +63,7 @@ runbook runs as **window → cordon → drain → drained → repair → ready**
 
 ```hcl
 action "turf_action" "window" {
-  config { prompt = "Ask the user whether the maintenance window for node ${var.node} is open now. …" }
+  config { prompt = "Ask the user whether the maintenance window for node ${caller.input} is open now. …" }
 }
 action_trigger "window" {
   target     = terraform_data.maintenance
@@ -72,15 +73,20 @@ action_trigger "window" {
 }
 
 action "turf_action" "repair" {
-  config { prompt = "Node ${var.node} is cordoned and drained. Inspect it … Fail if the node is NotReady or missing." }
+  config { prompt = "Node ${caller.input} is cordoned and drained. Inspect it … Fail if the node is NotReady or missing." }
 }
 action_trigger "repair_and_recertify" {
   target     = terraform_data.maintenance
   events     = [after_create]
-  actions    = [action.turf_action.repair, action.kubewait_condition.ready]
+  actions    = [action.turf_action.repair, action.kubewait_condition.ready[each.key]]
   on_failure = taint
 }
 ```
+
+The two `turf_action`s read their node from `caller`, the record whose step
+they are, so one declaration serves every node in the set; the Ready wait is
+keyed like the steps in `main.tf`, and in an overlay's trigger `each.key` is
+the target record's own.
 
 A `turf_action` is the built-in action the agent driving Turf carries out
 itself. The apply stops at `awaiting_actions` with the prompt and `inputs`; the
@@ -92,15 +98,19 @@ cordoned.
 
 ## What this demonstrates
 
-- **Maintenance as a record.** `var.maintenance` names the node held out of
-  service; the plan shows it going in (`create`) or coming out (`destroy`), and
-  `plan.invocations` lists every step in the order it will run.
+- **Maintenance as a record.** `var.maintenance` names the nodes held out of
+  service; the plan shows each going in (`create`) or coming out (`destroy`),
+  and `plan.invocations` lists every step in the order it will run.
+- **Each record runs its own node's steps.** The actions are keyed by the
+  cluster's node names and each record picks its key's instance, so a name
+  that is not a node has no step and fails the plan, before anything is
+  touched.
 - **A decision is the operator's.** The window gate asks before anything is
   touched. The agent never answers it for them.
-- **Ordered steps, one failure stops the rest.** The record is not created
+- **Ordered steps, one failure stops the rest.** A record is not created
   until every step succeeds. `on_failure = taint` on both chains fails the run
   *and* taints the record, so the next plan replaces it and the steps run
-  again from the cordon. Without the taint (`halt`), the run still fails, but
+  again from the cordon; a record whose steps all passed is left alone. Without the taint (`halt`), the run still fails, but
   the record is kept as if the node were done, and the next plan says
   "No changes".
 - **The repair is the agent's.** In a datacenter it is the provider's host
@@ -139,24 +149,26 @@ cordoned.
 
 ```bash
 cd terraform/kubernetes/node-maintenance
-cp terraform.tfvars.example terraform.tfvars   # set node, kubeconfig_context; maintenance = []
+cp terraform.tfvars.example terraform.tfvars   # set kubeconfig_context; maintenance = []
 turf -C . up                                   # nothing to do yet; registers the state
 ```
 
-Put the node in maintenance — `maintenance = ["aicr-1-worker"]` — and `up`
+Put a node in maintenance — `maintenance = ["aicr-1-worker"]` — and `up`
 again: one add, six invocations. The apply stops for the window, runs the
 cordon, the drain and the drained check, stops again for the repair, and waits
 for Ready. Through the MCP tools the same run is `init`, `workspace_open`,
 `up`, `apply` (answering each `awaiting_actions` pause with `action_results`),
-until `converged`.
+until `converged`. Name two nodes and the plan is two adds, twelve
+invocations; each record's steps are its own node's, and the apply asks the
+window for each.
 
 `drain_flags` defaults to `--ignore-daemonsets --delete-emptydir-data
 --timeout=10m`. A Pod that no controller owns blocks `kubectl drain` unless
 you add `--force`. A PodDisruptionBudget that allows no evictions blocks it
 until the timeout — which is the failed-drain case below.
 
-Back in service: `maintenance = []`, `up` — one destroy, and `release`
-uncordons the node.
+Back in service: take the name out, `up` — one destroy, and `release`
+uncordons the node. The other names in the set are not touched.
 
 ## Verify
 
@@ -183,25 +195,26 @@ retry, so the node stays cordoned.
 
 ## On Turf
 
-This is the one-node form of a general example. Keyed by node name — a
-`for_each` over the cluster's nodes with each record picking its own actions by
-`action.local_command.cordon[each.key]` — the same configuration maintains any
-number of nodes from one set. Turf's engine does not take that form yet: it
-accepts an action reference in a trigger only with a constant key, and stops at
-the first `[each.key]`:
+The whole example runs on Turf's engine as written: the keyed steps, the
+ordered chain, `on_failure = taint` on a failed drain, the replace that retries
+it with `release` a no-op, `release` through `caller` on removal, and the
+overlay's two `turf_action`s between them. Three rules of the keyed form, each
+witnessed against Terraform 1.16 and kept by the engine:
 
-```
-main.tf:31,9-46: Invalid expression; A single static variable reference is required: only attribute access and indexing with constant keys.
-```
-
-So the node is named once (`var.node`), the actions are single, and
-`var.maintenance` may only hold that name (a validation says so). The engine
-does not take resource `precondition`s either, so a wrong node name fails at
-the cordon rather than at the plan. Everything
-else — the keyed `terraform_data`, the ordered chain, `on_failure = taint` on
-a failed drain, the replace that retries it with `release` a no-op, `release`
-through `caller` on removal, and the overlay's steps — runs on the engine as
-written. The keyed trigger reference is on the engine's backlog.
+- **A key the actions do not have fails the plan.** `maintenance = ["typo"]`
+  is refused at plan with the instance it could not find; nothing runs. (A
+  `precondition` on the record could say the same in friendlier words; the
+  engine does not take resource conditions yet.)
+- **A record whose node has left the cluster is left alone**, and plans clean
+  while its name stays in the set. Take the name out and `release` runs on
+  its destroy — it reads the node from `caller`, not from a key — and finds
+  nothing to uncordon. Had the destroy trigger named a keyed step, the record
+  would be an orphan whose key the actions no longer have: Terraform warns
+  ("Orphaned action failed to plan") and invokes none of its actions, and so
+  does the engine.
+- **`each.key` in an overlay's trigger is the target record's**, so
+  `maintenance.turf.hcl` binds every record to its own node's Ready wait
+  without naming any.
 
 Plain Terraform 1.16 runs `main.tf` on its own: cordon, drain, confirm, and
 uncordon on the way out. It never sees `maintenance.turf.hcl`.

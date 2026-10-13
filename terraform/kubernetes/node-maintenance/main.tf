@@ -1,13 +1,11 @@
-# A node is in maintenance while its name is in var.maintenance. Adding the
-# name cordons the node, drains it, waits until it is empty, hands the repair
-# to the agent and waits for the node to report Ready. Removing the name
-# uncordons it. terraform_data.maintenance holds the record, and its lifecycle
-# triggers run the steps, in order.
+# A node is in maintenance while its name is in var.maintenance. Adding a name
+# cordons the node, drains it, waits until it is empty, hands the repair to
+# the agent and waits for the node to report Ready. Removing the name
+# uncordons it. terraform_data.maintenance holds one record per node in
+# maintenance, and its lifecycle triggers run the steps, in order.
 
-# Every node in the cluster, for the `nodes` output. (A precondition on the
-# record checking var.node against it would fail a typo at plan time; Turf's
-# engine does not take resource conditions yet, so a wrong name fails at the
-# cordon instead.)
+# Every node in the cluster. The steps are keyed by these names, so a name in
+# var.maintenance that is not a node fails the plan: there is no step for it.
 data "kubernetes_nodes" "all" {}
 
 locals {
@@ -25,18 +23,19 @@ resource "terraform_data" "maintenance" {
   input    = each.key
 
   lifecycle {
-    # The first half of the runbook, in order. The first failure stops the
-    # rest, fails the run and taints the record, so the next run replaces it
-    # and starts again from the cordon. The second half — the repair, then the
-    # re-certification — is bound in maintenance.turf.hcl, which Turf splices
-    # after this block; so is the window gate before the create. Plain
-    # Terraform ignores that file and runs this half alone.
+    # The first half of the runbook, in order, each record picking its own
+    # node's step. The first failure stops the rest, fails the run and taints
+    # the record, so the next run replaces it and starts again from the
+    # cordon. The second half — the repair, then the re-certification — is
+    # bound in maintenance.turf.hcl, which Turf splices after this block; so
+    # is the window gate before the create. Plain Terraform ignores that file
+    # and runs this half alone.
     action_trigger {
       events = [after_create]
       actions = [
-        action.local_command.cordon,
-        action.local_command.drain,
-        action.kubewait_condition.drained,
+        action.local_command.cordon[each.key],
+        action.local_command.drain[each.key],
+        action.kubewait_condition.drained[each.key],
       ]
       on_failure = taint
     }
@@ -51,17 +50,19 @@ resource "terraform_data" "maintenance" {
 }
 
 action "local_command" "cordon" {
+  for_each = local.nodes
   config {
     command   = "kubectl"
-    arguments = concat(["cordon", var.node], local.kubectl_flags)
+    arguments = concat(["cordon", each.key], local.kubectl_flags)
   }
 }
 
 # kubectl drain evicts the node's pods and waits for them to be deleted.
 action "local_command" "drain" {
+  for_each = local.nodes
   config {
     command   = "kubectl"
-    arguments = concat(["drain", var.node], var.drain_flags, local.kubectl_flags)
+    arguments = concat(["drain", each.key], var.drain_flags, local.kubectl_flags)
   }
 }
 
@@ -73,10 +74,11 @@ action "local_command" "drain" {
 # defaults give its runtime operators exactly that toleration. It only reads,
 # and the verdict must hold for `settle` before it counts.
 action "kubewait_condition" "drained" {
+  for_each = local.nodes
   config {
     api_version     = "v1"
     kind            = "Pod"
-    field_selector  = "spec.nodeName=${var.node}"
+    field_selector  = "spec.nodeName=${each.key}"
     filter          = <<-CEL
       !(has(object.metadata.ownerReferences) && object.metadata.ownerReferences.exists(r, r.kind == 'DaemonSet')) &&
       !(has(object.metadata.annotations) && 'kubernetes.io/config.mirror' in object.metadata.annotations) &&
@@ -93,12 +95,14 @@ action "kubewait_condition" "drained" {
 }
 
 # Re-certification: the node reports Ready, and keeps reporting it for
-# `settle`. A node that has left the cluster fails the step.
+# `settle`. A node that has left the cluster fails the step. Bound by
+# maintenance.turf.hcl, after the repair.
 action "kubewait_condition" "ready" {
+  for_each = local.nodes
   config {
     api_version        = "v1"
     kind               = "Node"
-    name               = var.node
+    name               = each.key
     success_conditions = [{ type = "Ready", status = "True" }]
     absent             = "failure"
     settle             = "10s"
@@ -108,8 +112,8 @@ action "kubewait_condition" "ready" {
 }
 
 # Uncordons the node whose record is being destroyed. `caller` is that record,
-# so this works for a node that has since left the cluster: such a node has
-# nothing to uncordon.
+# so this works for any node in state, including one that has since left the
+# cluster: such a node has nothing to uncordon.
 #
 # A retry replaces a tainted record, and the replace destroys the old one
 # first. The node is still in var.maintenance then, so the command is `true`,

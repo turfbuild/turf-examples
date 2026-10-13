@@ -4,6 +4,6 @@ output "nodes" {
 }
 
 output "in_maintenance" {
-  description = "The node, while it is held in maintenance"
+  description = "Nodes held in maintenance"
   value       = sort(keys(terraform_data.maintenance))
 }

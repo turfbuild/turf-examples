@@ -10,20 +10,10 @@ variable "kubeconfig_context" {
   default     = ""
 }
 
-variable "node" {
-  description = "The node this configuration maintains. One node, named once: the steps reference their node by a constant (see README, On Turf)."
-  type        = string
-}
-
 variable "maintenance" {
-  description = "The node, when it is held in maintenance: cordoned, drained, repaired, re-certified. Empty it to uncordon."
+  description = "Nodes held in maintenance: cordoned, drained, repaired, re-certified. Remove a node to uncordon it."
   type        = set(string)
   default     = []
-
-  validation {
-    condition     = length(setsubtract(var.maintenance, [var.node])) == 0
-    error_message = "maintenance may only name var.node; this configuration maintains one node."
-  }
 }
 
 variable "drain_flags" {
