@@ -1,0 +1,9 @@
+# Copy this file to terraform.tfvars and customize values
+
+# kubeconfig_path    = "~/.kube/config"
+# kubeconfig_context = ""
+
+# Nodes to hold in maintenance. Remove a name to put the node back in service.
+maintenance = []
+
+# drain_flags = ["--ignore-daemonsets", "--delete-emptydir-data", "--timeout=10m"]

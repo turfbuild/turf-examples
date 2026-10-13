@@ -15,6 +15,8 @@ terraform/        Standard Terraform/HCL configurations
     kind-crd/       kind cluster → CustomResourceDefinition → custom resource
     kind-helm/      kind cluster → Helm release (podinfo)
     hpa-walkthrough/  php-apache + HorizontalPodAutoscaler on an existing cluster
+    node-maintenance/  a set of nodes held cordoned and drained, the steps
+                    as actions (kubectl + kubewait)
   aws/
     lambda-fleet/   a fleet of Lambda functions, patched in place by one variable
   azure/
@@ -114,6 +116,7 @@ tools (`init` against the directory, then `up`), as
 | `kubernetes/kind-crd`          | tehcyx/kind, hashicorp/kubernetes | ✅ | CRD-then-CR convergence in one run                 |
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
+| `kubernetes/node-maintenance`  | hashicorp/kubernetes, turfbuild/kubewait, hashicorp/local | ⎈ | nodes in maintenance as a set, the steps as actions; Terraform 1.16+ or Turf |
 | `aws/lambda-fleet`             | hashicorp/aws, hashicorp/archive | ☁️ AWS | fleet of Lambdas patched in place (`count`)        |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
