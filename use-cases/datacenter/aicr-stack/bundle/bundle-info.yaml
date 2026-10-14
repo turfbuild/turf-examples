@@ -14,7 +14,7 @@ build:
       system:
         tolerations:
           - operator: Exists
-    readinessHooks: false
+    readinessHooks: true
     serial: false
     vendorCharts: false
 kind: BundleInfo
@@ -65,25 +65,29 @@ layout:
       name: gpu-operator
       namespace: gpu-operator
       path: 011-gpu-operator
+    - component: gpu-operator
+      name: gpu-operator-readiness
+      namespace: gpu-operator
+      path: 012-gpu-operator-readiness
     - component: k8s-ephemeral-storage-metrics
       name: k8s-ephemeral-storage-metrics
       namespace: monitoring
-      path: 012-k8s-ephemeral-storage-metrics
+      path: 013-k8s-ephemeral-storage-metrics
     - component: kai-scheduler
       name: kai-scheduler
       namespace: kai-scheduler
-      path: 013-kai-scheduler
+      path: 014-kai-scheduler
     - component: nvidia-dra-driver-gpu
       name: nvidia-dra-driver-gpu
       namespace: nvidia-dra-driver
-      path: 014-nvidia-dra-driver-gpu
+      path: 015-nvidia-dra-driver-gpu
     - component: nvsentinel
       name: nvsentinel
       namespace: nvsentinel
-      path: 015-nvsentinel
+      path: 016-nvsentinel
     - component: prometheus-adapter
       name: prometheus-adapter
       namespace: monitoring
-      path: 016-prometheus-adapter
+      path: 017-prometheus-adapter
 metadata:
-  version: dev
+  version: v1.0.0

@@ -2,6 +2,8 @@
 ---
 fullnameOverride: nvcre
 manager:
+  image:
+    tag: v0.6.0@sha256:8008c6f9f7e19b317caf0f91afab06b88027c14d7dd03e4173bd49cd1f3cd27a
   tolerations:
     - operator: Exists
 metrics:

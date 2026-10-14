@@ -16,8 +16,8 @@ apiVersion: v2
 name: agentgateway-crds-post
 description: Generated wrapper chart for agentgateway-crds local content.
 type: application
-version: "0.0.0-dev"
+version: "1.0.0"
 appVersion: "v1.5.0"
 annotations:
   aicr.run/component-version: "v1.5.0"
-  aicr.run/generated-by: "0.0.0-dev"
+  aicr.run/generated-by: "1.0.0"

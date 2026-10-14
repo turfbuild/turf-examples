@@ -44,8 +44,7 @@ resource "aws_vpc" "main" {
   tags = { Name = "${local.prefix}-vpc" }
 
   # #8 (upstream): the account precondition that lived here is now the root
-  # provider's `allowed_account_ids`. Same check, and Turf does not take
-  # resource preconditions.
+  # provider's `allowed_account_ids`: the same check, refused before any plan.
 }
 
 # CloudWatch Log Group for VPC Flow Logs

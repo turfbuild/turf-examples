@@ -230,8 +230,10 @@ comments are kept, and upstream's tests pass unchanged (`tests/compute.tftest.hc
 4. **coredns, metrics-server, ebs-csi and cloudwatch-observability follow the
    node groups.** They are Deployments, and should not race the nodes they
    schedule onto.
-5. **The account precondition is the aws provider's `allowed_account_ids`.** Same
-   check, and Turf does not take resource preconditions.
+5. **The account precondition is the aws provider's `allowed_account_ids`.** The
+   same check, stated once on the provider and refused before anything is
+   planned, rather than a `precondition` on one resource. (Turf takes resource
+   conditions now; this is a choice, not a workaround.)
 6. **Status is outputs, not a file.** `local_file.status` wrote the full
    ClusterStatus next to the config, where a containerized run lost it. The
    same facts are now in state. The `local` and `time` providers are gone.
@@ -364,10 +366,12 @@ The result:
 
 Both routes reproduce the committed `bundle/` byte for byte, which makes
 `git diff bundle/` the check that it is current. As for
-aicr-stack, `--deployer terraform` is not in NVIDIA's AICR yet: this bundle was
-generated from the fork's submission,
-[turfbuild/aicr#3](https://github.com/turfbuild/aicr/pull/3), at its head
-`54fc5a2e`.
+aicr-stack, `--deployer terraform` is not in a released AICR yet: this bundle was
+generated from the submission,
+[NVIDIA/aicr#UPSTREAM_PR](https://github.com/NVIDIA/aicr/pull/UPSTREAM_PR)
+(fork branch [turfbuild/aicr#3](https://github.com/turfbuild/aicr/pull/3), head
+`b25644fd`), by a build of that head stamped `v1.0.0` — the release it sits on,
+and what `bundle/` reports as its generator.
 
 ## Attribution
 

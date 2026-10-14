@@ -16,8 +16,8 @@ apiVersion: v2
 name: kubeflow-trainer-post
 description: Generated wrapper chart for kubeflow-trainer local content.
 type: application
-version: "0.0.0-dev"
+version: "1.0.0"
 appVersion: "2.2.0"
 annotations:
   aicr.run/component-version: "2.2.0"
-  aicr.run/generated-by: "0.0.0-dev"
+  aicr.run/generated-by: "1.0.0"

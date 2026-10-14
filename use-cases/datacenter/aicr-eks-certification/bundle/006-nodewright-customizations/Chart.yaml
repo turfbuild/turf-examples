@@ -16,8 +16,8 @@ apiVersion: v2
 name: nodewright-customizations
 description: Generated wrapper chart for nodewright-customizations local content.
 type: application
-version: "0.0.0-dev"
-appVersion: "0.0.0-dev"
+version: "1.0.0"
+appVersion: "1.0.0"
 annotations:
-  aicr.run/component-version: "0.0.0-dev"
-  aicr.run/generated-by: "0.0.0-dev"
+  aicr.run/component-version: "1.0.0"
+  aicr.run/generated-by: "1.0.0"
