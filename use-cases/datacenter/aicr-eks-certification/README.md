@@ -368,7 +368,7 @@ Both routes reproduce the committed `bundle/` byte for byte, which makes
 `git diff bundle/` the check that it is current. As for
 aicr-stack, `--deployer terraform` is not in a released AICR yet: this bundle was
 generated from the submission,
-[NVIDIA/aicr#UPSTREAM_PR](https://github.com/NVIDIA/aicr/pull/UPSTREAM_PR)
+[NVIDIA/aicr#3217](https://github.com/NVIDIA/aicr/pull/3217)
 (fork branch [turfbuild/aicr#3](https://github.com/turfbuild/aicr/pull/3), head
 `3a19de57`), by a build of that head stamped `v1.0.0` — the release it sits on,
 and what `bundle/` reports as its generator.
