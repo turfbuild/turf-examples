@@ -139,7 +139,7 @@ error.
 ## What it does when you run it
 
 Measured on Turf from empty state on 2026-10-13, through the MCP server (`init`,
-`workspace_open`, `up`, `apply`), against the engine the server pins. The
+`open`, `up`, `apply`), against the engine the server pins. The
 containment shim is a `terraform_data`, a resource of the built-in
 `terraform.io/builtin/terraform` provider that no registry serves; Turf runs that
 provider as a sidecar process on the same path every other provider takes, so the

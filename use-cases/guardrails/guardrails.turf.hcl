@@ -14,7 +14,7 @@
 # Attest: every provider this configuration runs was scanned, in this session,
 # and none was blocked. init reports each provider's package_dir and hashes;
 # the scan (trivy, grype, or their MCP servers) reads those directories before
-# workspace_open. This step asks the agent to stand behind it.
+# `open`. This step asks the agent to stand behind it.
 action "turf_action" "attest" {
   config {
     prompt = <<-EOT

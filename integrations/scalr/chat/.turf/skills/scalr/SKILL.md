@@ -86,7 +86,7 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
   stay generic. The `chat` demo gets the same effect differently: the agent writes the
   backend block into a session-generated `backend.tf` that is git-ignored, so no
   workspace is pinned into committed files.)
-- Whether it lives in a backend block or is passed to `workspace_open`, keep the
+- Whether it lives in a backend block or is passed to `open`, keep the
   environment/workspace names in sync with whatever provisioned that workspace.
 - Load `references/backend.md` for the state-only rationale and the token-env-var
   encoding rules; load `references/mcp.md` for the variable→module and policy-gate

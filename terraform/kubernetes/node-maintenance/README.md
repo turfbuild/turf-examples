@@ -262,7 +262,7 @@ terraform apply tfplan
 ```
 
 On Turf, `turf -C . up`; through the MCP tools the same run is `init`,
-`workspace_open`, `up`, `apply` (answering each `awaiting_actions` pause with
+`open`, `up`, `apply` (answering each `awaiting_actions` pause with
 `action_results`), until `converged`.
 
 `drain_flags` defaults to `--ignore-daemonsets --delete-emptydir-data

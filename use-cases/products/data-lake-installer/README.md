@@ -63,13 +63,13 @@ cp terraform.tfvars.example terraform.tfvars   # product_name, tenant, region
 turf -C . up                                   # plan only: read it, then decline
 ```
 
-Through the MCP tools: `init`, `workspace_open`, `up({ var: {…}, refresh: false })`,
+Through the MCP tools: `init`, `open`, `up({ var: {…}, refresh: false })`,
 read `plan.path`, and do not call `apply` — not calling it declines; `cancel`
 ends the convergence. `plan.invocations` lists the three steps beside the
 creates.
 
 ## Cleanup
 
-Nothing was created. `cancel` any paused convergence and `workspace_close`.
+Nothing was created. `cancel` any paused convergence and `close`.
 With `plan_only = false` and a real apply, `destroy` plans the teardown — and
 `consent` asks the customer before the catalog goes.

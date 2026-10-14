@@ -72,7 +72,7 @@ claude mcp add turf -- turf-mcp-server      # or register the server with Claude
 ```
 
 The MCP tools are Terraform's commands. `init` registers an example's directory and
-installs its modules and providers, `workspace_open` binds its state, and `up` plans
+installs its modules and providers, `open` binds its state, and `up` plans
 the first **round**. Each round stops at its approval point with its plan as a document
 on disk (`plan.path`, OpenTofu's JSON plan, exactly as `tofu show -json` prints it).
 `apply` with that plan's `plan.digest` approves it: it applies the round, plans the

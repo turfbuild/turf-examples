@@ -26,10 +26,10 @@ it is.
 
 - **`workspace_name` selects the slot; `var_file` carries the environment.**
   Through the MCP tools: `init`, then
-  `workspace_open({ workspace_name: "staging", workspace_alias: "staging" })`
+  `open({ workspace_name: "staging", workspace_alias: "staging" })`
   and `up({ workspace_alias: "staging", var_file: ["env/staging.tfvars"] })`;
-  the same for `production` under its own alias. `workspace_open` reports
-  `state_path` under `terraform.tfstate.d/<name>/`. `workspace_list` shows both.
+  the same for `production` under its own alias. `open` reports
+  `state_path` under `terraform.tfstate.d/<name>/`. `list` shows both.
 - **Promotion is a plan per environment.** Bump `app_version`, plan staging,
   apply; plan production, apply. The diff is one string.
 - **The steps are Turf actions, in one file for both environments.**
@@ -63,4 +63,4 @@ then run production the same way with `env/production.tfvars`.
 
 ## Cleanup
 
-`destroy` each workspace, then `workspace_close` it. Nothing real was created.
+`destroy` each workspace, then `close` it. Nothing real was created.
