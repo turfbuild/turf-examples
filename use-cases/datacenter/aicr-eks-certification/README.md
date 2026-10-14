@@ -370,7 +370,7 @@ aicr-stack, `--deployer terraform` is not in a released AICR yet: this bundle wa
 generated from the submission,
 [NVIDIA/aicr#UPSTREAM_PR](https://github.com/NVIDIA/aicr/pull/UPSTREAM_PR)
 (fork branch [turfbuild/aicr#3](https://github.com/turfbuild/aicr/pull/3), head
-`b25644fd`), by a build of that head stamped `v1.0.0` — the release it sits on,
+`3a19de57`), by a build of that head stamped `v1.0.0` — the release it sits on,
 and what `bundle/` reports as its generator.
 
 ## Attribution
