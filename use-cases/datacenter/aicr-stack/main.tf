@@ -30,8 +30,9 @@ resource "kind_cluster" "dc" {
 module "stack" {
   source = "./bundle"
 
-  # Nothing in the bundle connects with this. It is the containment trigger:
+  # Nothing in the bundle connects with this. It is the containment keeper:
   # replace the cluster and every release in it is replaced too, instead of
-  # being adopted by a cluster that has never seen it.
-  cluster_endpoint = kind_cluster.dc.endpoint
+  # being adopted by a cluster that has never seen it. kind mints a port per
+  # cluster, so the endpoint changes with every generation.
+  cluster_keepers = kind_cluster.dc.endpoint
 }

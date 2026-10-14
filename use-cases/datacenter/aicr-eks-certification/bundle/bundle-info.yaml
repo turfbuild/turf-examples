@@ -91,4 +91,4 @@ layout:
       namespace: monitoring
       path: 017-prometheus-adapter
 metadata:
-  version: dev
+  version: v1.0.0

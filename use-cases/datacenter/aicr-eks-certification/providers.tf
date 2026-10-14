@@ -3,8 +3,7 @@ provider "aws" {
 
   # Upstream checked the account with a lifecycle precondition on the VPC
   # ("Invalid AWS account (want: …, got: …)"). The provider refuses the wrong
-  # account before anything is planned, and needs no engine support for
-  # resource conditions.
+  # account before anything is planned: the same check, stated once.
   allowed_account_ids = [var.deployment.tenancy]
 
   # Cluster/ManagedBy are upstream's identity tags; its tools/delete-eks sweeper

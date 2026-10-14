@@ -116,7 +116,7 @@ action "kubewait_condition" "no_load_balancer_services" {
 module "stack" {
   source = "./bundle"
 
-  cluster_endpoint = module.eks_cluster.endpoint
+  cluster_keepers = module.eks_cluster.endpoint
 
   depends_on = [terraform_data.cluster_contents]
 }

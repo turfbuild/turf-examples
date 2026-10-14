@@ -14,8 +14,9 @@ never a node in the graph.
 
 Terraform is the one consumer that can put the cluster *in* the graph. The two
 hand-written files here — `main.tf` and `versions.tf`, about forty lines
-together — create a kind cluster and hand it to the generated bundle. Sixteen
-Helm releases come up behind it, from nothing, in one command.
+together — create a kind cluster and hand it to the generated bundle. Seventeen
+Helm releases — sixteen for the recipe's fourteen components, plus the GPU
+Operator's readiness gate — come up behind it, from nothing, in one command.
 
 ```
 turf -C use-cases/datacenter/aicr-stack up
@@ -63,8 +64,8 @@ create the cluster it reconciles into.
 
 The 16 edges above are between *components*. A component that ships
 pre-manifests, post-manifests or a readiness gate expands into several Helm
-releases — 16 releases here for 14 components — and those chain **inside** the
-component's module. So `depends_on = [module.agentgateway_crds]` covers that
+releases — 16 releases here for 14 components, 17 with the GPU Operator's
+readiness gate — and those chain **inside** the component's module. So `depends_on = [module.agentgateway_crds]` covers that
 component's post-manifest release too, without naming it.
 
 The two that keep the graph agree on it exactly: rendering this recipe through
@@ -97,10 +98,11 @@ Reproduce the helmfile side with `--deployer helmfile` against `bundle/recipe.ya
 
 ## Everything here is credential-free
 
-Sixteen releases, seven registries — `nvcr.io`, `cr.agentgateway.dev`,
+Seventeen releases, eight registries — `nvcr.io`, `cr.agentgateway.dev`,
 `ghcr.io/nvidia/nodewright`, `ghcr.io/nvidia/nvsentinel`, `ghcr.io/kai-scheduler`,
-`registry.k8s.io/dra-driver-nvidia`, `charts.jetstack.io` and the Prometheus
-community charts — and **no key, no secret, no `imagePullSecrets`**. This was the
+`registry.k8s.io/dra-driver-nvidia`, `charts.jetstack.io`, the Prometheus
+community charts and the gate's `ghcr.io/nvidia/aicr-gate` — and **no key, no
+secret, no `imagePullSecrets`**. This was the
 open question before the stack was first run, and the answer is that the whole
 kind recipe pulls anonymously.
 
@@ -136,9 +138,8 @@ error.
 
 ## What it does when you run it
 
-Measured on Turf from empty state on 2026-09-20, at engine commit `1ce29f8`
-(turf-engine #62/#63) and through the engine's development driver, before the
-v1 tools; the stack has since been run through the Turf MCP server as well. The
+Measured on Turf from empty state on 2026-10-13, through the MCP server (`init`,
+`workspace_open`, `up`, `apply`), against the engine the server pins. The
 containment shim is a `terraform_data`, a resource of the built-in
 `terraform.io/builtin/terraform` provider that no registry serves; Turf runs that
 provider as a sidecar process on the same path every other provider takes, so the
@@ -148,27 +149,20 @@ Round one can plan and apply exactly six addresses — the cluster and the five
 containment shims that sit behind no order-only edge. Everything else defers,
 and nine of the fourteen components defer **whole**:
 
-<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
-plan for phase p-014e4490 (75 of 75 address(es) change):
-  create    kind_cluster.dc
-  create    module.stack.module.cert_manager.terraform_data.cluster
-  unspecified module.stack.module.cert_manager.helm_release.this  (deferred)
-  unspecified module.stack.module.cert_manager.helm_release.post  (deferred)
-  unspecified module.stack.module.cert_manager.helm_release.readiness  (deferred)
-  ...
-  unspecified module.stack.module.gpu_operator  (module deferred: absent_prereq)
-  unspecified module.stack.module.gpu_operator.terraform_data.cluster  (deferred)
-  unspecified module.stack.module.gpu_operator.helm_release.pre  (deferred)
-  unspecified module.stack.module.gpu_operator.helm_release.this  (deferred)
-  ...
-
-phase p-014e4490: applied (applied 6, failed 0, cancelled 0)
-round 1 deferred 69 entry(ies); planning again against the committed state
-plan for phase p-b2970233 (25 of 31 address(es) change):
-phase p-b2970233: applied (applied 25, failed 0, cancelled 0)
+up:     round 1  planned 75   deferred 69   → awaiting_approval   add 6
+apply:  round 1  applied 6
+        round 2  planned 32   deferred 0    → awaiting_approval   add 26
+                 invocations: action.turf_action.certify
+                              after_create module.stack.module.gpu_operator.helm_release.this
+apply:  round 2  … → awaiting_actions (certify)
+apply:  round 2  applied 26   invoked 1   drift 1
 converged in 2 round(s)
 ```
+
+The `drift: 1` in round two is the kind provider reading back the kubeconfig
+path it wrote after the create, not the bundle. The 26 of round two are the
+seventeen releases and the nine shims that deferred with their modules.
 
 `absent_prereq` is the engine saying a module is deferred because it depends —
 transitively, over an edge that carries no value — on something else that is
@@ -188,54 +182,62 @@ beneath the call: that descent is what lets Turf find an object the round
 depends on. The cost is a noisier first plan: 75 rows for the 16 releases plus 14
 shims plus the cluster that actually exist.
 
-`turf -C use-cases/datacenter/aicr-stack destroy` removes all 31 addresses in a
+`turf -C use-cases/datacenter/aicr-stack destroy` removes all 32 addresses in a
 single round.
 
 ### Replacing the cluster
 
 This is what the containment shim is for, and the part the four engines in
 [the host-replacement differential](https://github.com/turfbuild/turf-engine/blob/main/docs/development/designs/host-replacement-across-engines.md)
-get wrong. `up --var generation=2` on the converged stack replaces
-`kind_cluster.dc`. Every release's provider configuration now reads a cluster
+get wrong. The shim keys on `cluster_keepers`, the caller's statement of what
+identifies the cluster; `main.tf` passes kind's endpoint, a port minted per
+cluster, so it changes with every generation. `up --var generation=2` on the
+converged stack replaces `kind_cluster.dc`. Every release's provider configuration now reads a cluster
 that is being replaced, so no release can be planned forward — but every one of
 them is *contained* by a shim that replaces this round, and Turf plans through the
 deferred modules to find them:
 
-<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
 ```
-plan for phase p-46e4ae41 (75 of 75 address(es) change):
-  replace   kind_cluster.dc
-  replace   module.stack.module.agentgateway_crds.terraform_data.cluster
-  delete    module.stack.module.agentgateway_crds.helm_release.this  (replace_by_triggers; create deferred to next phase)
-  delete    module.stack.module.agentgateway_crds.helm_release.post[0]  (replace_by_triggers; create deferred to next phase)
-  ...
-  unspecified module.stack.module.gpu_operator  (module deferred: absent_prereq)
-  delete    module.stack.module.gpu_operator.helm_release.this  (replace_by_triggers; create deferred to next phase)
-  ...
-phase p-46e4ae41: applied (applied 28, failed 0, cancelled 0)
-round 1 deferred 69 entry(ies); planning again against the committed state
-plan for phase p-87b059f8 (25 of 31 address(es) change):
-phase p-87b059f8: applied (applied 34, failed 0, cancelled 0)
+up:     round 1  planned 75   deferred 69   → awaiting_approval
+                 replace 6 (kind_cluster.dc + the 5 shims behind no edge)
+                 destroy 23 (all 17 releases: replace_by_triggers, create deferred
+                             to the next round; + the 6 replaced)
+                 add 6
+apply:  round 1  applied 29
+        round 2  planned 32   → awaiting_approval   add 26   replace 9
+                 invocations: action.turf_action.certify
+apply:  round 2  … → awaiting_actions (certify)   → applied 35   invoked 1
 converged in 2 round(s)
 ```
 
-**All sixteen releases are condemned in the round of the replace**, including
+**All seventeen releases are condemned in the round of the replace**, including
 the ten inside modules that defer whole — a release is deleted through the
 configuration it was created with, and that configuration only exists while the
-old cluster does. The apply order, read back from the engine's own invocation
-log, is the whole argument: the sixteen deletes complete between `01:50:09` and
-`01:50:28` against the old cluster; the old cluster's destroy completes at
-`01:50:30`; the new one is up at `01:51:07`; round two creates the sixteen
-releases in it and replaces the nine shims that were deferred. End state: one
-kind cluster (`aicr-2`), 16 releases `deployed`, `ClusterPolicy` `ready`,
-fourteen shims all carrying the new endpoint, and `tofu plan` against the
-engine's statefile reports `No changes`.
+old cluster does. Round one uninstalls the seventeen releases from the old
+cluster, destroys it, creates the new one and replaces the five shims that could
+be planned; round two creates the seventeen releases in the new cluster,
+re-asserts the readiness gate, pauses for `certify`, and replaces the nine shims
+that were deferred. End state: one kind cluster (`aicr-2`), 17 releases
+`deployed`, `ClusterPolicy` `ready`, fourteen shims all carrying the new
+endpoint, and an idle `up` that plans nothing.
 
-Compare stock Terraform on the earlier `null_resource` build of this same bundle
-(measured 2026-09-16): its refresh declared every release gone and it planned
-zero replaces — the old cluster destroyed with its releases never uninstalled.
-Here that would not matter, since `kind delete` takes everything with it; on a
-cluster that outlives the configuration it is sixteen orphaned releases.
+Compare stock Terraform on this same bundle (v1.16.2, measured 2026-10-13):
+`Plan: 32 to add, 0 to change, 15 to destroy`. The fifteen replaced are the
+cluster and the fourteen shims; the seventeen releases are *created*, because
+the refresh that precedes the plan reported every one of them `has been
+deleted`. They had not been — the plan runs against the old cluster — but the
+helm provider's configuration is unknown while the cluster it reads from is
+being replaced, and `hashicorp/helm`'s `Read` drops a release it cannot reach
+from state on any failed existence check, which is how it treats an
+unconfigured client. The apply then destroyed the cluster (5 s), created the
+new one and installed seventeen releases into it: a correct end state, a clean
+plan afterwards, and zero uninstalls. Here that does not matter, since
+`kind delete` takes everything with it; on a cluster that outlives the
+configuration it is seventeen orphaned releases, and the shim never got to
+say otherwise. Given a cluster the plan *can* see, the shim does what it
+says: bumping `cluster_keepers` on the live cluster planned all seventeen as
+`replaced due to changes in replace_triggered_by`, seventeen uninstalls then
+seventeen installs, the gate re-asserting at the end.
 
 The mechanism is a plain destroy-then-create. The generated bundle carries no
 `create_before_destroy`, so the old cluster is gone before the new one exists and
@@ -299,9 +301,22 @@ reference is to the resource as a whole, not to an attribute: the rule reads
 `terraform_data` is built into Terraform (and into OpenTofu), so `hashicorp/helm`
 is the bundle's only provider.
 
-Stock Terraform plans and applies this tree in one round — `Plan: 31 to add` on
+Stock Terraform plans and applies this tree in one round — `Plan: 32 to add` on
 `v1.16.2`, cluster included, because `helm_release` never contacts the API server
-at plan time. The experimental deferred-actions path is the one that fails:
+at plan time; the gate Job completes inside the apply, in 90 s here, with
+`ClusterPolicy` `ready` behind it. OpenTofu `v1.13.1` is the same at every
+step. Measured 2026-10-13 on this bundle, single-node kind, one engine at a time:
+
+| | Terraform v1.16.2 | OpenTofu v1.13.1 |
+|---|---|---|
+| create from empty | `32 to add`, one apply, 17 releases, gate `Complete` | same |
+| idle plan | `No changes` | same |
+| `generation=2` | `32 to add, 15 to destroy`: refresh reports the releases deleted, cluster and shims replaced, 17 created in the new cluster, 0 uninstalls | same |
+| keeper bumped, cluster kept | `31 to add, 31 to destroy`: 17 `replaced due to changes in replace_triggered_by`, 17 uninstalls then 17 installs, new gate Job | same |
+| destroy | `32 destroyed`, cluster gone | same |
+
+Wall-clock is deliberately not in the table (see the note under *Replacing the
+cluster*); for scale, a create ran 281 s on an idle laptop and 1192 s on a busy one. The experimental deferred-actions path is the one that fails:
 
 ```
 $ terraform plan -allow-deferral
@@ -338,24 +353,21 @@ release as the last slot in that component's module, so every dependent already
 waits for it. The slot ignores the bundle-wide `wait` variable — an async
 component may skip waiting on its own workloads, never on its gate.
 
-The committed bundle is generated **without** the flag. Not for lack of a gate to
-run: `gpu-operator` in this very recipe ships a `readiness.yaml` asserting
-`ClusterPolicy` `status.state: ready`, and regenerating with `--readiness-hooks`
-yields a seventeenth folder, `012-gpu-operator-readiness`, as a slot on
-`module.gpu_operator` — which its three dependents already wait for.
+The committed bundle is generated **with** the flag. `gpu-operator` in this
+recipe ships a `readiness.yaml` asserting `ClusterPolicy` `status.state: ready`,
+so the bundle carries a seventeenth folder, `012-gpu-operator-readiness`, as a
+slot on `module.gpu_operator` — which its three dependents already wait for.
+On a fresh cluster the gate Job completes in about 90 s: it polls the
+`ClusterPolicy` through a stability window and passes once the operator has
+settled on `ready` (`reason=NoGPUNodes` here), and `kai-scheduler`,
+`nvidia-dra-driver-gpu` and `nvsentinel` install after it.
 
-The reason is the gate's own image. AICR tags it with the bundler version, and
-publishes it **only on release tags**; a build from source stamps `dev` and falls
-back to `ghcr.io/nvidia/aicr-gate:dev`, which is a local-only tag you are expected
-to build and `kind load` yourself (`ghcr.io/nvidia/aicr-gate:dev` → HTTP 404). Since
-`--deployer terraform` exists only on a fork branch, there is no released `aicr`
-that can emit both the terraform bundle and a pullable gate. Committing the flag
-on would ship a bundle that `ImagePullBackOff`s on any machine but the one that
-built it — so it stays off until the deployer lands in a release.
-
-It has been run, though, on a build of this tree with the gate image loaded by
-hand: the gate polls `gpu-operator`'s `ClusterPolicy` through a stability window
-and passes at `T+30s`, and its three dependents wait for it.
+One thing to know about the gate's image. AICR tags it with the bundler version
+and publishes it **only on release tags**; a build from source stamps `dev` and
+falls back to `ghcr.io/nvidia/aicr-gate:dev`, a local-only tag that does not
+exist in the registry. The bundle here is therefore generated by a build of the
+fork stamped `v1.0.0` (see *Regenerating*), so the gate pins the published
+`ghcr.io/nvidia/aicr-gate:v1.0.0` and pulls anonymously like everything else.
 
 **A gate re-runs on every upgrade of its own release, and on nothing else.** A
 Job's `spec.template` is immutable, so an upgrade rendering the same Job patches
@@ -427,8 +439,8 @@ bundle/                  ALL generated by `aicr bundle --deployer terraform`
   versions.tf              required_providers; no provider block (child module)
   variables.tf outputs.tf
   modules/component/       one component: its chart, plus pre/post/gate slots
-  NNN-<component>/         values.yaml, cluster-values.yaml, and either
-                           upstream.env or a local chart
+  NNN-<component>/         values.yaml and cluster-values.yaml, plus a local
+                           chart where the component bundles one
   recipe.yaml              the resolved recipe this was generated from
   bundle-info.yaml         the index: every release, its component and its folder
   checksums.txt README.md
@@ -442,15 +454,25 @@ Gateway API CRDs that belong to the upstream chart, not to this repository.
 
 ```sh
 aicr bundle --recipe bundle/recipe.yaml --output bundle \
-  --deployer terraform --terraform-child-module --terraform-cluster-rollover
+  --deployer terraform --terraform-child-module --terraform-cluster-rollover \
+  --readiness-hooks
 ```
 
-That is the whole thing. `--deployer terraform` is not in NVIDIA's AICR yet. The
-bundle here is generated by the submission,
-[turfbuild/aicr#3](https://github.com/turfbuild/aicr/pull/3) — written against
-the same `Deployer` interface the other five renderers implement, and stacked
-on [NVIDIA/aicr#2863](https://github.com/NVIDIA/aicr/pull/2863), the readiness
-gate fix it needs. The fork's earlier superset branch
+That is the whole thing. `--deployer terraform` is not in a released AICR yet.
+The bundle here is generated by the submission,
+[NVIDIA/aicr#3217](https://github.com/NVIDIA/aicr/pull/3217)
+(fork branch [turfbuild/aicr#3](https://github.com/turfbuild/aicr/pull/3), head
+`3a19de57`), written against the same `Deployer` interface the other five
+renderers implement, on top of NVIDIA's v1.0.0 line. The binary was built from
+that head stamped as the release it sits on —
+
+```sh
+go build -ldflags "-X github.com/NVIDIA/aicr/pkg/cli.version=v1.0.0" -o aicr ./cmd/aicr
+```
+
+— which is why `bundle/` says `Generated by AICR v1.0.0` and why the readiness
+gate's image resolves (see *Helm's `--wait` is not a readiness gate* above).
+The fork's earlier superset branch
 ([turfbuild/aicr#1](https://github.com/turfbuild/aicr/pull/1)) carried the
 content digests as well; those are split out to follow.
 
