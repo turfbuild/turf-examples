@@ -22,7 +22,7 @@ backend "kubernetes" {
 - **Auth is out-of-band.** Backend blocks can't reference HCL variables, so the
   backend authenticates from the session's environment (the shell you start the
   Turf CLI or MCP client from) — `KUBE_CONFIG_PATH`, `KUBE_IN_CLUSTER_CONFIG`,
-  `KUBE_CONFIG_PATHS`, etc. — or from `workspace_open`'s `backend_config`, Turf's
+  `KUBE_CONFIG_PATHS`, etc. — or from `open`'s `backend_config`, Turf's
   `tofu init -backend-config=...`. This is independent of how the
   `kubernetes` *provider* authenticates (which does use variables, here
   `kubeconfig_path` / `kubeconfig_context`).
@@ -56,7 +56,7 @@ kubectl -n turf-state get secret,lease
 
 The lock is held while a session follows a convergence, including one paused at its
 approval point, as `tofu apply` holds it at its prompt. It is released when the
-convergence ends, or when the session lets go of it: `workspace_close`, the server
+convergence ends, or when the session lets go of it: `close`, the server
 exiting, or a pause longer than a day. The convergence itself waits in the engine,
 and the next `apply` takes the lock again.
 

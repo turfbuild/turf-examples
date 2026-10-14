@@ -80,7 +80,7 @@ branding:
     3. Write the request's providers, resources, and module calls into `main.tf`.
        Then re-run `turf_init`: it installs the modules and providers the
        configuration names, like `tofu init`.
-    4. `turf_workspace_open`. The backend comes from `backend.tf`, so pass no
+    4. `turf_open`. The backend comes from `backend.tf`, so pass no
        `backend_type`, and no `workspace_name` (`workspaces { name }` already
        addresses exactly one remote workspace). The backend authenticates with a
        Scalr CLI token (`turf login <acct>.scalr.io` or `TF_TOKEN_<host>`),

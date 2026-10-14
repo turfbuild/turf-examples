@@ -17,7 +17,7 @@ with `for_each = var.resource_groups`. `up` plans the directory and expands it:
 
 ```
 init({ path: "terraform/azure/avm-resourcegroup" })   # installs the module and every provider
-workspace_open({})
+open({})
 up({})
 → module.resource_group["eastus"].azurerm_resource_group.this   + create
   module.resource_group["westus"].azurerm_resource_group.this   + create

@@ -6,7 +6,7 @@ cluster and podinfo in it):
 1. **Every provider is scanned before it runs.** `init` installs the
    providers and reports each one's `package_dir` and `hashes`; the scan reads
    those directories; a blocking verdict stops the session before
-   `workspace_open`, so the binary never executes.
+   `open`, so the binary never executes.
 2. **The configuration you deploy is pinned.** The workload is a module at a
    **commit** of this repository (`git::…//terraform/modules/podinfo?ref=…`),
    so what runs is exactly what was reviewed, and an upgrade is a ref bump —

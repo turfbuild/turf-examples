@@ -342,7 +342,7 @@ from the server.
 turf -C use-cases/datacenter/ansible-k3s up
 ```
 
-Or from any MCP client: `init` the directory, `workspace_open`, then `up`, and
+Or from any MCP client: `init` the directory, `open`, then `up`, and
 approve each round's plan with `apply`.
 
 ## Verify

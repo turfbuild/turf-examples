@@ -19,7 +19,7 @@ spec:
       configurations that already exist on the turf server's filesystem, with
       Terraform's commands as tools:
       - `init` registers a configuration directory and installs its modules and
-        providers; `workspace_open` binds its state.
+        providers; `open` binds its state.
       - `up` plans the first round and stops at its approval point with the plan
         (`plan.path`, `plan.digest`). `apply` with that digest approves the plan,
         applies the round and plans the next, until the outcome is `converged`. Not
@@ -49,7 +49,7 @@ spec:
       (pass `workspace_alias` to every later tool):
 
       ```
-      workspace_open({
+      open({
         workspace_name:  "<stack-name>",
         workspace_alias: "<stack-name>",
         backend_type: "kubernetes",
@@ -144,11 +144,11 @@ spec:
           name: turf-mcp-server
           namespace: kagent
           toolNames:
-            - workspace_open
-            - workspace_close
-            - workspace_show
-            - workspace_list
-            - workspace_delete
+            - open
+            - close
+            - status
+            - list
+            - delete
             - provider_search
             - provider_describe
             - init
