@@ -48,7 +48,8 @@ them.
   `awaiting_actions`, the agent does the step, and answers with
   `apply(action_results)`. Two steps on one caller pause the apply one at a
   time, in the order written: `attest`, then `check`. A failure at either
-  means nothing is created.
+  stops the pet and podinfo, which is named after it; the cluster, which
+  depends on neither, still applies.
 - **Then two rounds.** The cluster in round one; podinfo, whose provider was
   unknown until the cluster existed, in round two.
 
