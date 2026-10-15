@@ -24,7 +24,7 @@ sees three tool namespaces at once:
 
 | Prefix | Server | Role |
 |--------|--------|------|
-| `turf_*`  | built-in turf-mcp-server | plan and apply (`turf_up` vends each plan as a document at `plan.path`; `turf_apply` approves it) |
+| `turf_*`  | built-in turf-mcp-server | plan and apply (`turf_up` vends each plan as a resource at `plan.uri`, which `turf_show` reads; `turf_apply` approves it) |
 | `scalr_*` | `scalr/mcp-server` (docker) | read the Scalr API — variables, modules, policy |
 | `opa_*`   | `orygn/opa-mcp` (docker/npx) | evaluate the plan against rego |
 

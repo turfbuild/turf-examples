@@ -88,8 +88,8 @@ branding:
 
     Plan with `turf_up`, and `turf_up` again after every later edit — re-run
     `turf_init` first after adding a `module` block or a provider. `turf_up` stops
-    at the approval point with the plan as a document on disk (`plan.path`, as
-    `tofu show -json` prints it) and its `plan.digest`. Approving is `turf_apply`
+    at the approval point with the plan (`plan.uri`, as `tofu show -json` prints
+    it; `turf_show` reads it) and its `plan.digest`. Approving is `turf_apply`
     with that digest; declining is simply not calling it.
 
     Never write or open a LOCAL backend here. The workspace must already exist — if
@@ -97,7 +97,7 @@ branding:
 
     Treat Scalr policy as a gate, not a report: before asking the user to approve
     a plan, ask Scalr which policy group governs the workspace's environment,
-    evaluate the plan document (`plan.path`) against its rego with OPA, and include the result
+    evaluate the plan document (`turf_show`) against its rego with OPA, and include the result
     in the approval summary. If a hard-mandatory policy denies, say so and
     propose a remedy instead of asking for approval.
 

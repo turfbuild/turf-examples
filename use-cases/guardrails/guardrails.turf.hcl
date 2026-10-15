@@ -34,8 +34,8 @@ action "turf_action" "check" {
   config {
     prompt = <<-EOT
       Evaluate policies/*.rego (package terraform, rule deny) against this
-      plan: run `opa eval` or `conftest` on the plan document, or on an
-      input.tfplan built from inputs if the document is gone. Fail on any deny,
+      plan: run `opa eval` or `conftest` on the round's plan document (`show`
+      reads it), or on an input.tfplan built from inputs. Fail on any deny,
       quoting each reason as an error; otherwise report "no denials" as
       progress.
     EOT
