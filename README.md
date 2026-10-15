@@ -218,6 +218,7 @@ runs on. The server finds the engine through `TURF_RESTATE_URL`.
 | `turf-pvc.yaml`           | `PersistentVolumeClaim` the server and the engine share: configurations, plans, the provider cache |
 | `turf-model-config.yaml`  | Model provider configuration                                        |
 | `opentofu-mcpserver.yaml` | Companion OpenTofu registry `RemoteMCPServer` (provider/module docs)|
+| `networkpolicy.yaml`      | `NetworkPolicy` — who may reach restate-server, the engine and the MCP server |
 
 The engine reads each configuration directory itself, so the server and the engine
 mount one volume at the same path. Provider credentials belong on the engine, where
@@ -226,6 +227,35 @@ the plugins run; the state backend's belong on the server.
 The kagent agent has no file tools, so it **operates** existing configurations — plan,
 apply, destroy, import, and actions — but does not author them; writing `.tf` needs a
 client with file tools (the Turf CLI, Claude Code).
+
+**Who can reach Turf.** restate-server has no authentication of its own, and neither
+does the MCP server's HTTP transport, so the stack is closed by two things:
+
+- **Request identity.** restate-server signs every request it sends the engine, and
+  the engine serves nothing else. The key lives in a Secret both pods need, so create
+  it once **before** `kubectl apply` (until it exists, neither starts). The engine,
+  from the same image, makes the key and prints its public half:
+
+  ```sh
+  docker run --rm --user "$(id -u)" -v "$PWD:/k" ghcr.io/turfbuild/turf-mcp-server:<release> \
+    turf-engine --identity-keygen /k/identity.pem > public-key
+  kubectl -n kagent create secret generic turf-engine-identity \
+    --from-file=identity.pem --from-file=public-key
+  rm identity.pem
+  ```
+
+  restate-server mounts `identity.pem`; the engine is given only `public-key`. The
+  engine checks signatures from the first Turf release after v0.18.0, and
+  `--identity-keygen` arrives with it: an older image accepts the Secret and ignores
+  it, leaving the network policy below as the only control.
+- **`networkpolicy.yaml`**: restate-server's ingress only from the MCP server, its
+  admin API only from the engine, the engine only from restate-server, and the MCP
+  server only from the agent and kagent's controller. Policies are enforced by the
+  cluster's network plugin — on AKS, a network policy engine chosen when the cluster
+  is created (`--network-policy azure|calico|cilium`); Calico and Cilium elsewhere — and
+  a plugin that does not enforce them accepts them silently, so check with a throwaway
+  pod that restate's ports time out. `kubectl port-forward` still reaches restate's
+  admin API for an operator: it enters the pod through the kubelet.
 
 ```sh
 kubectl apply -f integrations/kagent/
