@@ -24,7 +24,7 @@ plan document and from the apply:
 init({ path: "terraform/language/replace-ordering" })
 open({})
 up({ replace: ["random_integer.port", "random_password.secret", "random_pet.server"] })
-# → awaiting_approval: plan.path is the round's plan, as `tofu show -json` prints it
+# → awaiting_approval: plan.uri is the round's plan, as `tofu show -json` prints it (show reads it)
 apply({ convergence_id: "<from up>", plan_digest: "<plan.digest>" })
 ```
 
@@ -33,7 +33,7 @@ apply({ convergence_id: "<from up>", plan_digest: "<plan.digest>" })
 With no `lifecycle` block every replacement is **delete-then-create** (`∓`). The
 execution order:
 
-<!-- TODO(v1 re-run): re-derive this from a real v1 run: the plan document at plan.path (each replace's action order and create_before_destroy) and the round's results -->
+<!-- TODO(v1 re-run): re-derive this from a real v1 run: the plan document (`show`, plan.uri: each replace's action order and create_before_destroy) and the round's results -->
 ```
 ∓/random_pet.server/delete        deps: []                          ← ready (leads)
 ∓/random_integer.port/delete      deps: [server/delete]             ← old port waits on old server
@@ -63,7 +63,7 @@ too, otherwise the mixed pair would form a destroy-order cycle
 
 All three apply as `±`, and the new objects lead:
 
-<!-- TODO(v1 re-run): re-derive this from a real v1 run: the plan document at plan.path (each replace's action order and create_before_destroy) and the round's results -->
+<!-- TODO(v1 re-run): re-derive this from a real v1 run: the plan document (`show`, plan.uri: each replace's action order and create_before_destroy) and the round's results -->
 ```
 ±/random_integer.port/create     deps: []                          ← ready (new before old)
 ±/random_password.secret/create  deps: []                          ← ready
@@ -82,7 +82,7 @@ Apply order:
 
 ### Note: where the CBD flip happens
 
-<!-- TODO(v1 re-run): confirm against plan.path whether the vended plan document already shows port/secret as create-before-destroy, and rewrite this note to match -->
+<!-- TODO(v1 re-run): confirm against the plan document (`show`, plan.uri) whether it already shows port/secret as create-before-destroy, and rewrite this note to match -->
 Turf finalized the forced-CBD ordering when the plan was approved, not when it was
 first planned, so the plan shown before approval listed `port`/`secret` as plain
 delete-then-create and the forced `±` ordering appeared only once the round was

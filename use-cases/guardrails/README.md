@@ -12,9 +12,9 @@ cluster and podinfo in it):
    so what runs is exactly what was reviewed, and an upgrade is a ref bump —
    a diff to read.
 3. **Every plan is checked against policy before it is approved.** The plan
-   waits on disk at its approval point (`plan.path`, OpenTofu's JSON plan) and
-   nothing applies until its digest is named, so a policy tool reads exactly
-   what gets approved. `policies/readable_pet_names.rego` is the rule.
+   waits at its approval point (`plan.uri`, OpenTofu's JSON plan, which `show`
+   reads) and nothing applies until its digest is named, so a policy tool reads
+   the plan that gets approved. `policies/readable_pet_names.rego` is the rule.
 
 And `guardrails.turf.hcl` makes the first and the third a step of the apply
 itself, so a run that skips the approval pause (`auto_approve`) cannot skip
@@ -34,9 +34,9 @@ them.
   way, anonymous pulls.) The configuration directory itself is still local —
   a remote *root* is not something Turf does yet.
 - **Policy at the approval point.** `up` with the default `length = 1`:
-  `opa eval -i <plan.path> -d policies/ 'data.terraform.deny'` (or `conftest`,
-  or the OPA MCP server) returns a denial — do not apply; `cancel`. `up({ var:
-  { length: 2 } })` returns none — approve by the digest of the document that
+  `opa eval -i <file> -d policies/ 'data.terraform.deny'` on `show`'s document
+  written to a file (or `conftest`, or the OPA MCP server) returns a denial — do not apply; `cancel`. `up({ var:
+  { length: 2 } })` returns none — approve by the digest of the plan that
   was checked. A plan that changed since is refused.
 - **The guardrails ride with the configuration.** `guardrails.turf.hcl` — tofu
   and terraform ignore it by its name; Turf lays it over `main.tf` at every

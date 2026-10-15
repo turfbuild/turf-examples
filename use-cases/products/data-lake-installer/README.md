@@ -64,7 +64,7 @@ turf -C . up                                   # plan only: read it, then declin
 ```
 
 Through the MCP tools: `init`, `open`, `up({ var: {…}, refresh: false })`,
-read `plan.path`, and do not call `apply` — not calling it declines; `cancel`
+read the plan with `show`, and do not call `apply` — not calling it declines; `cancel`
 ends the convergence. `plan.invocations` lists the three steps beside the
 creates.
 

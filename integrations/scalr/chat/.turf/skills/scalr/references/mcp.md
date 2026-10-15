@@ -75,9 +75,11 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    policies sit in otherwise fails the same way. A `chat/policies` symlink does not help —
    the file tools resolve symlinks on both sides of the check. (No local checkout? Fetch
    the file from the repo over the network — creds permitting.)
-3. **Read the plan.** `turf_up` stops at the approval point with the plan as a document
-   on disk, at `plan.path`: the standard `tofu show -json` document
-   (`resource_changes[].change.after`, …). Read the file with your file tools.
+3. **Read the plan.** `turf_up` stops at the approval point with the plan as a resource,
+   at `plan.uri`: the standard `tofu show -json` document
+   (`resource_changes[].change.after`, …). Read it with `turf_show`, which redacts
+   sensitive values; pass `show_sensitive: true` only if a policy reads one (the secret
+   then enters the conversation).
 4. **Evaluate** each policy against the plan. **Pass BOTH the rego and the plan
    inline** — the rego as `source`, the plan as `input` — never the file-path
    variants (`paths`/`inputPath`). The OPA server runs in a container and cannot read
@@ -87,7 +89,7 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    opa_rego_eval {
      "query": "data.terraform.deny",
      "source": "<the rego bytes from step 2>",
-     "input": { "tfplan": <the plan JSON read from plan.path> }
+     "input": { "tfplan": <the plan JSON turf_show returned> }
    }
    ```
    The `input` MUST wrap the plan under `tfplan` — a bare plan silently yields no

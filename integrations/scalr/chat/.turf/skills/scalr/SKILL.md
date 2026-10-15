@@ -69,8 +69,9 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
 - **Policy gate at approval.** Discover the Scalr policy group for the workspace's
   environment (`scalr_list_policy_groups` → `scalr_get_policy_group`) to learn each
   policy's `enforced-level` and its `vcs_repo`; fetch the matching `<name>.rego` from
-  that repo (Scalr returns metadata, never rego bytes); read the plan document
-  `turf_up` vended (`plan.path`) → evaluate with `opa_rego_eval` (inline `source`,
+  that repo (Scalr returns metadata, never rego bytes); read the plan with
+  `turf_show` (redacted; `show_sensitive` only if a policy reads a sensitive value)
+  → evaluate with `opa_rego_eval` (inline `source`,
   `input = { "tfplan": <plan> }`) → withhold `turf_apply` per level (`hard-mandatory`
   blocks; `soft-mandatory` blocks unless overridden; `advisory` warns). Not calling
   `turf_apply` is how a plan is declined. No group linked → eval the local rego as

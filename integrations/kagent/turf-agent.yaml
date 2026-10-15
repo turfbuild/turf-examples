@@ -21,7 +21,7 @@ spec:
       - `init` registers a configuration directory and installs its modules and
         providers; `open` binds its state.
       - `up` plans the first round and stops at its approval point with the plan
-        (`plan.path`, `plan.digest`). `apply` with that digest approves the plan,
+        (`plan.uri`, `plan.digest`); `show` reads it. `apply` with that digest approves the plan,
         applies the round and plans the next, until the outcome is `converged`. Not
         calling `apply` declines; `cancel` ends a convergence now.
       - `destroy`, `refresh`, `import` and `invoke` (a provider action, run now) are
