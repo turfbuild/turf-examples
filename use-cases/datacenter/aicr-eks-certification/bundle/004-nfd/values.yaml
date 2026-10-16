@@ -21,6 +21,22 @@ topologyUpdater:
   tolerations:
     - operator: Exists
 worker:
+  config:
+    core:
+      noPublishFeatures:
+        - cpu.*
+        - kernel.config
+        - kernel.enabledmodule
+        - kernel.kvm
+        - kernel.selinux
+        - kernel.version
+        - local.*
+        - memory.*
+        - network.*
+        - pci.*
+        - storage.*
+        - system.*
+        - usb.*
   enable: true
   tolerations:
     - operator: Exists

@@ -26,6 +26,8 @@ module "aws_ebs_csi_driver" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 }
 
 # 002-aws-efa — aws-efa-k8s-device-plugin v0.5.29
@@ -48,6 +50,8 @@ module "aws_efa" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 }
 
 # 003-cert-manager — cert-manager v1.20.2
@@ -70,6 +74,8 @@ module "cert_manager" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 }
 
 # 004-nfd — node-feature-discovery 0.19.0
@@ -92,6 +98,8 @@ module "nfd" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 }
 
 # 005-nodewright-operator — nodewright v0.19.0
@@ -114,6 +122,8 @@ module "nodewright_operator" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 }
 
 # 006-nodewright-customizations — chart bundled in this directory
@@ -124,7 +134,8 @@ module "nodewright_customizations" {
   namespace        = "skyhook"
   create_namespace = true
 
-  chart = "${path.module}/006-nodewright-customizations"
+  chart        = "${path.module}/006-nodewright-customizations"
+  chart_digest = "sha256:50c59540551703b5bac8a375ce06e222b27ce938de83a00925f485afbba8cd85"
 
   values_files = [
     "${path.module}/006-nodewright-customizations/values.yaml",
@@ -134,6 +145,8 @@ module "nodewright_customizations" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [
     module.nodewright_operator,
@@ -160,6 +173,8 @@ module "prometheus_operator_crds" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 }
 
 # 008-kube-prometheus-stack — kube-prometheus-stack 84.4.0
@@ -182,6 +197,8 @@ module "kube_prometheus_stack" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [
     module.prometheus_operator_crds,
@@ -208,6 +225,8 @@ module "gpu_operator" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [
     module.cert_manager,
@@ -238,6 +257,8 @@ module "k8s_ephemeral_storage_metrics" {
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
 
+  disable_openapi_validation = var.disable_openapi_validation
+
   depends_on = [
     module.kube_prometheus_stack,
     module.prometheus_operator_crds,
@@ -262,10 +283,13 @@ module "kai_scheduler" {
 
   # Asynchronous: helm --wait times out on this component's custom-resource
   # readiness even though its pods start. Ordering still holds; readiness does not.
-  atomic          = var.atomic
+  # atomic stays off too: Helm waits whenever atomic is set.
+  atomic          = false
   wait            = false
   timeout         = 1200
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [
     module.gpu_operator,
@@ -289,12 +313,15 @@ module "kubeflow_trainer" {
     "${path.module}/012-kubeflow-trainer/values.yaml",
   ]
 
-  post_chart = "${path.module}/013-kubeflow-trainer-post"
+  post_chart        = "${path.module}/013-kubeflow-trainer-post"
+  post_chart_digest = "sha256:973b520712ea620309ff1b13a1d85f325ce06898d24e8cfe3ec6ea737f9ab3ab"
 
   atomic          = var.atomic
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [
     module.cert_manager,
@@ -324,6 +351,8 @@ module "nvcre" {
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
 
+  disable_openapi_validation = var.disable_openapi_validation
+
   depends_on = [
     module.kubeflow_trainer,
   ]
@@ -350,6 +379,8 @@ module "nvidia_dra_driver_gpu" {
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
 
+  disable_openapi_validation = var.disable_openapi_validation
+
   depends_on = [
     module.gpu_operator,
   ]
@@ -375,6 +406,8 @@ module "nvsentinel" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [
     module.cert_manager,
@@ -403,6 +436,8 @@ module "prometheus_adapter" {
   wait            = var.wait
   timeout         = var.timeout
   cluster_keepers = var.cluster_keepers
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [
     module.kube_prometheus_stack,
