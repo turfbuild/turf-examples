@@ -12,7 +12,10 @@ variable "cluster_keepers" {
     its CA certificate, its provider-assigned id or creation time, or its
     endpoint where that is unique per cluster. A map combines several. A
     value a rebuild keeps — a name, a DNS alias — leaves the releases
-    uncontained. See README.md.
+    uncontained. For a cluster this configuration does not manage, its CA
+    certificate still identifies it: update the value when the cluster is
+    rebuilt and the releases are replaced with it. A constant keeps the
+    shim inert instead. See README.md.
   EOT
   type        = any
 }
@@ -40,7 +43,19 @@ variable "timeout" {
 }
 
 variable "atomic" {
-  description = "Roll a release back if it fails to install. Off by default: a failed release left in place is easier to diagnose."
+  description = "Roll a release back if it fails to install or upgrade. Implies wait: Helm waits whenever atomic is set, which is why the asynchronous components pin both to false. Off by default: a failed release left in place is easier to diagnose."
+  type        = bool
+  default     = false
+}
+
+variable "disable_openapi_validation" {
+  description = <<-EOT
+    Skip the provider's OpenAPI validation of rendered manifests against the
+    live cluster, for every release. Off by default, like the provider's own.
+    A chart whose manifests reference CRDs that a prior release installs can
+    fail that validation; this is the blunt fix, and an ordering edge or a
+    readiness gate on the CRD's release is the better one.
+  EOT
   type        = bool
   default     = false
 }

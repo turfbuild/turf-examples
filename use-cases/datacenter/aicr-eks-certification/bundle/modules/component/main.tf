@@ -41,11 +41,14 @@ resource "helm_release" "pre" {
   namespace        = var.namespace
   create_namespace = var.create_namespace
 
-  chart = var.pre_chart
+  chart       = var.pre_chart
+  description = var.pre_chart_digest
 
   wait    = var.wait
   timeout = var.timeout
   atomic  = var.atomic
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   lifecycle {
     replace_triggered_by = [terraform_data.cluster]
@@ -61,9 +64,13 @@ resource "helm_release" "this" {
   # refuses to adopt a namespace another release created out-of-band.
   create_namespace = var.pre_chart == null ? var.create_namespace : false
 
-  chart      = var.chart
-  repository = var.repository
-  version    = var.chart_version
+  # description carries a bundled chart's content digest, null for an upstream
+  # chart. The provider updates it in place and re-reads the chart directory
+  # on that upgrade, which is how a regenerated directory reaches the cluster.
+  chart       = var.chart
+  repository  = var.repository
+  version     = var.chart_version
+  description = var.chart_digest
 
   values = [for f in var.values_files : file(f)]
 
@@ -76,9 +83,8 @@ resource "helm_release" "this" {
   timeout = var.timeout
   atomic  = var.atomic
 
-  # Escape hatch, off by default like the provider's own. A chart referencing
-  # CRDs that a PRIOR release installs can fail dry-run validation; this is the
-  # blunt fix, narrowing wait and ordering is the better one.
+  # Off by default, like the provider's own. Every call passes the bundle-wide
+  # variable of the same name; see ../../variables.tf for when to set it.
   disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [helm_release.pre]
@@ -96,7 +102,8 @@ resource "helm_release" "post" {
   name      = "${var.release_name}-post"
   namespace = var.namespace
 
-  chart = var.post_chart
+  chart       = var.post_chart
+  description = var.post_chart_digest
 
   wait    = var.wait
   timeout = var.timeout
@@ -119,7 +126,10 @@ resource "helm_release" "readiness" {
   name      = "${var.release_name}-readiness"
   namespace = var.namespace
 
-  chart = var.readiness_chart
+  # A regenerated gate whose files changed changes the digest, so the release
+  # is upgraded and the hook runs again.
+  chart       = var.readiness_chart
+  description = var.readiness_chart_digest
 
   # Hardcoded, not var.wait: the waiting IS the gate. An async component may
   # skip waiting on its own workloads, never on the gate that asserts it came
@@ -137,6 +147,8 @@ resource "helm_release" "readiness" {
   # preempt it. Same derivation as deploy.sh's --timeout for this release.
   wait    = true
   timeout = 5700
+
+  disable_openapi_validation = var.disable_openapi_validation
 
   depends_on = [helm_release.this, helm_release.post]
 

@@ -5,6 +5,10 @@ output "criteria" {
   value       = "criteria(service=eks, accelerator=h100, intent=training, os=ubuntu, platform=kubeflow)"
 }
 
+# The three maps below are literals, known at plan time. depends_on on each
+# output is what orders a caller that reads one after the install: without it
+# a resource built from module.stack.components["x"] can be created while x
+# is still installing, and fail on a namespace that does not exist yet.
 output "components" {
   description = "Component -> namespace, for every component in the recipe."
   value = {
@@ -25,6 +29,25 @@ output "components" {
     "nvsentinel"                    = "nvsentinel"
     "prometheus-adapter"            = "monitoring"
   }
+
+  depends_on = [
+    module.aws_ebs_csi_driver,
+    module.aws_efa,
+    module.cert_manager,
+    module.nfd,
+    module.nodewright_operator,
+    module.nodewright_customizations,
+    module.prometheus_operator_crds,
+    module.kube_prometheus_stack,
+    module.gpu_operator,
+    module.k8s_ephemeral_storage_metrics,
+    module.kai_scheduler,
+    module.kubeflow_trainer,
+    module.nvcre,
+    module.nvidia_dra_driver_gpu,
+    module.nvsentinel,
+    module.prometheus_adapter,
+  ]
 }
 
 output "releases" {
@@ -48,9 +71,47 @@ output "releases" {
     "nvsentinel"                    = "nvsentinel"
     "prometheus-adapter"            = "monitoring"
   }
+
+  depends_on = [
+    module.aws_ebs_csi_driver,
+    module.aws_efa,
+    module.cert_manager,
+    module.nfd,
+    module.nodewright_operator,
+    module.nodewright_customizations,
+    module.prometheus_operator_crds,
+    module.kube_prometheus_stack,
+    module.gpu_operator,
+    module.k8s_ephemeral_storage_metrics,
+    module.kai_scheduler,
+    module.kubeflow_trainer,
+    module.nvcre,
+    module.nvidia_dra_driver_gpu,
+    module.nvsentinel,
+    module.prometheus_adapter,
+  ]
 }
 
 output "namespaces" {
   description = "Distinct namespaces the bundle installs into."
   value       = distinct(["kube-system", "kube-system", "cert-manager", "node-feature-discovery", "skyhook", "skyhook", "monitoring", "monitoring", "gpu-operator", "monitoring", "kai-scheduler", "kubeflow", "nvcre", "nvidia-dra-driver", "nvsentinel", "monitoring"])
+
+  depends_on = [
+    module.aws_ebs_csi_driver,
+    module.aws_efa,
+    module.cert_manager,
+    module.nfd,
+    module.nodewright_operator,
+    module.nodewright_customizations,
+    module.prometheus_operator_crds,
+    module.kube_prometheus_stack,
+    module.gpu_operator,
+    module.k8s_ephemeral_storage_metrics,
+    module.kai_scheduler,
+    module.kubeflow_trainer,
+    module.nvcre,
+    module.nvidia_dra_driver_gpu,
+    module.nvsentinel,
+    module.prometheus_adapter,
+  ]
 }
