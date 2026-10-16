@@ -1,0 +1,108 @@
+# NetworkPolicy for Turf's three pods. restate-server ships no authentication
+# on its ingress or admin API, and turf-mcp-server's HTTP transport has none
+# either, so without these any pod in the cluster can plan, apply, destroy and
+# read state through them. Each policy selects one of Turf's pods, so the rest
+# of the kagent namespace (kagent itself) is left as it was.
+#
+# Policies are enforced by the cluster's network plugin, not by Kubernetes: on
+# a CNI that ignores NetworkPolicy they are accepted and do nothing (README).
+# They are layer 3/4 only, which is why turf-engine still checks that every
+# request it serves was signed by restate-server.
+#
+# The label selectors name what the three manifests and kagent put on the pods:
+# app: restate and app: turf-engine (restate.yaml, turf-engine.yaml);
+# app.kubernetes.io/name: turf-mcp-server, which kagent sets on an MCPServer's
+# pods; kagent: turf-agent, its agent's pods; and kagent's controller, which
+# connects to an MCPServer to list its tools. They are kagent 0.10.3's; check
+# them against the cluster (kubectl -n kagent get pods --show-labels) when
+# kagent is upgraded.
+
+# restate-server: its ingress for the MCP server, its admin API for the engine,
+# and nothing for its node port (one node). It dials only the engine, which
+# keeps a deployment registered at some other address from being reached.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restate
+  namespace: kagent
+spec:
+  podSelector:
+    matchLabels:
+      app: restate
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: turf-mcp-server
+      ports:
+        - port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app: turf-engine
+      ports:
+        - port: 9070
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: turf-engine
+      ports:
+        - port: 9080
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# turf-engine: restate-server alone calls it. Its egress stays open: provider
+# plugins run here and reach whatever cloud APIs and registries a configuration
+# names.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: turf-engine
+  namespace: kagent
+spec:
+  podSelector:
+    matchLabels:
+      app: turf-engine
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: restate
+      ports:
+        - port: 9080
+---
+# turf-mcp-server: the agent's pods, and kagent's controller for tool
+# discovery. Its egress stays open: it reaches the provider registry and the
+# state backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: turf-mcp-server
+  namespace: kagent
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: turf-mcp-server
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              kagent: turf-agent
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kagent
+              app.kubernetes.io/component: controller
+      ports:
+        - port: 3000

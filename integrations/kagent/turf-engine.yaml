@@ -2,6 +2,11 @@
 # (restate.yaml) and registered with it at startup. It runs from the server's
 # image with its own command, and it is where provider plugins run, so the
 # providers' credentials go here (the kagent-azure Secret's ARM_* variables).
+#
+# It listens on every interface, as a pod must, and serves only requests
+# restate-server signs: TURF_ENGINE_IDENTITY_KEYS is the public half of the key
+# in the turf-engine-identity Secret (README). networkpolicy.yaml admits only
+# restate-server besides.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -48,6 +53,12 @@ spec:
             - --advertise=http://turf-engine.kagent.svc:9080
             - --admin-addr=http://restate.kagent.svc:9070
             - --plugin-cache-dir=/data/plugins
+          env:
+            - name: TURF_ENGINE_IDENTITY_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: turf-engine-identity
+                  key: public-key
           envFrom:
             - secretRef:
                 name: kagent-azure

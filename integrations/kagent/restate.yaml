@@ -5,6 +5,11 @@
 # The engine needs restate-server 1.7.7 or later with the three experimental
 # features below, and checks both at startup. 1.7.13 is the version Turf is
 # tested against. The partition count is fixed when the node first provisions.
+#
+# restate-server has no authentication of its own on ingress or admin, so
+# networkpolicy.yaml decides who reaches them. It signs every request it sends
+# turf-engine with the private key in the turf-engine-identity Secret, and the
+# engine serves nothing it did not sign (README: creating the Secret).
 apiVersion: v1
 kind: Service
 metadata:
@@ -49,6 +54,8 @@ spec:
               value: "true"
             - name: RESTATE_DEFAULT_NUM_PARTITIONS
               value: "8"
+            - name: RESTATE_WORKER__INVOKER__REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE
+              value: /identity/identity.pem
           ports:
             - name: ingress
               containerPort: 8080
@@ -59,6 +66,18 @@ spec:
           volumeMounts:
             - name: restate-data
               mountPath: /restate-data
+            - name: identity
+              mountPath: /identity
+              readOnly: true
+      volumes:
+        # The private key alone; the engine gets only the public half.
+        - name: identity
+          secret:
+            secretName: turf-engine-identity
+            defaultMode: 0400
+            items:
+              - key: identity.pem
+                path: identity.pem
   volumeClaimTemplates:
     - metadata:
         name: restate-data
