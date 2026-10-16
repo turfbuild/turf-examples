@@ -483,8 +483,8 @@ Desktop, on 2026-10-01.
 - **A failure ends the convergence.** A create that fails or an invoke that
   times out ends its round, and the convergence with it, as `failed`: nothing is
   retried, and the next `up` plans again from what was applied. Editing a `.tf`
-  under the directory while a round is planning stales that round's plan: the
-  convergence ends `stale` (`rounds[].stale_reason`: *"the configuration
+  under the directory after a round has planned and before it applies stales
+  that round's plan: the convergence ends `stale` (`rounds[].stale_reason`: *"the configuration
   changed after it was planned"*), and nothing applies.
 - **The CPU wait's first minutes are the cluster, not the wait.** See
   [What it does when you run it](#what-it-does-when-you-run-it). Slinky's NodeSet
