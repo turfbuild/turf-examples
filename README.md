@@ -252,10 +252,17 @@ does the MCP server's HTTP transport, so the stack is closed by two things:
   admin API only from the engine, the engine only from restate-server, and the MCP
   server only from the agent and kagent's controller. Policies are enforced by the
   cluster's network plugin — on AKS, a network policy engine chosen when the cluster
-  is created (`--network-policy azure|calico|cilium`); Calico and Cilium elsewhere — and
-  a plugin that does not enforce them accepts them silently, so check with a throwaway
-  pod that restate's ports time out. `kubectl port-forward` still reaches restate's
-  admin API for an operator: it enters the pod through the kubelet.
+  is created (`--network-policy azure|calico|cilium`); Calico and Cilium elsewhere, and
+  kind's own plugin (kind v0.32) — and a plugin that does not enforce them accepts them
+  silently, so check with a throwaway pod that restate's ports time out:
+
+  ```sh
+  kubectl -n kagent run probe --rm -i --restart=Never --image=curlimages/curl -- \
+    curl -sS --max-time 5 http://restate.kagent.svc:8080/restate/health   # must time out
+  ```
+
+  `kubectl port-forward` still reaches restate's admin API for an operator: it enters
+  the pod through the kubelet.
 
 ```sh
 kubectl apply -f integrations/kagent/

@@ -13,8 +13,9 @@
 # app: restate and app: turf-engine (restate.yaml, turf-engine.yaml);
 # app.kubernetes.io/name: turf-mcp-server, which kagent sets on an MCPServer's
 # pods; kagent: turf-agent, its agent's pods; and kagent's controller, which
-# connects to an MCPServer to list its tools. Check them against the cluster
-# (kubectl -n kagent get pods --show-labels) when kagent is upgraded.
+# connects to an MCPServer to list its tools. They are kagent 0.10.3's; check
+# them against the cluster (kubectl -n kagent get pods --show-labels) when
+# kagent is upgraded.
 
 # restate-server: its ingress for the MCP server, its admin API for the engine,
 # and nothing for its node port (one node). It dials only the engine, which
