@@ -480,12 +480,12 @@ Desktop, on 2026-10-01.
   so — *"Helm release … was created but has a failed status … run Terraform
   again."* The next install of the same name meets the leftover; `helm
   uninstall` it, or replace the cluster.
-- **A failure ends the convergence.** A create that fails, an invoke that times
-  out, or a plan staled by an edit ends its round, and the convergence with it,
-  as `failed`: nothing is retried, and the next `up` plans again from what was
-  applied. Editing a `.tf` under the directory while a round is planning stales
-  that round's plan (*"plan is stale: the configuration changed after it was
-  planned"*): nothing applies.
+- **A failure ends the convergence.** A create that fails or an invoke that
+  times out ends its round, and the convergence with it, as `failed`: nothing is
+  retried, and the next `up` plans again from what was applied. Editing a `.tf`
+  under the directory after a round has planned and before it applies stales
+  that round's plan: the convergence ends `stale` (`rounds[].stale_reason`: *"the configuration
+  changed after it was planned"*), and nothing applies.
 - **The CPU wait's first minutes are the cluster, not the wait.** See
   [What it does when you run it](#what-it-does-when-you-run-it). Slinky's NodeSet
   controller is created alongside the Controller, fails every reconcile until
