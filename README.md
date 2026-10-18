@@ -63,12 +63,22 @@ brew install restatedev/tap/restate-server turfbuild/tap/turf
 brew services start turf    # starts the engine now and at every login
 ```
 
-**Run an example** from the Turf CLI, or register the server with any MCP client and
-ask it to:
+**Connect your agent.** One command registers the server with the agents on your machine
+— Claude Code, Claude Desktop, Cursor, Codex, Gemini CLI, VS Code — and writes each config
+with the server's absolute path (Node 18+; the agent's own command does the same, e.g.
+`claude mcp add turf --scope user -- turf-mcp-server`). In Claude Code and Claude Desktop,
+Turf runs on your Claude subscription, no model API key.
 
 ```bash
-turf -C terraform/kubernetes/kind-crd up    # the Turf CLI
-claude mcp add turf -- turf-mcp-server      # or register the server with Claude Code
+npx add-mcp@2 "$(command -v turf-mcp-server)" --name turf -g
+```
+
+**Run an example** from your agent — in Claude Code, opened at this repo's root — or from the
+Turf CLI, which brings its own model and needs an API key:
+
+```
+/turf:up terraform/kubernetes/kind-crd    # Claude Code
+turf -C terraform/kubernetes/kind-crd up        # the Turf CLI
 ```
 
 The MCP tools are Terraform's commands. `init` registers an example's directory and
@@ -106,9 +116,9 @@ Each example's README says what else it needs.
 ## Terraform examples
 
 Each `terraform/<...>` directory is a self-contained, ordinary Terraform configuration —
-plain `.tf` files. Drive it with the Turf CLI (`turf -C <dir> up`) or the MCP
-tools (`init` against the directory, then `up`), as
-[Running the examples](#running-the-examples) describes. See each example's
+plain `.tf` files. Drive it from your agent (`/turf:up <dir>` in Claude Code, or the
+MCP tools: `init` against the directory, then `up`) or with the Turf CLI (`turf -C <dir> up`),
+as [Running the examples](#running-the-examples) describes. See each example's
 `README.md` for prerequisites, usage, and cleanup. An example may carry a
 `*.turf.hcl` file beside its `.tf`: Turf actions — steps the agent driving Turf
 performs, a check, a notice or a question for the user — that tofu and terraform
@@ -136,7 +146,7 @@ Kubernetes cluster + kubeconfig.
 
 The `use-cases/` tree holds end-to-end stacks for a particular domain: an ordinary
 Terraform configuration that composes several local modules under `modules/`, rather
-than a single-idea example. Drive them the same way (`turf -C <dir> up`).
+than a single-idea example. Drive them the same way (`/turf:up <dir>`, or `turf -C <dir> up`).
 
 | Example                  | Providers                                | Local? | Notes                                                        |
 |--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
