@@ -77,7 +77,7 @@ npx add-mcp@2 "$(command -v turf-mcp-server)" --name turf -g
 Turf CLI, which brings its own model and needs an API key:
 
 ```
-/mcp__turf__up terraform/kubernetes/kind-crd    # Claude Code
+/turf:up terraform/kubernetes/kind-crd    # Claude Code
 turf -C terraform/kubernetes/kind-crd up        # the Turf CLI
 ```
 
@@ -116,7 +116,7 @@ Each example's README says what else it needs.
 ## Terraform examples
 
 Each `terraform/<...>` directory is a self-contained, ordinary Terraform configuration —
-plain `.tf` files. Drive it from your agent (`/mcp__turf__up <dir>` in Claude Code, or the
+plain `.tf` files. Drive it from your agent (`/turf:up <dir>` in Claude Code, or the
 MCP tools: `init` against the directory, then `up`) or with the Turf CLI (`turf -C <dir> up`),
 as [Running the examples](#running-the-examples) describes. See each example's
 `README.md` for prerequisites, usage, and cleanup. An example may carry a
@@ -146,7 +146,7 @@ Kubernetes cluster + kubeconfig.
 
 The `use-cases/` tree holds end-to-end stacks for a particular domain: an ordinary
 Terraform configuration that composes several local modules under `modules/`, rather
-than a single-idea example. Drive them the same way (`/mcp__turf__up <dir>`, or `turf -C <dir> up`).
+than a single-idea example. Drive them the same way (`/turf:up <dir>`, or `turf -C <dir> up`).
 
 | Example                  | Providers                                | Local? | Notes                                                        |
 |--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
