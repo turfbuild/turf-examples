@@ -41,6 +41,11 @@ resource "helm_release" "podinfo" {
   wait    = true
   timeout = 120
 
+  # Two replicas, or a rollover has a gap: the chart hardcodes maxUnavailable =
+  # 1, so with one replica helm's wait accepts zero Ready pods and the old
+  # release is uninstalled before the new one serves.
+  values = [yamlencode({ replicaCount = 2 })]
+
   # The release lives INSIDE kind_cluster.demo. Replacing the cluster would
   # annihilate it with no provider RPC at all — helm would never run its
   # uninstall, no hooks would fire — leaving a state entry pointing at nothing.
