@@ -59,8 +59,8 @@ the conversation that started it ends.
 **Install Turf and start its service:**
 
 ```bash
-brew install turfbuild/tap/turf    # restate-server comes with it, from Restate's tap
-brew services start turf           # starts the engine now and at every login
+brew install restatedev/tap/restate-server turfbuild/tap/turf
+brew services start turf    # starts the engine now and at every login
 ```
 
 **Run an example** from the Turf CLI, or register the server with any MCP client and
