@@ -486,3 +486,12 @@ the recipe would pick up the fix, along with a new component
 The generated `.tf` is emitted already `terraform fmt`-clean, so the command
 above reproduces the committed bytes exactly — regenerate and `git diff` to check
 this directory is current.
+
+**One edit after regenerating.** The deployer puts a `depends_on` list on each of
+the bundle's three map outputs (`components`, `releases`, `namespaces`) so a caller
+that reads one waits for the install. Turf 1.0 refuses `depends_on` on an output, so
+`bundle/outputs.tf` here has those three lists removed, with a note at its head, and
+`git diff` after regenerating shows exactly them. The outputs are literals known at
+plan time, so nothing else changes; a resource built from
+`module.stack.components["x"]` that must wait for the install can depend on
+`module.stack` itself. `checksums.txt` still carries the generated file's hash.
