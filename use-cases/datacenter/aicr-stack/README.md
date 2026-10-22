@@ -23,6 +23,8 @@ turf -C use-cases/datacenter/aicr-stack up
 ```
 
 Or from any MCP client; see [Running the examples](../../../README.md#running-the-examples).
+It needs Turf 1.0.1 or later: the bundle puts a `depends_on` on each of its three
+map outputs, which 1.0.0 refused.
 
 ## What the recipe actually says
 
@@ -139,8 +141,9 @@ error.
 ## What it does when you run it
 
 Measured on Turf from empty state on 2026-10-13, through the MCP server (`init`,
-`open`, `up`, `apply`), against the engine the server pins. The
-containment shim is a `terraform_data`, a resource of the built-in
+`open`, `up`, `apply`), against the engine the server pins; re-measured on Turf
+1.0.1 on 2026-10-21 with the bundle's outputs exactly as generated, with the same
+counts. The containment shim is a `terraform_data`, a resource of the built-in
 `terraform.io/builtin/terraform` provider that no registry serves; Turf runs that
 provider as a sidecar process on the same path every other provider takes, so the
 bundle runs exactly as generated.
@@ -163,6 +166,12 @@ converged in 2 round(s)
 The `drift: 1` in round two is the kind provider reading back the kubeconfig
 path it wrote after the create, not the bundle. The 26 of round two are the
 seventeen releases and the nine shims that deferred with their modules.
+
+The outputs `releases` and `namespaces` are written in round two as well, though
+their values are literals known in round one: each carries a `depends_on` naming
+every component, so it lands with the install it describes. That is what the
+generator puts the list there for — a caller that reads `module.stack.releases`
+waits for the releases.
 
 `absent_prereq` is the engine saying a module is deferred because it depends —
 transitively, over an edge that carries no value — on something else that is
@@ -486,12 +495,3 @@ the recipe would pick up the fix, along with a new component
 The generated `.tf` is emitted already `terraform fmt`-clean, so the command
 above reproduces the committed bytes exactly — regenerate and `git diff` to check
 this directory is current.
-
-**One edit after regenerating.** The deployer puts a `depends_on` list on each of
-the bundle's three map outputs (`components`, `releases`, `namespaces`) so a caller
-that reads one waits for the install. Turf 1.0 refuses `depends_on` on an output, so
-`bundle/outputs.tf` here has those three lists removed, with a note at its head, and
-`git diff` after regenerating shows exactly them. The outputs are literals known at
-plan time, so nothing else changes; a resource built from
-`module.stack.components["x"]` that must wait for the install can depend on
-`module.stack` itself. `checksums.txt` still carries the generated file's hash.
