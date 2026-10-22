@@ -46,7 +46,7 @@ spec:
       containers:
         - name: turf-engine
           # The same image as turf-mcpserver.yaml: keep the two tags equal.
-          image: ghcr.io/turfbuild/turf-mcp-server:v0.18.0
+          image: ghcr.io/turfbuild/turf-mcp-server:v1.0.1
           command: ["/turf-engine"]
           args:
             - --addr=0.0.0.0:9080
