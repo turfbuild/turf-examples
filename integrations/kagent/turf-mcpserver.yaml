@@ -10,7 +10,7 @@ spec:
     path: /mcp
   deployment:
     # The same image as turf-engine.yaml: keep the two tags equal.
-    image: ghcr.io/turfbuild/turf-mcp-server:v0.18.0
+    image: ghcr.io/turfbuild/turf-mcp-server:v1.0.1
     cmd: /docker-entrypoint.sh
     args:
       - --transport

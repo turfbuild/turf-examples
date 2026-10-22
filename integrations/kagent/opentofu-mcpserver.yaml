@@ -4,8 +4,10 @@ metadata:
   name: opentofu-registry
   namespace: kagent
 spec:
-  url: "https://mcp.opentofu.org/sse"
-  protocol: SSE
+  # OpenTofu retired the SSE endpoint (/sse answers 410 Gone); /mcp is the
+  # streamable HTTP transport.
+  url: "https://mcp.opentofu.org/mcp"
+  protocol: STREAMABLE_HTTP
   timeout: 30s
   sseReadTimeout: 5m0s
   description: "OpenTofu Registry MCP server for searching providers, modules, and resource documentation"

@@ -255,9 +255,9 @@ does the MCP server's HTTP transport, so the stack is closed by two things:
   ```
 
   restate-server mounts `identity.pem`; the engine is given only `public-key`. The
-  engine checks signatures from the first Turf release after v0.18.0, and
-  `--identity-keygen` arrives with it: an older image accepts the Secret and ignores
-  it, leaving the network policy below as the only control.
+  engine has checked signatures, and `--identity-keygen` has existed, since Turf 1.0:
+  an image older than that accepts the Secret and ignores it, leaving the network
+  policy below as the only control.
 - **`networkpolicy.yaml`**: restate-server's ingress only from the MCP server, its
   admin API only from the engine, the engine only from restate-server, and the MCP
   server only from the agent and kagent's controller. Policies are enforced by the
