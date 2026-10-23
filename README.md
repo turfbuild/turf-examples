@@ -17,6 +17,8 @@ terraform/        Standard Terraform/HCL configurations
     hpa-walkthrough/  php-apache + HorizontalPodAutoscaler on an existing cluster
     node-maintenance/  a set of nodes held in maintenance, the runbook's steps
                     as actions (kubectl + kubewait + the agent)
+    in-cluster/     a namespace and a ConfigMap from the pod's service account;
+                    published as a configuration image
   aws/
     lambda-fleet/   a fleet of Lambda functions, patched in place by one variable
   azure/
@@ -42,7 +44,8 @@ use-cases/        End-to-end stacks for a real domain, composed from local modul
                     Scheduler + GPU Operator on kind, waits as kubewait actions
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
-  kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, PVC, ModelConfig
+  kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, ModelConfig; the
+                      configuration mounted from a configuration image
   turf-cli/           Configuring the standalone Turf CLI (.turf/): user skills
                       + model config (turf.yaml — first-available, named, local)
   kubernetes-backend/ Store Turf state in-cluster via the kubernetes state backend
@@ -130,6 +133,7 @@ ignore and Turf lays over the configuration at every plan.
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
 | `kubernetes/node-maintenance`  | hashicorp/kubernetes, hashicorp/local, turfbuild/kubewait | ⎈ | nodes in maintenance as a set, every step of the runbook an action — cordon, drain, confirm, repair, re-certify, uncordon; Terraform 1.16+ runs the kubectl half, Turf the whole runbook |
+| `kubernetes/in-cluster`        | hashicorp/kubernetes          | ⎈ | a namespace and a ConfigMap through a local module, from the pod's own service account; published as a [configuration image](#configuration-images) |
 | `aws/lambda-fleet`             | hashicorp/aws, hashicorp/archive | ☁️ AWS | fleet of Lambdas patched in place (`count`)        |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
@@ -141,6 +145,46 @@ ignore and Turf lays over the configuration at every plan.
 
 ✅ = credential-free / local. ☁️ = needs a cloud account. ⎈ = needs an existing
 Kubernetes cluster + kubeconfig.
+
+## Configuration images
+
+A configuration can also ship as a versioned OCI image: the configuration directory
+at the root of an otherwise empty image. Mounted read-only where Turf runs (a
+Kubernetes [image volume](https://kubernetes.io/docs/tasks/configure-pod-container/image-volumes/),
+as the kagent integration does), it is exactly the configuration that was tagged, and
+nothing needs to be shared between the pods that read it.
+
+Pushing a tag `terraform/<path>/vX.Y.Z` publishes `terraform/<path>` as
+`ghcr.io/turfbuild/turf-examples/<path, slashes as dashes>:X.Y.Z`, for linux/amd64
+and linux/arm64 (`.github/workflows/configuration-image.yml`):
+
+```sh
+git tag -s terraform/kubernetes/in-cluster/v1.0.0 -m "kubernetes/in-cluster 1.0.0"
+git push origin terraform/kubernetes/in-cluster/v1.0.0
+# → ghcr.io/turfbuild/turf-examples/kubernetes-in-cluster:1.0.0
+```
+
+A configuration published this way:
+
+- **declares no backend**, so whoever runs it names one when it opens a workspace —
+  and it must be a remote one, since nothing can write a statefile beside a
+  read-only configuration;
+- **commits its lock file** (`.terraform.lock.hcl`, with a `!` exception in
+  `.gitignore`), complete for every platform it runs on, since nothing can write it
+  where the image is mounted:
+
+  ```sh
+  tofu -chdir=terraform/kubernetes/in-cluster providers lock \
+    -platform=linux_amd64 -platform=linux_arm64 -platform=darwin_arm64 -platform=darwin_amd64
+  ```
+
+Turf plans a read-only configuration when `TF_DATA_DIR` names a writable directory
+for its modules. Pin an image by digest in production; the workflow's summary
+prints it.
+
+The first publish of a new name creates a **private** package on GHCR: make it
+public once in the package's settings (the organization must allow public packages),
+or give the pods that mount it an `imagePullSecrets` entry.
 
 ## Use cases
 
@@ -220,19 +264,45 @@ runs on. The server finds the engine through `TURF_RESTATE_URL`.
 
 | File                      | Purpose                                                              |
 |---------------------------|---------------------------------------------------------------------|
-| `turf-mcpserver.yaml`     | `MCPServer` — runs `turf-mcp-server` (HTTP), pointed at the engine with `TURF_RESTATE_URL` |
-| `turf-engine.yaml`        | `Deployment` + `Service` — `turf-engine`, from the same image, registered with restate-server |
+| `turf-mcpserver.yaml`     | `MCPServer` — runs `turf-mcp-server` (HTTP), pointed at the engine with `TURF_RESTATE_URL`; the configuration image at `/turf/config` |
+| `turf-engine.yaml`        | `Deployment` + `Service` — `turf-engine`, from the same image, registered with restate-server; the same configuration image at the same path |
 | `restate.yaml`            | `StatefulSet` + `Service` — restate-server from Restate's own image, its data on a volume |
 | `turf-agent.yaml`         | `Agent` — the infrastructure agent (system prompt, tools, A2A skills)|
 | `turf-rbac.yaml`          | `ClusterRoleBinding` (cluster-admin, for the Kubernetes state backend and in-cluster providers)|
-| `turf-pvc.yaml`           | `PersistentVolumeClaim` the server and the engine share: configurations, plans, the provider cache |
 | `turf-model-config.yaml`  | Model provider configuration                                        |
 | `opentofu-mcpserver.yaml` | Companion OpenTofu registry `RemoteMCPServer` (provider/module docs)|
 | `networkpolicy.yaml`      | `NetworkPolicy` — who may reach restate-server, the engine and the MCP server |
 
-The engine reads each configuration directory itself, so the server and the engine
-mount one volume at the same path. Provider credentials belong on the engine, where
-the plugins run; the state backend's belong on the server.
+**The configuration is an image.** The engine reads the configuration directory
+itself, at the path the server names, so both pods mount the same
+[configuration image](#configuration-images) — `kubernetes/in-cluster` here — at
+`/turf/config`, read-only, as a Kubernetes image volume (Kubernetes 1.36 or later,
+where image volumes are on by default; kind v0.32's node image is 1.36). Nothing is
+shared between the pods and no volume claim is needed:
+
+- `TF_DATA_DIR=/turf/data` on the server is where modules install, as it is for
+  tofu: init resolves it and every plan sends it to the engine, which installs into
+  an `emptyDir` at the same path in its own pod. The provider cache and the server's
+  scratch directory are each pod's own `emptyDir`s too. Being absolute, it is one
+  data directory for every configuration the server holds, and the server refuses
+  to `init` a second one on it (a relative one would land inside the read-only
+  image): one configuration image per server and engine pair.
+- **State is remote**: the agent opens every workspace on the Kubernetes backend,
+  because no statefile can be written beside a read-only configuration. Atlantis
+  draws the same line: it does not support local state, having no permanent
+  storage of its own.
+- **A change is a new image version.** Tag a new version, change `reference` in both
+  manifests (or pin a digest), and roll the pods; the agent plans what the new
+  version declares.
+- **An engine restart empties its `/turf/data`.** A round waiting for its approval
+  across one ends stale; `up` plans it again.
+
+To run your own configuration, publish it as a configuration image and put its
+reference in both manifests' `configuration` volume. This needs a Turf release that
+honours `TF_DATA_DIR` (turf-engine D79).
+
+Provider credentials belong on the engine, where the plugins run; the state
+backend's belong on the server.
 
 The kagent agent has no file tools, so it **operates** existing configurations — plan,
 apply, destroy, import, and actions — but does not author them; writing `.tf` needs a

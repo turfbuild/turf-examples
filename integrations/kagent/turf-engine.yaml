@@ -52,7 +52,7 @@ spec:
             - --addr=0.0.0.0:9080
             - --advertise=http://turf-engine.kagent.svc:9080
             - --admin-addr=http://restate.kagent.svc:9070
-            - --plugin-cache-dir=/data/plugins
+            - --plugin-cache-dir=/turf/plugins
           env:
             - name: TURF_ENGINE_IDENTITY_KEYS
               valueFrom:
@@ -66,10 +66,25 @@ spec:
           ports:
             - name: restate
               containerPort: 9080
+          # The configuration image at the path the server names
+          # (turf-mcpserver.yaml), read-only. Modules install under the data
+          # directory the server sends (its TF_DATA_DIR): an emptyDir here at
+          # the same path, emptied by a restart, so a round waiting for its
+          # approval across one ends stale and `up` plans it again.
           volumeMounts:
+            - name: configuration
+              mountPath: /turf/config
+              readOnly: true
             - name: data
-              mountPath: /data
+              mountPath: /turf/data
+            - name: plugins
+              mountPath: /turf/plugins
       volumes:
+        - name: configuration
+          image:
+            reference: ghcr.io/turfbuild/turf-examples/kubernetes-in-cluster:1.0.0
+            pullPolicy: IfNotPresent
         - name: data
-          persistentVolumeClaim:
-            claimName: turf-data
+          emptyDir: {}
+        - name: plugins
+          emptyDir: {}

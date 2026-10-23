@@ -1,0 +1,10 @@
+# A configuration image: one Terraform configuration directory at the root of
+# an otherwise empty image. Nothing runs in it. A Kubernetes image volume mounts
+# its root read-only where Turf reads the configuration (the kagent example),
+# and the files are the configuration exactly as tagged.
+#
+# Built by .github/workflows/configuration-image.yml with the configuration
+# directory as the build context; Containerfile.dockerignore beside this file
+# keeps working state out.
+FROM scratch
+COPY . /
