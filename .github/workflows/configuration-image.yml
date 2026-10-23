@@ -1,0 +1,97 @@
+# Publishes a configuration image: a Terraform configuration directory under
+# terraform/, at the root of an otherwise empty OCI image, versioned by a tag.
+#
+# The tag terraform/<path>/vX.Y.Z (Go's convention for a module in a
+# subdirectory) publishes
+#   ghcr.io/turfbuild/turf-examples/<path, slashes as dashes>:X.Y.Z
+# for linux/amd64 and linux/arm64. The directory must hold a .tf file and a
+# committed .terraform.lock.hcl: the image is mounted read-only, so nothing can
+# write the lock where it runs. Tags are never moved; a change is a new version.
+name: configuration image
+
+on:
+  push:
+    tags:
+      - "terraform/**/v*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve the tag
+        id: tag
+        env:
+          REF: ${{ github.ref_name }}
+          OWNER: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          dir="${REF%/v*}"
+          version="${REF##*/v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::$REF: the version after /v is not semver"; exit 1
+          fi
+          if [[ "$dir" != terraform/* || ! -d "$dir" ]]; then
+            echo "::error::$REF: $dir is not a directory under terraform/"; exit 1
+          fi
+          if ! compgen -G "$dir/*.tf" >/dev/null; then
+            echo "::error::$dir holds no .tf file"; exit 1
+          fi
+          if ! git ls-files --error-unmatch "$dir/.terraform.lock.hcl" >/dev/null 2>&1; then
+            echo "::error::$dir has no committed .terraform.lock.hcl; a configuration image carries its lock file"; exit 1
+          fi
+          name="${dir#terraform/}"
+          name="${name//\//-}"
+          if ! [[ "$name" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+            echo "::error::$name is not a valid image name (lowercase letters, digits, . _ -)"; exit 1
+          fi
+          {
+            echo "dir=$dir"
+            echo "version=$version"
+            echo "image=ghcr.io/${OWNER,,}/$name"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ steps.tag.outputs.dir }}
+          file: .github/configuration-image/Containerfile
+          platforms: linux/amd64,linux/arm64
+          # The index holds the two platform images and nothing else: an image
+          # volume pulls by platform, and an attestation manifest would be a
+          # third entry with no configuration in it.
+          provenance: false
+          push: true
+          tags: ${{ steps.tag.outputs.image }}:${{ steps.tag.outputs.version }}
+          labels: |
+            org.opencontainers.image.title=${{ steps.tag.outputs.dir }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.tag.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Summary
+        env:
+          IMAGE: ${{ steps.tag.outputs.image }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### $IMAGE:$VERSION"
+            echo
+            echo "Pin it by digest: \`$IMAGE@$DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"
