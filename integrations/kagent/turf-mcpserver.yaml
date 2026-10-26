@@ -18,22 +18,43 @@ spec:
       - --addr
       - :3000
       - --tmp-dir
-      - /data/providers
+      - /turf/tmp
       - --plugin-cache-dir
-      - /data/plugins
-    # The engine this server drives: restate-server's ingress (restate.yaml),
-    # with turf-engine (turf-engine.yaml) registered behind it.
+      - /turf/plugins
     env:
+      # The engine this server drives: restate-server's ingress (restate.yaml),
+      # with turf-engine (turf-engine.yaml) registered behind it.
       TURF_RESTATE_URL: http://restate.kagent.svc:8080
+      # Where init's own module install goes, as tofu's TF_DATA_DIR: the
+      # configuration at /turf/config is read-only, so it cannot go in its
+      # .terraform. The engine installs under a data directory of its own
+      # (turf-engine.yaml's --data-dir); nothing is sent to it.
+      TF_DATA_DIR: /turf/data
     secretRefs:
       - name: kagent-azure
-    # turf-data is shared with turf-engine and mounted at the same path in
-    # both: the engine reads each configuration directory itself, so the
-    # configurations this server operates live under /data.
+    # The configuration is a configuration image, mounted read-only at
+    # /turf/config here and in turf-engine.yaml: the engine reads it itself, at
+    # the path this server names (the same path in both pods, so no --workdir).
+    # Nothing else is shared; the rest is each pod's own scratch. (kmcp
+    # reserves /config and the volume name "config".)
     volumes:
+      - name: configuration
+        image:
+          reference: ghcr.io/turfbuild/turf-examples/kubernetes-in-cluster:1.0.0
+          pullPolicy: IfNotPresent
       - name: data
-        persistentVolumeClaim:
-          claimName: turf-data
+        emptyDir: {}
+      - name: plugins
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
     volumeMounts:
+      - name: configuration
+        mountPath: /turf/config
+        readOnly: true
       - name: data
-        mountPath: /data
+        mountPath: /turf/data
+      - name: plugins
+        mountPath: /turf/plugins
+      - name: tmp
+        mountPath: /turf/tmp

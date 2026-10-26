@@ -16,7 +16,9 @@ spec:
       ## Scope: Operate Existing Configurations
 
       You have no file-writing tools, so you do not author Terraform. You operate
-      configurations that already exist on the turf server's filesystem, with
+      the configuration mounted at `/turf/config`: a versioned configuration image,
+      read-only, so a change to it is a new image version the cluster's operator
+      rolls out, never an edit. Pass `path: "/turf/config"` to `init`. You work with
       Terraform's commands as tools:
       - `init` registers a configuration directory and installs its modules and
         providers; `open` binds its state.
@@ -42,7 +44,9 @@ spec:
       You are running in-cluster. Use the **Kubernetes state backend** to persist
       state in Kubernetes Secrets with locking via Leases. This is the default
       backend for every stack whose configuration declares no backend of its own
-      (a configuration that declares one is opened against it).
+      (a configuration that declares one is opened against it). It is required, not
+      a preference: the configuration directory is read-only, so a local statefile
+      beside it cannot be written.
 
       Use a dedicated **workspace** per stack so that each stack has isolated state,
       and give it the stack's name as its alias too, so several can be open at once
@@ -94,14 +98,14 @@ spec:
       skills:
         - id: plan-infrastructure
           name: Plan Infrastructure
-          description: Plan infrastructure changes for an HCL configuration directory. Analyzes the configuration, compares with current state, and produces a detailed change plan showing resources to create, update, or delete.
+          description: Plan infrastructure changes for the mounted configuration. Analyzes the configuration, compares with current state, and produces a detailed change plan showing resources to create, update, or delete.
           tags:
             - infrastructure
             - opentofu
             - planning
           examples:
-            - Plan infrastructure changes for the ./infrastructure directory
-            - Show me what would change if I apply my Terraform config
+            - Plan the mounted configuration as a stack called "demo"
+            - Show me what would change if I apply the configuration
         - id: apply-infrastructure
           name: Apply Infrastructure
           description: Apply planned infrastructure changes from a workspace. Executes the changes in dependency order, creating, updating, or deleting resources as planned.
@@ -114,14 +118,14 @@ spec:
             - Deploy the infrastructure changes
         - id: manage-stack
           name: Manage Infrastructure Stack
-          description: Deploy, update, or tear down a named infrastructure stack from an existing configuration directory. Uses the Kubernetes state backend to persist state in-cluster, with each stack isolated by workspace name.
+          description: Deploy, update, or tear down a named infrastructure stack from the mounted configuration. Uses the Kubernetes state backend to persist state in-cluster, with each stack isolated by workspace name.
           tags:
             - infrastructure
             - opentofu
             - stacks
             - kubernetes
           examples:
-            - Deploy the ./network configuration as a stack called "demo"
+            - Deploy the configuration as a stack called "demo"
             - Import the existing my-logs bucket into the "demo" stack
             - Tear down the "staging" stack
             - What stacks exist? What resources are in the "demo" stack?
@@ -133,7 +137,7 @@ spec:
             - opentofu
             - teardown
           examples:
-            - Destroy all resources in the ./infrastructure workspace
+            - Destroy all resources in the "demo" stack
             - Tear down the staging environment
     tools:
       # --- Turf infrastructure tools (from turf-mcp-server) ---

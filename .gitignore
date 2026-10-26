@@ -9,6 +9,9 @@ memory.lock
 .terraform/
 .terraform.lock.hcl
 *.tfstate*
+# A configuration published as an image runs read-only, so it carries its lock
+# file, complete for every platform it runs on (README, "Configuration images").
+!terraform/kubernetes/in-cluster/.terraform.lock.hcl
 
 # Real variable values (ship only *.tfvars.example)
 terraform.tfvars
