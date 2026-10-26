@@ -32,7 +32,8 @@ metadata:
   namespace: kagent
 spec:
   # One engine per restate-server: restate routes every new invocation to the
-  # deployment registered last.
+  # deployment registered last. More than one replica would also need the data
+  # directory below on a volume they share.
   replicas: 1
   selector:
     matchLabels:
@@ -53,6 +54,10 @@ spec:
             - --advertise=http://turf-engine.kagent.svc:9080
             - --admin-addr=http://restate.kagent.svc:9070
             - --plugin-cache-dir=/turf/plugins
+            # The engine's own data directory: each workspace's modules install
+            # under /turf/data/<lineage>/modules. Nothing is written into the
+            # configuration, and nothing is sent by the server.
+            - --data-dir=/turf/data
           env:
             - name: TURF_ENGINE_IDENTITY_KEYS
               valueFrom:
@@ -67,10 +72,10 @@ spec:
             - name: restate
               containerPort: 9080
           # The configuration image at the path the server names
-          # (turf-mcpserver.yaml), read-only. Modules install under the data
-          # directory the server sends (its TF_DATA_DIR): an emptyDir here at
-          # the same path, emptied by a restart, so a round waiting for its
-          # approval across one ends stale and `up` plans it again.
+          # (turf-mcpserver.yaml), read-only: the same path in both pods, so no
+          # --workdir mapping is needed. The data directory is an emptyDir, a
+          # cache: a restart empties it, and the approval gate installs the
+          # modules again.
           volumeMounts:
             - name: configuration
               mountPath: /turf/config

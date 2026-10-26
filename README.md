@@ -178,9 +178,11 @@ A configuration published this way:
     -platform=linux_amd64 -platform=linux_arm64 -platform=darwin_arm64 -platform=darwin_amd64
   ```
 
-Turf plans a read-only configuration when `TF_DATA_DIR` names a writable directory
-for its modules. Pin an image by digest in production; the workflow's summary
-prints it.
+Turf plans a read-only configuration: the engine installs modules under a data
+directory of its own (its per-user cache, or the one `turf-engine --data-dir` names;
+one directory per workspace), and the server's own `init` install goes under its
+`TF_DATA_DIR`. Pin an image by digest in production; the workflow's summary prints
+it.
 
 The first publish of a new name creates a **private** package on GHCR: make it
 public once in the package's settings (the organization must allow public packages),
@@ -280,13 +282,19 @@ itself, at the path the server names, so both pods mount the same
 where image volumes are on by default; kind v0.32's node image is 1.36). Nothing is
 shared between the pods and no volume claim is needed:
 
-- `TF_DATA_DIR=/turf/data` on the server is where modules install, as it is for
-  tofu: init resolves it and every plan sends it to the engine, which installs into
-  an `emptyDir` at the same path in its own pod. The provider cache and the server's
-  scratch directory are each pod's own `emptyDir`s too. Being absolute, it is one
-  data directory for every configuration the server holds, and the server refuses
-  to `init` a second one on it (a relative one would land inside the read-only
-  image): one configuration image per server and engine pair.
+- **Modules install twice, each pod in its own `emptyDir`.** The engine installs
+  under its own data directory, `--data-dir=/turf/data`, one directory per workspace
+  (`/turf/data/<lineage>/modules`); nothing is sent to it and nothing is written into
+  the configuration. `TF_DATA_DIR=/turf/data` on the server is where its own `init`
+  installs, as it is for tofu. The provider cache and the server's scratch directory
+  are each pod's own `emptyDir`s too. Being absolute, the server's is one data
+  directory for every configuration the server holds, and the server refuses to
+  `init` a second one on it (a relative one would land inside the read-only image):
+  one configuration image per server and engine pair. More than one engine replica
+  would need its directory on a volume they share.
+- **The same path in both pods.** The engine reads the configuration at the path
+  the server names, so no `--workdir` mapping is set; pods mounting the image at
+  different places would name their directories with `--workdir` on both.
 - **State is remote**: the agent opens every workspace on the Kubernetes backend,
   because no statefile can be written beside a read-only configuration. Atlantis
   draws the same line: it does not support local state, having no permanent
@@ -294,12 +302,14 @@ shared between the pods and no volume claim is needed:
 - **A change is a new image version.** Tag a new version, change `reference` in both
   manifests (or pin a digest), and roll the pods; the agent plans what the new
   version declares.
-- **An engine restart empties its `/turf/data`.** A round waiting for its approval
-  across one ends stale; `up` plans it again.
+- **An engine restart empties its `/turf/data`.** It is a cache: the approval gate
+  installs the modules again, and a round waiting for its approval across the restart
+  applies what was planned, stale only if a module source moved since.
 
 To run your own configuration, publish it as a configuration image and put its
-reference in both manifests' `configuration` volume. This needs a Turf release that
-honours `TF_DATA_DIR` (turf-engine D79).
+reference in both manifests' `configuration` volume. This needs a Turf release
+later than 1.0.1, which carries neither the engine's `--data-dir` (turf-engine D84)
+nor a read-only configuration: move both manifests' image tags to it.
 
 Provider credentials belong on the engine, where the plugins run; the state
 backend's belong on the server.
