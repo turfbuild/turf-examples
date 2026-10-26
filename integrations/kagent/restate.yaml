@@ -2,9 +2,17 @@
 # own image, one node, its data on a PersistentVolume. turf-mcp-server talks to
 # its ingress (8080); turf-engine registers with its admin API (9070).
 #
-# The engine needs restate-server 1.7.7 or later with the three experimental
-# features below, and checks both at startup. 1.7.13 is the version Turf is
-# tested against. The partition count is fixed when the node first provisions.
+# The engine needs restate-server 1.7.7 or later with flow control on, and
+# checks both at startup: a 1.7 release turns it on with the first three
+# experimental options below, which 1.8 builds in and ignores. Turf's engine
+# is tested against 1.8.1. The fourth option, from 1.8.1 (an older release
+# ignores it), keeps a signal sent to an invocation that has not started yet
+# (restate#5587); without it such a run is delivered nothing and waits for
+# ever, and a Turf release later than 1.0.1 warns at startup. It is one-way:
+# once the node has run with it, its data cannot go back to a release before
+# 1.8.1. An existing node rolls up from 1.7 with its data kept; to keep the way
+# back to 1.7 while trying 1.8.1, roll the image first and add the option
+# after. The partition count is fixed when the node first provisions.
 #
 # restate-server has no authentication of its own on ingress or admin, so
 # networkpolicy.yaml decides who reaches them. It signs every request it sends
@@ -42,7 +50,7 @@ spec:
     spec:
       containers:
         - name: restate
-          image: docker.io/restatedev/restate:1.7.13
+          image: docker.io/restatedev/restate:1.8.1
           env:
             - name: RESTATE_BASE_DIR
               value: /restate-data
@@ -51,6 +59,8 @@ spec:
             - name: RESTATE_EXPERIMENTAL_ENABLE_VQUEUES
               value: "true"
             - name: RESTATE_EXPERIMENTAL_ENABLE_SCOPED_VIRTUAL_OBJECTS
+              value: "true"
+            - name: RESTATE_EXPERIMENTAL_ENABLE_PREFLIGHT_SIGNAL_RECORDING
               value: "true"
             - name: RESTATE_DEFAULT_NUM_PARTITIONS
               value: "8"
