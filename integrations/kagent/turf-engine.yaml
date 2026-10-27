@@ -31,9 +31,12 @@ metadata:
   name: turf-engine
   namespace: kagent
 spec:
-  # One engine per restate-server: restate routes every new invocation to the
-  # deployment registered last. More than one replica would also need the data
-  # directory below on a volume they share.
+  # One replica, because of the data directory below alone: it is a per-pod
+  # emptyDir, and this engine release reads a round's module install back on
+  # whichever replica the next step lands on (turf-engine, "Unshared workers").
+  # Restate itself has no objection: every replica registers the same Service
+  # address, so they are one deployment. A release whose replicas each install
+  # what they need lifts this.
   replicas: 1
   selector:
     matchLabels:
