@@ -38,6 +38,11 @@ spec:
   # this spec: the same read-only configuration image at the same path, and the
   # same --data-dir.
   replicas: 2
+  # The replicas roll together: a mix of two releases, or of two configuration
+  # images, behind one Service would read the configuration differently from
+  # step to step. Restate holds the round's invocations while no pod answers.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: turf-engine

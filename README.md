@@ -316,9 +316,9 @@ reverse. See
 
 Manifests for deploying Turf and an infrastructure agent in-cluster via the
 [kagent](https://github.com/kagent-dev/kagent) operator. In a cluster Turf runs as
-three parts, each in its own pod: the MCP server the agent talks to, the engine that
-plans and applies (and runs the provider plugins), and the restate-server the engine
-runs on. The server finds the engine through `TURF_RESTATE_URL`.
+three parts, each its own Deployment: the MCP server the agent talks to, the engine
+that plans and applies (and runs the provider plugins), two replicas of it, and the
+restate-server the engine runs on. The server finds the engine through `TURF_RESTATE_URL`.
 
 | File                      | Purpose                                                              |
 |---------------------------|---------------------------------------------------------------------|
@@ -351,11 +351,12 @@ Nothing is shared between the pods and no volume claim is needed:
 - **Two engine replicas.** Both register the same address with restate, so they are
   one deployment, and a round's steps land on either. Neither reads what the other
   installed: a replica installs the modules a round planned before it reads them,
-  and holds every file of a package to what the plan fetched (turf-engine D85). A
-  module source that is not pinned to one revision (a git source without a `ref`, a
-  registry source without an exact version) can move between two replicas'
-  fetches; that round is refused by name, so pin your sources. Every replica runs
-  the same `--data-dir` and mounts the same configuration image.
+  and holds every file of a package to the package the plan read (turf-engine D85).
+  A module source that is not pinned to one revision (a git source without a `ref`,
+  a registry source without an exact version) can move between two replicas'
+  fetches; that round then fails, naming the module and its source, so pin your
+  sources. Every replica runs with the same `--data-dir` and mounts the same
+  configuration image.
 - **The same path in every pod.** The engine reads the configuration at the path
   the server names, so no `--workdir` mapping is set; pods mounting the image at
   different places would name their directories with `--workdir` on every pod.
@@ -365,7 +366,9 @@ Nothing is shared between the pods and no volume claim is needed:
   storage of its own.
 - **A change is a new image version.** Tag a new version, change `reference` in both
   manifests (or pin a digest), and roll the pods; the agent plans what the new
-  version declares.
+  version declares. The engine's replicas roll together (`strategy: Recreate`), so
+  no two of them ever read different configurations. Before moving the Turf tag to
+  a new minor release, finish or cancel the convergences still open.
 - **An engine restart empties its `/turf/data`.** It is a cache: the replica installs
   the modules again the next time a round's step lands on it, and a round waiting for
   its approval across the restart applies what was planned, stale only if a module
@@ -405,8 +408,9 @@ client with file tools (the Turf CLI, Claude Code).
 does the MCP server's HTTP transport, so the stack is closed by two things:
 
 - **Request identity.** restate-server signs every request it sends the engine, and
-  the engine serves nothing else. The key lives in a Secret both pods need, so create
-  it once **before** `kubectl apply` (until it exists, neither starts). The engine,
+  the engine serves nothing else. The key lives in a Secret restate-server and every
+  engine pod need, so create it once **before** `kubectl apply` (until it exists,
+  none of them starts). The engine,
   from the same image, makes the key and prints its public half:
 
   ```sh

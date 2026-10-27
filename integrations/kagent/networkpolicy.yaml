@@ -1,7 +1,7 @@
-# NetworkPolicy for Turf's three pods. restate-server ships no authentication
+# NetworkPolicy for Turf's three parts. restate-server ships no authentication
 # on its ingress or admin API, and turf-mcp-server's HTTP transport has none
 # either, so without these any pod in the cluster can plan, apply, destroy and
-# read state through them. Each policy selects one of Turf's pods, so the rest
+# read state through them. Each policy selects one part's pods, so the rest
 # of the kagent namespace (kagent itself) is left as it was.
 #
 # Policies are enforced by the cluster's network plugin, not by Kubernetes: on
