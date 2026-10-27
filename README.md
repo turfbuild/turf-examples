@@ -114,6 +114,62 @@ Run `mise trust` in the directory once. `TURF_MISE=off` in `turf.env` turns this
 - **The state backend's credentials and `TF_VAR_*` variables** come from the session:
   the environment you started the CLI or the MCP client in.
 
+**Where providers come from.** The registry, unless OpenTofu's CLI configuration says
+otherwise: the service and the server read it as `tofu` does, from `~/.tofurc` (with
+`~/.terraform.d/*.tfrc`) or the one file `TF_CLI_CONFIG_FILE` names. A
+`provider_installation` block there serves providers from a mirror:
+
+```hcl
+# ~/.tofurc
+provider_installation {
+  filesystem_mirror {
+    path    = "/Users/you/provider-mirror"   # absolute: the service has no working directory of yours
+    include = ["registry.opentofu.org/hashicorp/*"]
+  }
+  direct {
+    exclude = ["registry.opentofu.org/hashicorp/*"]
+  }
+}
+```
+
+The service and the server each read it once, at start, and must find the same block,
+since the engine checks what `init` locked. So after an edit, run `brew services restart turf`
+and restart your agent's connection to the server. `TF_CLI_CONFIG_FILE` in `turf.env` and in
+the agent's server entry works too, but it replaces your whole CLI configuration for
+those two processes, `tofu login` credentials included. A configuration in error, such
+as a file that does not parse or a mirror without its `path`, stops the service and the
+server at start, where `tofu` would warn and carry on: `brew services list` shows the
+service in error, and its log says why. This needs a Turf release later than 1.0.1, which
+reads the file for registry credentials alone.
+
+**A provider you are building.** `dev_overrides` points Turf at a local build, as it
+does `tofu`. Say you are changing [kubewait](https://github.com/turfbuild/terraform-provider-kubewait)
+and trying it on [`kubernetes/node-maintenance`](terraform/kubernetes/node-maintenance/):
+
+```sh
+cd ~/src/terraform-provider-kubewait && make build   # ./terraform-provider-kubewait
+```
+
+```hcl
+# ~/.tofurc
+provider_installation {
+  dev_overrides {
+    # The address as the configuration spells it. node-maintenance names the
+    # host; a bare "turfbuild/kubewait" means registry.opentofu.org.
+    "registry.terraform.io/turfbuild/kubewait" = "/Users/you/src/terraform-provider-kubewait"
+  }
+  direct {}
+}
+```
+
+Restart both, as above. `init` installs and locks the published version, as `tofu init`
+does, and its entry for the provider warns that the override is in effect. Every plan
+and apply then launches your build instead, unversioned and unchecked against the lock
+file. After each rebuild, run `brew services restart turf`: the engine keeps a provider
+it has started. Remove the entry when you are done, and restart both. The lock file still holds the
+published version, so there is nothing to undo, unlike kubewait's own `make mirror`,
+which serves each rebuild as a new checksum the lock file must record.
+
 Each example's README says what else it needs.
 
 ## Terraform examples
@@ -268,6 +324,7 @@ runs on. The server finds the engine through `TURF_RESTATE_URL`.
 |---------------------------|---------------------------------------------------------------------|
 | `turf-mcpserver.yaml`     | `MCPServer` — runs `turf-mcp-server` (HTTP), pointed at the engine with `TURF_RESTATE_URL`; the configuration image at `/turf/config` |
 | `turf-engine.yaml`        | `Deployment` + `Service` — `turf-engine`, from the same image, registered with restate-server; the same configuration image at the same path |
+| `turf-cli-config.yaml`    | `ConfigMap` — the OpenTofu CLI configuration both pods read (`TF_CLI_CONFIG_FILE`): where providers come from |
 | `restate.yaml`            | `StatefulSet` + `Service` — restate-server from Restate's own image, its data on a volume |
 | `turf-agent.yaml`         | `Agent` — the infrastructure agent (system prompt, tools, A2A skills)|
 | `turf-rbac.yaml`          | `ClusterRoleBinding` (cluster-admin, for the Kubernetes state backend and in-cluster providers)|
@@ -279,8 +336,8 @@ runs on. The server finds the engine through `TURF_RESTATE_URL`.
 itself, at the path the server names, so both pods mount the same
 [configuration image](#configuration-images) — `kubernetes/in-cluster` here — at
 `/turf/config`, read-only, as a Kubernetes image volume (Kubernetes 1.36 or later,
-where image volumes are on by default; kind v0.32's node image is 1.36). Nothing is
-shared between the pods and no volume claim is needed:
+where image volumes are on by default; kind v0.32's node image is 1.36). No writable
+volume is shared between the pods and no volume claim is needed:
 
 - **Modules install twice, each pod in its own `emptyDir`.** The engine installs
   under its own data directory, `--data-dir=/turf/data`, one directory per workspace
@@ -310,6 +367,24 @@ To run your own configuration, publish it as a configuration image and put its
 reference in both manifests' `configuration` volume. This needs a Turf release
 later than 1.0.1, which carries neither the engine's `--data-dir` (turf-engine D84)
 nor a read-only configuration: move both manifests' image tags to it.
+
+**Providers come from where `turf-cli-config.yaml` says.** It is OpenTofu's CLI
+configuration, mounted on both pods at `/turf/cli` and named by `TF_CLI_CONFIG_FILE`,
+and its `provider_installation` block works as it does for `tofu`. The server's `init`
+installs and locks from it, and the engine installs from it and checks what `init`
+locked, so it is one ConfigMap for both. As shipped it is `direct {}`, the registry.
+For a cluster that reaches no registry, put a mirror in it, as its comments show:
+
+- a `filesystem_mirror` on a read-only volume mounted at the same path in both pods,
+  such as an image volume holding what `tofu providers mirror` writes, whose archives
+  verify a lock file written from the registry, as the committed one is;
+- a `network_mirror` (https only), or an `oci_mirror` on a registry of your own.
+
+The provider cache stays each pod's own `emptyDir`, never a volume they share: every
+engine replica installs from the mirror into its own. Both pods read the file once, at
+start, so roll both after changing it. A file in error stops them from starting, where
+`tofu` would warn and carry on. Like the configuration image, a mirror needs a Turf
+release later than 1.0.1, which reads this file for registry credentials alone.
 
 Provider credentials belong on the engine, where the plugins run; the state
 backend's belong on the server.

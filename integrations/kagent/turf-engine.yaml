@@ -64,6 +64,10 @@ spec:
                 secretKeyRef:
                   name: turf-engine-identity
                   key: public-key
+            # Where providers come from: the OpenTofu CLI configuration in
+            # turf-cli-config.yaml, the file the server reads too.
+            - name: TF_CLI_CONFIG_FILE
+              value: /turf/cli/turf.tfrc
           envFrom:
             - secretRef:
                 name: kagent-azure
@@ -75,7 +79,9 @@ spec:
           # (turf-mcpserver.yaml), read-only: the same path in both pods, so no
           # --workdir mapping is needed. The data directory is an emptyDir, a
           # cache: a restart empties it, and the approval gate installs the
-          # modules again.
+          # modules again. The plugin cache is the pod's own as well: each
+          # replica installs from where turf.tfrc says, never into a cache it
+          # shares with another.
           volumeMounts:
             - name: configuration
               mountPath: /turf/config
@@ -84,6 +90,9 @@ spec:
               mountPath: /turf/data
             - name: plugins
               mountPath: /turf/plugins
+            - name: cli-config
+              mountPath: /turf/cli
+              readOnly: true
       volumes:
         - name: configuration
           image:
@@ -93,3 +102,6 @@ spec:
           emptyDir: {}
         - name: plugins
           emptyDir: {}
+        - name: cli-config
+          configMap:
+            name: turf-cli-config

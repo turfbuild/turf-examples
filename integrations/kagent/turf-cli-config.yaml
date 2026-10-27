@@ -1,0 +1,52 @@
+# turf-cli-config: the OpenTofu CLI configuration both of Turf's pods read,
+# mounted at /turf/cli in turf-mcpserver.yaml and turf-engine.yaml and named by
+# TF_CLI_CONFIG_FILE in each. Its provider_installation block says where
+# provider plugins come from, as it does for tofu: the server's init installs
+# and locks them from it, and the engine installs from it when it plans and
+# checks what init locked, so the two must read the same block. Each reads the
+# file once, at start: restart both pods after changing it.
+#
+# As shipped the block is direct {}, the registry, which is where providers
+# come from with no file at all, so it changes nothing. For a cluster that
+# reaches no registry, add a mirror, naming what it serves with include, and
+# exclude the same from direct, or drop direct altogether
+# (https://opentofu.org/docs/cli/config/config-file/#provider-installation):
+#
+# - filesystem_mirror: a read-only volume mounted at the same absolute path in
+#   both pods, such as an image volume holding what `tofu providers mirror
+#   -platform=linux_amd64 -platform=linux_arm64` writes for the configuration.
+#   That layout keeps the registry's archives, which verify the zh: hashes of
+#   a lock file written from the registry, on whatever platform.
+# - network_mirror: an https service (tofu refuses http).
+# - oci_mirror: an OCI registry, its credentials from a Docker-style config
+#   mounted from a Secret at ~/.docker/config.json (/home/turf in the image),
+#   or anywhere named in an oci_default_credentials block.
+#
+# Keep secrets out of this ConfigMap: a token for a private registry or mirror
+# host is TF_TOKEN_<host>, from a Secret, on both pods. A file in error stops
+# both pods from starting, where tofu would warn and carry on. Turf 1.0.1 reads
+# this file for registry credentials alone and ignores the block.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: turf-cli-config
+  namespace: kagent
+data:
+  turf.tfrc: |
+    provider_installation {
+      # filesystem_mirror {
+      #   path    = "/turf/providers"
+      #   include = ["registry.opentofu.org/hashicorp/*"]
+      # }
+      # network_mirror {
+      #   url     = "https://providers.example.internal/"
+      #   include = ["registry.opentofu.org/hashicorp/*"]
+      # }
+      # oci_mirror {
+      #   repository_template = "registry.example.internal/opentofu-providers/${namespace}/${type}"
+      #   include             = ["registry.opentofu.org/hashicorp/*"]
+      # }
+
+      # With a mirror above: direct { exclude = ["registry.opentofu.org/hashicorp/*"] }
+      direct {}
+    }
