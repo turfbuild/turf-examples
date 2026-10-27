@@ -31,10 +31,13 @@ metadata:
   name: turf-engine
   namespace: kagent
 spec:
-  # One engine per restate-server: restate routes every new invocation to the
-  # deployment registered last. More than one replica would also need the data
-  # directory below on a volume they share.
-  replicas: 1
+  # Two replicas, one deployment: every replica registers the same Service
+  # address with restate, and a round's steps land on either. Each keeps its own
+  # data directory below; a replica installs the modules a round planned before
+  # it reads them (turf-engine D85, Turf 1.2.0). What they share is the rest of
+  # this spec: the same read-only configuration image at the same path, and the
+  # same --data-dir.
+  replicas: 2
   selector:
     matchLabels:
       app: turf-engine
@@ -47,7 +50,7 @@ spec:
       containers:
         - name: turf-engine
           # The same image as turf-mcpserver.yaml: keep the two tags equal.
-          image: ghcr.io/turfbuild/turf-mcp-server:v1.0.1
+          image: ghcr.io/turfbuild/turf-mcp-server:v1.2.0
           command: ["/turf-engine"]
           args:
             - --addr=0.0.0.0:9080
@@ -76,12 +79,12 @@ spec:
             - name: restate
               containerPort: 9080
           # The configuration image at the path the server names
-          # (turf-mcpserver.yaml), read-only: the same path in both pods, so no
-          # --workdir mapping is needed. The data directory is an emptyDir, a
-          # cache: a restart empties it, and the approval gate installs the
-          # modules again. The plugin cache is the pod's own as well: each
-          # replica installs from where turf.tfrc says, never into a cache it
-          # shares with another.
+          # (turf-mcpserver.yaml), read-only: the same path in every pod, so no
+          # --workdir mapping is needed. The data directory is an emptyDir, each
+          # replica's own cache: a restart empties it, and the replica installs
+          # the modules again the next time a round's step lands on it. The
+          # plugin cache is the pod's own as well: each replica installs from
+          # where turf.tfrc says, never into a cache it shares with another.
           volumeMounts:
             - name: configuration
               mountPath: /turf/config

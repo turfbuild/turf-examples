@@ -333,13 +333,13 @@ runs on. The server finds the engine through `TURF_RESTATE_URL`.
 | `networkpolicy.yaml`      | `NetworkPolicy` — who may reach restate-server, the engine and the MCP server |
 
 **The configuration is an image.** The engine reads the configuration directory
-itself, at the path the server names, so both pods mount the same
-[configuration image](#configuration-images) — `kubernetes/in-cluster` here — at
-`/turf/config`, read-only, as a Kubernetes image volume (Kubernetes 1.36 or later,
-where image volumes are on by default; kind v0.32's node image is 1.36). No writable
-volume is shared between the pods and no volume claim is needed:
+itself, at the path the server names, so the server's pod and every engine pod
+mount the same [configuration image](#configuration-images) — `kubernetes/in-cluster`
+here — at `/turf/config`, read-only, as a Kubernetes image volume (Kubernetes 1.36 or
+later, where image volumes are on by default; kind v0.32's node image is 1.36).
+Nothing is shared between the pods and no volume claim is needed:
 
-- **Modules install twice, each pod in its own `emptyDir`.** The engine installs
+- **Modules install in every pod, each in its own `emptyDir`.** The engine installs
   under its own data directory, `--data-dir=/turf/data`, one directory per workspace
   (`/turf/data/<lineage>/modules`); nothing is sent to it and nothing is written into
   the configuration. `TF_DATA_DIR=/turf/data` on the server is where its own `init`
@@ -347,11 +347,18 @@ volume is shared between the pods and no volume claim is needed:
   are each pod's own `emptyDir`s too. Being absolute, the server's is one data
   directory for every configuration the server holds, and the server refuses to
   `init` a second one on it (a relative one would land inside the read-only image):
-  one configuration image per server and engine pair. More than one engine replica
-  would need its directory on a volume they share.
-- **The same path in both pods.** The engine reads the configuration at the path
+  one configuration image per server and its engine.
+- **Two engine replicas.** Both register the same address with restate, so they are
+  one deployment, and a round's steps land on either. Neither reads what the other
+  installed: a replica installs the modules a round planned before it reads them,
+  and holds every file of a package to what the plan fetched (turf-engine D85). A
+  module source that is not pinned to one revision (a git source without a `ref`, a
+  registry source without an exact version) can move between two replicas'
+  fetches; that round is refused by name, so pin your sources. Every replica runs
+  the same `--data-dir` and mounts the same configuration image.
+- **The same path in every pod.** The engine reads the configuration at the path
   the server names, so no `--workdir` mapping is set; pods mounting the image at
-  different places would name their directories with `--workdir` on both.
+  different places would name their directories with `--workdir` on every pod.
 - **State is remote**: the agent opens every workspace on the Kubernetes backend,
   because no statefile can be written beside a read-only configuration. Atlantis
   draws the same line: it does not support local state, having no permanent
@@ -359,14 +366,15 @@ volume is shared between the pods and no volume claim is needed:
 - **A change is a new image version.** Tag a new version, change `reference` in both
   manifests (or pin a digest), and roll the pods; the agent plans what the new
   version declares.
-- **An engine restart empties its `/turf/data`.** It is a cache: the approval gate
-  installs the modules again, and a round waiting for its approval across the restart
-  applies what was planned, stale only if a module source moved since.
+- **An engine restart empties its `/turf/data`.** It is a cache: the replica installs
+  the modules again the next time a round's step lands on it, and a round waiting for
+  its approval across the restart applies what was planned, stale only if a module
+  source moved since.
 
 To run your own configuration, publish it as a configuration image and put its
-reference in both manifests' `configuration` volume. This needs a Turf release
-later than 1.0.1, which carries neither the engine's `--data-dir` (turf-engine D84)
-nor a read-only configuration: move both manifests' image tags to it.
+reference in both manifests' `configuration` volume. The manifests name Turf 1.2.0:
+the engine's `--data-dir` and a read-only configuration came in 1.1.0, and more than
+one engine replica in 1.2.0. On 1.1, set the engine's `replicas` to 1.
 
 **Providers come from where `turf-cli-config.yaml` says.** It is OpenTofu's CLI
 configuration, mounted on both pods at `/turf/cli` and named by `TF_CLI_CONFIG_FILE`,
