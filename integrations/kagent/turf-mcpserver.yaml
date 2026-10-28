@@ -10,7 +10,7 @@ spec:
     path: /mcp
   deployment:
     # The same image as turf-engine.yaml: keep the two tags equal.
-    image: ghcr.io/turfbuild/turf-mcp-server:v1.0.1
+    image: ghcr.io/turfbuild/turf-mcp-server:v1.2.0
     cmd: /docker-entrypoint.sh
     args:
       - --transport
@@ -37,8 +37,8 @@ spec:
       - name: kagent-azure
     # The configuration is a configuration image, mounted read-only at
     # /turf/config here and in turf-engine.yaml: the engine reads it itself, at
-    # the path this server names (the same path in both pods, so no --workdir).
-    # Both pods also mount the CLI configuration, turf-cli-config, at
+    # the path this server names (the same path in every pod, so no --workdir).
+    # Every pod also mounts the CLI configuration, turf-cli-config, at
     # /turf/cli. Nothing else is shared; the rest is each pod's own scratch.
     # (kmcp reserves /config and the volume name "config".)
     volumes:
