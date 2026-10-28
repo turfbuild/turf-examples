@@ -31,16 +31,12 @@ metadata:
   name: turf-engine
   namespace: kagent
 spec:
-  # Two replicas, one deployment: every replica registers the same Service
-  # address with restate, and a round's steps land on either. Each keeps its own
-  # data directory below; a replica installs the modules a round planned before
-  # it reads them (turf-engine D85, Turf 1.2.0). What they share is the rest of
-  # this spec: the same read-only configuration image at the same path, and the
-  # same --data-dir.
+  # Two replicas, one restate deployment: a round's steps land on either. Each
+  # installs the modules a round planned into its own data directory before
+  # reading them (turf-engine D85, Turf 1.2.0).
   replicas: 2
-  # The replicas roll together: a mix of two releases, or of two configuration
-  # images, behind one Service would read the configuration differently from
-  # step to step. Restate holds the round's invocations while no pod answers.
+  # Roll together, so no two replicas serve different releases or
+  # configuration images.
   strategy:
     type: Recreate
   selector:
