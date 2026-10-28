@@ -30,13 +30,17 @@ spec:
       # .terraform. The engine installs under a data directory of its own
       # (turf-engine.yaml's --data-dir); nothing is sent to it.
       TF_DATA_DIR: /turf/data
+      # Where init installs providers from: the OpenTofu CLI configuration in
+      # turf-cli-config.yaml, the file the engine reads too.
+      TF_CLI_CONFIG_FILE: /turf/cli/turf.tfrc
     secretRefs:
       - name: kagent-azure
     # The configuration is a configuration image, mounted read-only at
     # /turf/config here and in turf-engine.yaml: the engine reads it itself, at
     # the path this server names (the same path in both pods, so no --workdir).
-    # Nothing else is shared; the rest is each pod's own scratch. (kmcp
-    # reserves /config and the volume name "config".)
+    # Both pods also mount the CLI configuration, turf-cli-config, at
+    # /turf/cli. Nothing else is shared; the rest is each pod's own scratch.
+    # (kmcp reserves /config and the volume name "config".)
     volumes:
       - name: configuration
         image:
@@ -48,6 +52,9 @@ spec:
         emptyDir: {}
       - name: tmp
         emptyDir: {}
+      - name: cli-config
+        configMap:
+          name: turf-cli-config
     volumeMounts:
       - name: configuration
         mountPath: /turf/config
@@ -58,3 +65,6 @@ spec:
         mountPath: /turf/plugins
       - name: tmp
         mountPath: /turf/tmp
+      - name: cli-config
+        mountPath: /turf/cli
+        readOnly: true
