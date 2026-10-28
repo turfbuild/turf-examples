@@ -324,7 +324,7 @@ restate-server the engine runs on. The server finds the engine through `TURF_RES
 |---------------------------|---------------------------------------------------------------------|
 | `turf-mcpserver.yaml`     | `MCPServer` — runs `turf-mcp-server` (HTTP), pointed at the engine with `TURF_RESTATE_URL`; the configuration image at `/turf/config` |
 | `turf-engine.yaml`        | `Deployment` + `Service` — `turf-engine`, from the same image, registered with restate-server; the same configuration image at the same path |
-| `turf-cli-config.yaml`    | `ConfigMap` — the OpenTofu CLI configuration both pods read (`TF_CLI_CONFIG_FILE`): where providers come from |
+| `turf-cli-config.yaml`    | `ConfigMap` — the OpenTofu CLI configuration every pod reads (`TF_CLI_CONFIG_FILE`): where providers come from |
 | `restate.yaml`            | `StatefulSet` + `Service` — restate-server from Restate's own image, its data on a volume |
 | `turf-agent.yaml`         | `Agent` — the infrastructure agent (system prompt, tools, A2A skills)|
 | `turf-rbac.yaml`          | `ClusterRoleBinding` (cluster-admin, for the Kubernetes state backend and in-cluster providers)|
@@ -375,22 +375,22 @@ the engine's `--data-dir` and a read-only configuration came in 1.1.0, and more 
 one engine replica in 1.2.0. On 1.1, set the engine's `replicas` to 1.
 
 **Providers come from where `turf-cli-config.yaml` says.** It is OpenTofu's CLI
-configuration, mounted on both pods at `/turf/cli` and named by `TF_CLI_CONFIG_FILE`,
+configuration, mounted on every pod at `/turf/cli` and named by `TF_CLI_CONFIG_FILE`,
 and its `provider_installation` block works as it does for `tofu`. The server's `init`
 installs and locks from it, and the engine installs from it and checks what `init`
 locked, so it is one ConfigMap for both. As shipped it is `direct {}`, the registry.
 For a cluster that reaches no registry, put a mirror in it, as its comments show:
 
-- a `filesystem_mirror` on a read-only volume mounted at the same path in both pods,
+- a `filesystem_mirror` on a read-only volume mounted at the same path in every pod,
   such as an image volume holding what `tofu providers mirror` writes, whose archives
   verify a lock file written from the registry, as the committed one is;
 - a `network_mirror` (https only), or an `oci_mirror` on a registry of your own.
 
 The provider cache stays each pod's own `emptyDir`, never a volume they share: every
-engine replica installs from the mirror into its own. Both pods read the file once, at
-start, so roll both after changing it. A file in error stops them from starting, where
-`tofu` would warn and carry on. Like the configuration image, a mirror needs a Turf
-release later than 1.0.1, which reads this file for registry credentials alone.
+engine replica installs from the mirror into its own. Every pod reads the file once, at
+start, so roll them all after changing it. A file in error stops them from starting, where
+`tofu` would warn and carry on. A mirror needs Turf 1.2.0 or later: earlier releases
+read this file for registry credentials alone.
 
 Provider credentials belong on the engine, where the plugins run; the state
 backend's belong on the server.
