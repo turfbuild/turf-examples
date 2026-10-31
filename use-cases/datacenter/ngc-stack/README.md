@@ -279,37 +279,31 @@ moment a labelled node joins; it is already watching.
 
 ## Notes on how Turf runs it
 
-One constraint on the HCL is worth knowing if you write your own, and one
-behaviour is worth watching for, because it is what lets the stack converge in
-two rounds rather than failing in one.
+One behaviour is worth watching for if you write your own HCL, because it is
+what lets the stack converge in two rounds rather than failing in one.
 
-- **Modules must live under the configuration directory.** `source =
-  "../modules/cert-manager"` is refused (*"… outside the configuration"*): Turf
-  plans the directory a user names and what lives under it, which is why
-  `modules/` sits inside `ngc-stack/` rather than being shared across the
-  `use-cases/datacenter/` tree.
-- **A deferral travels over `depends_on`.** `module.nim_operator` names two
-  modules it takes no value from. Those modules are themselves unplannable in
-  the first round, because the `helm` provider is configured from the cluster's
-  computed endpoint. So the NIM module is ordered after something that does not
-  exist yet *and* reads nothing from it — and Turf defers the whole subtree on
-  that basis alone:
+**A deferral travels over `depends_on`.** `module.nim_operator` names two
+modules it takes no value from. Those modules are themselves unplannable in the
+first round, because the `helm` provider is configured from the cluster's
+computed endpoint. So the NIM module is ordered after something that does not
+exist yet *and* reads nothing from it — and Turf defers the whole subtree on
+that basis alone:
 
-  <!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
-  ```
-  plan for phase p-f168bc75 (8 of 8 address(es) change):
-    create    kind_cluster.dc
-    create    module.cert_manager[0].null_resource.cluster
-    unspecified module.cert_manager[0].helm_release.this  (deferred)
-    ...
-    unspecified module.nim_operator  (whole module deferred: absent_prereq)
-  ```
+<!-- TODO(v1 re-run): replace with a round-by-round summary from a real v1 run -->
+```
+plan for phase p-f168bc75 (8 of 8 address(es) change):
+  create    kind_cluster.dc
+  create    module.cert_manager[0].null_resource.cluster
+  unspecified module.cert_manager[0].helm_release.this  (deferred)
+  ...
+  unspecified module.nim_operator  (whole module deferred: absent_prereq)
+```
 
-  One row for the call rather than a row per resource inside it: nothing in
-  that module is planned this round, not even its `null_resource`, which has
-  everything it needs. `absent_prereq` is the engine's word for *waiting on
-  something that is itself waiting*. Round two plans the subtree for real and
-  applies all four releases in one round.
+One row for the call rather than a row per resource inside it: nothing in that
+module is planned this round, not even its `null_resource`, which has
+everything it needs. `absent_prereq` is the engine's word for *waiting on
+something that is itself waiting*. Round two plans the subtree for real and
+applies all four releases in one round.
 
 The ordering is visible in the cluster while it happens. cert-manager,
 gpu-operator and external-dns install in parallel — ExternalDNS names no

@@ -463,14 +463,14 @@ Everything below was observed on Turf at engine commit `e71ee93`, through the
 engine's development driver before the v1 tools, with kind `v1.36.1` on Docker
 Desktop, on 2026-10-01.
 
-- **No `depends_on` on a module output.** The first version ordered
+- **`depends_on` on a module output was refused.** The first version ordered
   `dcgm_job_mapping_dir` and the KAI `queue` output after their releases with
-  `depends_on`. Turf refuses that outright, before planning anything:
+  `depends_on`, and Turf at that commit refused it before planning anything:
   *"this engine milestone does not walk depends_on on outputs (found:
-  [dcgm_job_mapping_dir]); the construct is refused rather than skipped"*. Both
-  outputs now read their value back from the release itself
-  (`helm_release.this.set`, `helm_release.queues.values`), which carries the
-  ordering as a real reference.
+  [dcgm_job_mapping_dir]); the construct is refused rather than skipped"*.
+  Turf 1.0.1 and later accept it. Both outputs still read their value back from
+  the release itself (`helm_release.this.set`, `helm_release.queues.values`),
+  which carries the ordering as a real reference.
 - **A failed install leaves helm's record behind, and no state.** When the
   queues release was refused by KAI's webhook, helm had already written the
   release, so the cluster held `kai-scheduler-queues` with status `failed` and
