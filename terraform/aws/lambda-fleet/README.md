@@ -77,6 +77,14 @@ Edit `hello-world/hello.js` and run `up`. The `archive_file` data source
 rebuilds the package, `source_code_hash` moves with it, and every function
 re-deploys the new code.
 
+## In CI/CD
+
+[turfbuild/turf-agentic-workflows](https://github.com/turfbuild/turf-agentic-workflows)
+runs this example from pull requests, with an agent in GitHub Agentic Workflows planning
+on the pull request and applying to staging, then production, after the merge. Its
+`infra/` is this configuration plus a public URL per function and a `verify` Turf action
+that fetches every one after each rollout.
+
 ## Variables
 
 | Variable | Default | Purpose |
