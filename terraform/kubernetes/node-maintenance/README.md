@@ -337,9 +337,12 @@ a destroy trigger that named a keyed step on such an orphan would warn
 ("Orphaned action failed to plan") and invoke none of its actions — `release`
 reads `caller`, not a key, which is why it still runs; and `each.key` in an
 overlay's trigger is the target instance's, so `maintenance.turf.hcl` binds
-every instance to its own node's Ready wait without naming any. The engine does
-not take resource `precondition`s yet, so the typo check is the plan's, in
-Terraform's words, rather than a friendlier one.
+every instance to its own node's Ready wait without naming any. The typo check
+is the plan's, in Terraform's words, rather than a friendlier one. A
+`precondition` would not fit: it is read on every plan for every instance, so a
+node that left the cluster while in maintenance would fail every plan until its
+name was removed. A `check` block would, as a warning, and Turf does not take
+`check` blocks yet.
 
 ## Appendix: the imperative alternative, actions only
 

@@ -101,7 +101,6 @@ output "eni_configs" {
 # requires IAM policies attached before node group creation"). The node group
 # is now in ../eks-compute, so this output carries the role *as attached*: the
 # attachment IDs are part of its value, so anything consuming it waits for them.
-# (Not `depends_on` on the output: Turf refuses that.)
 output "system_node_role" {
   value = {
     arn = aws_iam_role.system_nodes.arn
