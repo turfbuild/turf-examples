@@ -476,6 +476,24 @@ the workspace variable into the registry module and gating plan-approval on the 
 policy — governance in the local loop, not a remote run. A `scalr` skill under `.turf/`
 teaches the Turf agent these conventions. See `integrations/scalr/README.md`.
 
+### [`turfbuild/turf-agentic-workflows`](https://github.com/turfbuild/turf-agentic-workflows) — Turf in CI/CD on GitHub Agentic Workflows
+
+A repository of its own, since it is a working setup rather than a configuration to
+copy: the `aws/lambda-fleet` example delivered by an agent in
+[GitHub Agentic Workflows](https://github.github.com/gh-aw/), with no person in the loop
+after the merge. Turf's engine and MCP server start on the runner; the agent drives them
+from gh-aw's sandbox, under rules the repository keeps in `policy/`. On a pull request the
+agent checks the providers against GitHub's Advisory Database (through the GitHub MCP
+Server), plans, and posts the plan with its approval verdict. On merge it applies to
+staging, performs a `verify` Turf action that fetches every function URL, and compares the
+applied plan with the one reviewed; production follows under a stricter rule. GitHub
+Environments carry each environment's variables, AWS role and rule. Its pull requests are
+the demo: [#4](https://github.com/turfbuild/turf-agentic-workflows/pull/4) rolls a change
+out to both environments, [#5](https://github.com/turfbuild/turf-agentic-workflows/pull/5)
+is refused at review (a rename that replaces the shared role), and
+[#6](https://github.com/turfbuild/turf-agentic-workflows/pull/6) is refused before anything
+is planned (a provider with a high-severity advisory).
+
 ## License
 
 Mozilla Public License 2.0. See [LICENSE](./LICENSE).
