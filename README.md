@@ -399,8 +399,11 @@ The kagent agent has no file tools, so it **operates** existing configurations â
 apply, destroy, import, and actions â€” but does not author them; writing `.tf` needs a
 client with file tools (the Turf CLI, Claude Code).
 
-**Who can reach Turf.** restate-server has no authentication of its own, and neither
-does the MCP server's HTTP transport, so the stack is closed by two things:
+**Who can reach Turf.** restate-server has no authentication of its own. The MCP
+server can require a bearer token from Turf 1.3 (`TURF_MCP_AUTH_TOKEN`), but this
+example leaves it off: kagent 0.10.3 sends no headers when its controller lists an
+`MCPServer`'s tools. kagent 1.0 replaces `MCPServer` with `RemoteMCPServer`, whose
+`headersFrom` can send it. So the stack is closed by two things:
 
 - **Request identity.** restate-server signs every request it sends the engine, and
   the engine serves nothing else. The key lives in a Secret restate-server and every
