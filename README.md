@@ -494,6 +494,13 @@ is refused at review (a rename that replaces the shared role), and
 [#6](https://github.com/turfbuild/turf-agentic-workflows/pull/6) is refused before anything
 is planned (a provider with a high-severity advisory).
 
+## Community
+
+Questions, ideas, or something you built with these examples: [Discord](https://turf.build/discord/).
+A broken example is an [issue here](https://github.com/turfbuild/turf-examples/issues); a bug in
+Turf itself goes to [turfbuild/turf](https://github.com/turfbuild/turf/issues). Release notes by
+email: [the newsletter](https://turf.build/newsletter/). Everything else: https://turf.build/community/.
+
 ## License
 
 Mozilla Public License 2.0. See [LICENSE](./LICENSE).
