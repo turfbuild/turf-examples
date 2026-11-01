@@ -74,7 +74,9 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
   → evaluate with `opa_rego_eval` (inline `source`,
   `input = { "tfplan": <plan> }`) → withhold `turf_apply` per level (`hard-mandatory`
   blocks; `soft-mandatory` blocks unless overridden; `advisory` warns). A blocked plan
-  is declined with `turf_apply` and `decline` (the `reason` names the policy). No group
+  is declined with `turf_apply` and `decline` (the `reason` names the policy) — for a
+  `soft-mandatory` block, only once the user has declined to override, since a decline
+  ends the convergence. No group
   linked → eval the local rego as advisory.
 
 ## How to apply

@@ -21,6 +21,12 @@ spec:
       - /turf/tmp
       - --plugin-cache-dir
       - /turf/plugins
+      # Every convergence call returns within this deadline, with the stage the
+      # convergence is at for the agent to call again. kagent gives an MCP call
+      # 30 seconds (MCPServer's timeout default), less than the server's own
+      # 55: keep the deadline under whatever timeout the MCPServer carries.
+      - --deadline
+      - 25s
     env:
       # The engine this server drives: restate-server's ingress (restate.yaml),
       # with turf-engine (turf-engine.yaml) registered behind it.

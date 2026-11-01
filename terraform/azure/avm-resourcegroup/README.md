@@ -10,7 +10,7 @@ it into native keyed addresses — `module.resource_group["eastus"]`, `module.re
 > the `az` login, or `ARM_*` variables in `turf.env` or the configuration's `mise.local.toml`
 > (see [Running the examples](../../../README.md#running-the-examples)).
 
-## Plan it (`up`)
+## Plan it (`up`, `plan`)
 
 `main.tf` declares `var.resource_groups` (a map keyed by region) and a single `module "resource_group"`
 with `for_each = var.resource_groups`. `plan` plans the directory and expands it:

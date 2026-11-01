@@ -87,17 +87,18 @@ turf -C terraform/kubernetes/kind-crd up        # the Turf CLI
 The MCP tools are Terraform's commands. `init` registers an example's directory and
 installs its modules and providers, `open` binds its state, and `up` starts a
 convergence, which runs in **rounds**. Each round stops twice: at its plan gate, where
-`plan` plans it (`refresh: false` and `replace` are its options), and at its approval
-point, with its plan as a resource (`plan.uri`, OpenTofu's JSON plan, exactly as
-`tofu show -json` prints it; `show` reads it). `apply` with that plan's `plan.digest`
-approves it: it applies the round and stops at the next round's plan gate, until the
-configuration has converged. `apply` with `decline` declines the plan. A call that
-returns `planning` or `applying` (`ended: false`) reached the server's deadline: call it
-again. `destroy` tears down the same way. A value known only after an apply, such as a
+`plan` plans it (`refresh: false`, and on an `up`'s round `replace`, are its options),
+and at its approval point, with its plan as a resource (`plan.uri`, OpenTofu's JSON
+plan, exactly as `tofu show -json` prints it; `show` reads it). `apply` with that plan's
+`plan.digest` approves it: it applies the round and stops at the next round's plan gate,
+until the configuration has converged. `apply` with `decline` declines the plan. A call
+that returns `planning` or `applying` (`ended: false`) reached the server's deadline:
+call the same tool again with only the `convergence_id` (the result's `next` names the
+call). `destroy` tears down the same way. A value known only after an apply, such as a
 new cluster's endpoint, defers whatever reads it to the next round. That is how several
 examples here go from nothing to a running stack in one convergence. `up` with
-`plan_only` plans one round and keeps the plan as a planfile, which `apply` can apply
-later, from another server if you like.
+`plan_only` makes the run plan-only: its `plan` ends it `planned` and keeps the plan as
+a planfile, which `apply` can apply later, from another server if you like.
 
 **A remote engine.** `TURF_RESTATE_URL` points the CLI or the server at an engine
 running elsewhere, such as in a cluster ([`integrations/kagent/`](integrations/kagent/)),

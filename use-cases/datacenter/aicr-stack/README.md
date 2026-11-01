@@ -232,7 +232,7 @@ be planned; round two creates the seventeen releases in the new cluster,
 re-asserts the readiness gate, pauses for `certify`, and replaces the nine shims
 that were deferred. End state: one kind cluster (`aicr-2`), 17 releases
 `deployed`, `ClusterPolicy` `ready`, fourteen shims all carrying the new
-endpoint, and an idle `up` that plans nothing.
+endpoint, and an idle `up` whose `plan` plans nothing.
 
 Compare stock Terraform on this same bundle (v1.16.2, measured 2026-10-13):
 `Plan: 32 to add, 0 to change, 15 to destroy`. The fifteen replaced are the

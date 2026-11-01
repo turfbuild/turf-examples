@@ -38,8 +38,9 @@ ends a run with its plan kept as a planfile, is a different thing.)
     halt means it stays.
 - **Unattended, governed.** An installer that runs by itself approves each
   round's plan itself (`apply` with its digest), or applies a planfile someone
-  else planned and read (turf's `plan_only` argument, then `apply({ planfile })`,
-  perhaps from a server whose tier can only apply) — and the three steps above
+  else planned and read with real credentials (turf's `plan_only` argument with
+  the variable `plan_only = false`, then `apply({ planfile })`, perhaps from a
+  server whose tier can only apply) — and the three steps above
   still stop it: they are the author's, not the approver's.
 - **Run a step without an account.** `consent` is declared, so it can be put to
   the customer on demand: `invoke({ action_addr: "action.turf_action.consent" })`
@@ -67,11 +68,12 @@ cp terraform.tfvars.example terraform.tfvars   # product_name, tenant, region
 turf -C . up                                   # plan only: read it, then decline
 ```
 
-Through the MCP tools: `init`, `open`, `up({ var: {…}, plan_only: true })` (turf's
-argument, not the variable: the run plans one round and ends `planned`), then
-`plan({ convergence_id, refresh: false })`, and read the plan with `show`. Nothing
-is applied and nothing is left waiting; the planfile it keeps expires by itself.
-`plan.invocations` lists the three steps beside the creates.
+Through the MCP tools: `init`, `open`, `up({ var: {…} })`, then
+`plan({ convergence_id, refresh: false })`, read the plan with `show`, and decline
+it: `apply({ convergence_id, decline: true, reason: "preview" })`. Nothing is
+applied and nothing is kept — not a plan-only run, whose planfile, planned with the
+mock keys, could only fail if applied. `plan.invocations` lists the three steps
+beside the creates.
 
 ## Cleanup
 

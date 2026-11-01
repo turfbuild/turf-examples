@@ -97,13 +97,14 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    violations (a false pass). Result shape:
    `{ "ok": true, "data": { "result": [ { "expressions": [ { "value": <deny array> } ] } ] } }`;
    the `deny` strings are that `value`.
-5. **Gate on `enforced-level`** — refuse with **`turf_apply` and `decline`**, the
-   `reason` naming the policy:
+5. **Gate on `enforced-level`** — a block is a decline: **`turf_apply` with
+   `decline`**, the `reason` naming the policy. A decline ends the convergence, so
+   ask about an override first, while the plan still waits for its digest:
 
    | `enforced-level` | `deny` non-empty → |
    |---|---|
-   | `hard-mandatory` | **Block.** Do not approve. Report the reasons. |
-   | `soft-mandatory` | **Block, overridable.** Do not approve unless the user explicitly overrides via `user_prompt`. |
+   | `hard-mandatory` | **Block.** Do not approve; decline. Report the reasons. |
+   | `soft-mandatory` | **Block, overridable.** Ask via `user_prompt`; approve only on an explicit override, decline otherwise. |
    | `advisory` | **Warn.** Surface the reasons; may proceed. |
 
    Approve (`turf_apply` with the plan's `plan_digest`) only when every enabled policy passes, or an override is
