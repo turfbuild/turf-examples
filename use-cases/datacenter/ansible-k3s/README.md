@@ -231,7 +231,7 @@ converged in 3 round(s)
 ```
 
 Three rounds and 204 seconds from nothing to a custom resource on a two-node
-cluster; a fourth `up` plans 0 of 21 addresses. `destroy` removes all 21 in one
+cluster; a fourth run plans 0 of 21 addresses. `destroy` removes all 21 in one
 round, in 51 seconds.
 
 ## On plain Terraform
@@ -342,8 +342,8 @@ from the server.
 turf -C use-cases/datacenter/ansible-k3s up
 ```
 
-Or from any MCP client: `init` the directory, `open`, then `up`, and
-approve each round's plan with `apply`.
+Or from any MCP client: `init` the directory, `open`, then `up`; `plan` each
+round and approve its plan with `apply`.
 
 ## Verify
 
@@ -359,7 +359,7 @@ kubectl --kubeconfig .k3s/k3s.yaml --server "https://$(jq -r .outputs.server_pub
 
 # The nodes as the server sees them, through Ansible: from an MCP client,
 #   invoke({ action_addr: "module.k3s.action.ansible_playbook_run.status" })
-# then approve its plan with apply.
+# then plan it and approve its plan with apply.
 
 # Log in to the server yourself.
 $(jq -r .outputs.ssh.value terraform.tfstate)

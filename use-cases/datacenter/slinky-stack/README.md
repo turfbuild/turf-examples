@@ -141,6 +141,7 @@ nothing. Invoke it when you want to know, as Terraform's `apply -invoke` would:
 
 ```
 invoke({ action_addr: "module.slurm.action.kubewait_condition.gpu_nodes_up" })
+plan({ convergence_id: "<from invoke>" })
 apply({ convergence_id: "<from invoke>", plan_digest: "<plan.digest>" })
 ```
 
@@ -330,7 +331,7 @@ converged in 2 round(s)
 
 That run took 14m32s; a later one's second round took 9m30s against 11m49s
 here, the difference being image pulls and the NodeSet backoff (the
-[timeline](#the-waits) is from the later run). A second `up` plans `0 of 13
+[timeline](#the-waits) is from the later run). A second run plans `0 of 13
 address(es) change`, invokes nothing, and takes 49 seconds.
 
 ## The second run
@@ -398,8 +399,8 @@ Three edges into `module.slurm`, three kinds:
 turf -C use-cases/datacenter/slinky-stack up
 ```
 
-Or from any MCP client: `init` the directory, `open`, then `up`, and
-approve each round's plan with `apply`.
+Or from any MCP client: `init` the directory, `open`, then `up`; `plan` each
+round and approve its plan with `apply`.
 
 ## Verify
 
@@ -482,7 +483,7 @@ Desktop, on 2026-10-01.
   uninstall` it, or replace the cluster.
 - **A failure ends the convergence.** A create that fails or an invoke that
   times out ends its round, and the convergence with it, as `failed`: nothing is
-  retried, and the next `up` plans again from what was applied. Editing a `.tf`
+  retried, and the next `up` and `plan` start again from what was applied. Editing a `.tf`
   under the directory after a round has planned and before it applies stales
   that round's plan: the convergence ends `stale` (`rounds[].stale_reason`: *"the configuration
   changed after it was planned"*), and nothing applies.

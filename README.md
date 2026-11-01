@@ -85,14 +85,19 @@ turf -C terraform/kubernetes/kind-crd up        # the Turf CLI
 ```
 
 The MCP tools are Terraform's commands. `init` registers an example's directory and
-installs its modules and providers, `open` binds its state, and `up` plans
-the first **round**. Each round stops at its approval point with its plan as a resource
-(`plan.uri`, OpenTofu's JSON plan, exactly as `tofu show -json` prints it; `show` reads it).
-`apply` with that plan's `plan.digest` approves it: it applies the round, plans the
-next, and stops again, until the configuration has converged. Not calling `apply`
-declines the plan. `destroy` tears down the same way. A value known only after an
-apply, such as a new cluster's endpoint, defers whatever reads it to the next round.
-That is how several examples here go from nothing to a running stack in one `up`.
+installs its modules and providers, `open` binds its state, and `up` starts a
+convergence, which runs in **rounds**. Each round stops twice: at its plan gate, where
+`plan` plans it (`refresh: false` and `replace` are its options), and at its approval
+point, with its plan as a resource (`plan.uri`, OpenTofu's JSON plan, exactly as
+`tofu show -json` prints it; `show` reads it). `apply` with that plan's `plan.digest`
+approves it: it applies the round and stops at the next round's plan gate, until the
+configuration has converged. `apply` with `decline` declines the plan. A call that
+returns `planning` or `applying` (`ended: false`) reached the server's deadline: call it
+again. `destroy` tears down the same way. A value known only after an apply, such as a
+new cluster's endpoint, defers whatever reads it to the next round. That is how several
+examples here go from nothing to a running stack in one convergence. `up` with
+`plan_only` plans one round and keeps the plan as a planfile, which `apply` can apply
+later, from another server if you like.
 
 **A remote engine.** `TURF_RESTATE_URL` points the CLI or the server at an engine
 running elsewhere, such as in a cluster ([`integrations/kagent/`](integrations/kagent/)),
@@ -176,7 +181,7 @@ Each example's README says what else it needs.
 
 Each `terraform/<...>` directory is a self-contained, ordinary Terraform configuration —
 plain `.tf` files. Drive it from your agent (`/turf:up <dir>` in Claude Code, or the
-MCP tools: `init` against the directory, then `up`) or with the Turf CLI (`turf -C <dir> up`),
+MCP tools: `init` against the directory, then `up`, `plan` and `apply`) or with the Turf CLI (`turf -C <dir> up`),
 as [Running the examples](#running-the-examples) describes. See each example's
 `README.md` for prerequisites, usage, and cleanup. An example may carry a
 `*.turf.hcl` file beside its `.tf`: Turf actions — steps the agent driving Turf
@@ -370,9 +375,10 @@ Nothing is shared between the pods and no volume claim is needed:
   source moved since.
 
 To run your own configuration, publish it as a configuration image and put its
-reference in both manifests' `configuration` volume. The manifests name Turf 1.2.0:
-the engine's `--data-dir` and a read-only configuration came in 1.1.0, and more than
-one engine replica in 1.2.0. On 1.1, set the engine's `replicas` to 1.
+reference in both manifests' `configuration` volume. The manifests name Turf 1.3.0,
+and the agent's instructions and `toolNames` follow its loop (`up`, `plan`, `apply`),
+which needs a 1.3 server. The engine's `--data-dir` and a read-only configuration came
+in 1.1.0, and more than one engine replica in 1.2.0.
 
 **Providers come from where `turf-cli-config.yaml` says.** It is OpenTofu's CLI
 configuration, mounted on every pod at `/turf/cli` and named by `TF_CLI_CONFIG_FILE`,

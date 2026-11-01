@@ -143,7 +143,9 @@ error.
 Measured on Turf from empty state on 2026-10-13, through the MCP server (`init`,
 `open`, `up`, `apply`), against the engine the server pins; re-measured on Turf
 1.0.1 on 2026-10-21 with the bundle's outputs exactly as generated, with the same
-counts. The containment shim is a `terraform_data`, a resource of the built-in
+counts. The traces below are written in Turf 1.3's calls, where `up` stops at the
+plan gate and `plan` plans each round; the rounds and their counts are the
+engine's, the same either way. The containment shim is a `terraform_data`, a resource of the built-in
 `terraform.io/builtin/terraform` provider that no registry serves; Turf runs that
 provider as a sidecar process on the same path every other provider takes, so the
 bundle runs exactly as generated.
@@ -153,9 +155,10 @@ containment shims that sit behind no order-only edge. Everything else defers,
 and nine of the fourteen components defer **whole**:
 
 ```
-up:     round 1  planned 75   deferred 69   → awaiting_approval   add 6
-apply:  round 1  applied 6
-        round 2  planned 32   deferred 0    → awaiting_approval   add 26
+up:              → awaiting_plan
+plan:   round 1  planned 75   deferred 69   → awaiting_approval   add 6
+apply:  round 1  applied 6                  → awaiting_plan
+plan:   round 2  planned 32   deferred 0    → awaiting_approval   add 26
                  invocations: action.turf_action.certify
                               after_create module.stack.module.gpu_operator.helm_release.this
 apply:  round 2  … → awaiting_actions (certify)
@@ -207,13 +210,14 @@ them is *contained* by a shim that replaces this round, and Turf plans through t
 deferred modules to find them:
 
 ```
-up:     round 1  planned 75   deferred 69   → awaiting_approval
+up:              → awaiting_plan
+plan:   round 1  planned 75   deferred 69   → awaiting_approval
                  replace 6 (kind_cluster.dc + the 5 shims behind no edge)
                  destroy 23 (all 17 releases: replace_by_triggers, create deferred
                              to the next round; + the 6 replaced)
                  add 6
-apply:  round 1  applied 29
-        round 2  planned 32   → awaiting_approval   add 26   replace 9
+apply:  round 1  applied 29                 → awaiting_plan
+plan:   round 2  planned 32   → awaiting_approval   add 26   replace 9
                  invocations: action.turf_action.certify
 apply:  round 2  … → awaiting_actions (certify)   → applied 35   invoked 1
 converged in 2 round(s)
@@ -350,7 +354,7 @@ exists to provide. That is why the flag is off by default upstream.
 asynchronous — `helm --wait` times out on its custom-resource readiness even
 though every pod started — so the deployer emits `wait = false` and
 `timeout = 1200` on that one module call, with the reason inline. Expect a
-handful of `ContainerCreating` pods for ~30s after `up` returns. AICR keeps that
+handful of `ContainerCreating` pods for ~30s after the last round applies. AICR keeps that
 list in one table shared by `deploy.sh`, the helmfile deployer and this one, so
 it is no longer something a consumer has to rediscover.
 
@@ -418,7 +422,7 @@ it does not matter here; it would on a cluster you keep.
 `aicr.turf.hcl` adds the two steps a person or an agent performs around the
 stack, as Turf actions — `turf_action`, the built-in action the agent driving
 Turf carries out itself. tofu and terraform ignore the file by its name; Turf
-lays it over the configuration at every plan, and `up` lists the invocations
+lays it over the configuration at every plan, and `plan` lists the invocations
 beside the resource changes (`plan.invocations`).
 
 - **`certify`** is bound to the GPU Operator's release, `after_create`. When

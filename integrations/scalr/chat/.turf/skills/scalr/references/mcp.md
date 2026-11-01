@@ -34,8 +34,9 @@ Scalr running the plan.
    same region — provider creds come from the **local** environment, since Scalr isn't
    executing this run. Re-run `turf_init` to install the new module and its provider (it
    is Turf's `tofu init`).
-4. `turf_up` and review — the planned module inputs carry the Scalr-sourced value. A
-   later `turf_up`, after another edit, supersedes a plan still waiting for approval.
+4. `turf_up`, then `turf_plan`, and review — the planned module inputs carry the
+   Scalr-sourced value. A later `turf_up`, after another edit, supersedes a convergence
+   still waiting at its plan gate or its approval point.
 
 ## Playbook 2 — discover the Scalr policy group, enforce it locally
 
@@ -75,11 +76,11 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    policies sit in otherwise fails the same way. A `chat/policies` symlink does not help —
    the file tools resolve symlinks on both sides of the check. (No local checkout? Fetch
    the file from the repo over the network — creds permitting.)
-3. **Read the plan.** `turf_up` stops at the approval point with the plan as a resource,
-   at `plan.uri`: the standard `tofu show -json` document
-   (`resource_changes[].change.after`, …). Read it with `turf_show`, which redacts
-   sensitive values; pass `show_sensitive: true` only if a policy reads one (the secret
-   then enters the conversation).
+3. **Read the plan.** `turf_up` stops at the plan gate; `turf_plan` plans the round and
+   stops at the approval point with the plan as a resource, at `plan.uri`: the standard
+   `tofu show -json` document (`resource_changes[].change.after`, …). Read it with
+   `turf_show`, which redacts sensitive values; pass `show_sensitive: true` only if a
+   policy reads one (the secret then enters the conversation).
 4. **Evaluate** each policy against the plan. **Pass BOTH the rego and the plan
    inline** — the rego as `source`, the plan as `input` — never the file-path
    variants (`paths`/`inputPath`). The OPA server runs in a container and cannot read
@@ -96,7 +97,8 @@ local read of `<path>/<name>.rego` is the same source Scalr syncs.
    violations (a false pass). Result shape:
    `{ "ok": true, "data": { "result": [ { "expressions": [ { "value": <deny array> } ] } ] } }`;
    the `deny` strings are that `value`.
-5. **Gate on `enforced-level`** — refuse by simply **not calling `turf_apply`**:
+5. **Gate on `enforced-level`** — refuse with **`turf_apply` and `decline`**, the
+   `reason` naming the policy:
 
    | `enforced-level` | `deny` non-empty → |
    |---|---|

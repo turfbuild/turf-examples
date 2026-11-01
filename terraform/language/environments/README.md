@@ -27,7 +27,8 @@ it is.
 - **`workspace_name` selects the slot; `var_file` carries the environment.**
   Through the MCP tools: `init`, then
   `open({ workspace_name: "staging", workspace_alias: "staging" })`
-  and `up({ workspace_alias: "staging", var_file: ["env/staging.tfvars"] })`;
+  and `up({ workspace_alias: "staging", var_file: ["env/staging.tfvars"] })`,
+  then `plan({ workspace_alias: "staging" })` and `apply`;
   the same for `production` under its own alias. `open` reports
   `state_path` under `terraform.tfstate.d/<name>/`. `list` shows both.
 - **Promotion is a plan per environment.** Bump `app_version`, plan staging,

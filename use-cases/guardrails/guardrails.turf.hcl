@@ -2,9 +2,9 @@
 # pet the workload is named after. tofu and terraform ignore this file by its
 # name; Turf lays it over main.tf at every plan. Both are before_create with
 # halt: a failure stops the pet and the app that waits on it (the cluster,
-# which depends on neither, still applies). They stop the apply even when it
-# runs unattended (auto_approve) — an apply-time step the author wrote in, not
-# a second approval.
+# which depends on neither, still applies). They stop the apply even when no
+# one reviews it (the agent approving its own plan, or a planfile applied
+# elsewhere) — an apply-time step the author wrote in, not a second approval.
 #
 # A turf_action is the built-in action the agent driving Turf carries out
 # itself: the apply stops at awaiting_actions with the prompt and inputs, the

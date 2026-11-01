@@ -23,7 +23,9 @@ plan document and from the apply:
 ```text
 init({ path: "terraform/language/replace-ordering" })
 open({})
-up({ replace: ["random_integer.port", "random_password.secret", "random_pet.server"] })
+up({})
+# → awaiting_plan: round 1's plan gate, where the round's options are given
+plan({ convergence_id: "<from up>", replace: ["random_integer.port", "random_password.secret", "random_pet.server"] })
 # → awaiting_approval: plan.uri is the round's plan, as `tofu show -json` prints it (show reads it)
 apply({ convergence_id: "<from up>", plan_digest: "<plan.digest>" })
 ```

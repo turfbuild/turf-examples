@@ -262,8 +262,8 @@ terraform apply tfplan
 ```
 
 On Turf, `turf -C . up`; through the MCP tools the same run is `init`,
-`open`, `up`, `apply` (answering each `awaiting_actions` pause with
-`action_results`), until `converged`.
+`open`, `up`, then `plan` and `apply` each round (answering each
+`awaiting_actions` pause with `action_results`), until `converged`.
 
 `drain_flags` defaults to `--ignore-daemonsets --delete-emptydir-data
 --timeout=10m`. A Pod that no controller owns blocks `kubectl drain` unless

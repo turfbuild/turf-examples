@@ -55,10 +55,10 @@ kubectl -n turf-state get secret,lease
 ```
 
 The lock is held while a session follows a convergence, including one paused at its
-approval point, as `tofu apply` holds it at its prompt. It is released when the
-convergence ends, or when the session lets go of it: `close`, the server
+plan gate or approval point, as `tofu apply` holds it at its prompt. It is released
+when the convergence ends, or when the session lets go of it: `close`, the server
 exiting, or a pause longer than a day. The convergence itself waits in the engine,
-and the next `apply` takes the lock again.
+and the next `plan` or `apply` takes the lock again.
 
 ## Cleanup
 

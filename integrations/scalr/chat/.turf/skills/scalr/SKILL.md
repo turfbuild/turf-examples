@@ -61,7 +61,7 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
 - **Pull a variable → feed a module.** Read a non-sensitive workspace variable with
   `scalr_list_variables` / `scalr_get_variable`, then write a `module` block for a
   private-registry module that takes that value, re-run `turf_init` to install it,
-  and plan (`turf_up`). (Sensitive values are write-once and never returned — only non-sensitive
+  and plan (`turf_up`, then `turf_plan`). (Sensitive values are write-once and never returned — only non-sensitive
   vars are pullable.) Which workspace? The one this config
   binds to — resolve it from the config's `backend "remote"` / the workspace the session
   opened, or the name the user gives you. (This repo's `chat` demo targets the workspace
@@ -73,9 +73,9 @@ loop. When `turf.yaml` wires the `scalr` and `opa` MCP servers, their tools appe
   `turf_show` (redacted; `show_sensitive` only if a policy reads a sensitive value)
   → evaluate with `opa_rego_eval` (inline `source`,
   `input = { "tfplan": <plan> }`) → withhold `turf_apply` per level (`hard-mandatory`
-  blocks; `soft-mandatory` blocks unless overridden; `advisory` warns). Not calling
-  `turf_apply` is how a plan is declined. No group linked → eval the local rego as
-  advisory.
+  blocks; `soft-mandatory` blocks unless overridden; `advisory` warns). A blocked plan
+  is declined with `turf_apply` and `decline` (the `reason` names the policy). No group
+  linked → eval the local rego as advisory.
 
 ## How to apply
 
