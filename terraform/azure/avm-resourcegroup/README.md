@@ -10,15 +10,16 @@ it into native keyed addresses — `module.resource_group["eastus"]`, `module.re
 > the `az` login, or `ARM_*` variables in `turf.env` or the configuration's `mise.local.toml`
 > (see [Running the examples](../../../README.md#running-the-examples)).
 
-## Plan it (`up`)
+## Plan it (`up`, `plan`)
 
 `main.tf` declares `var.resource_groups` (a map keyed by region) and a single `module "resource_group"`
-with `for_each = var.resource_groups`. `up` plans the directory and expands it:
+with `for_each = var.resource_groups`. `plan` plans the directory and expands it:
 
 ```
 init({ path: "terraform/azure/avm-resourcegroup" })   # installs the module and every provider
 open({})
-up({})
+up({})                                                # → awaiting_plan
+plan({ convergence_id: "<from up>" })
 → module.resource_group["eastus"].azurerm_resource_group.this   + create
   module.resource_group["westus"].azurerm_resource_group.this   + create
 ```
@@ -30,7 +31,7 @@ four, as `tofu init` installs them. `main.tf` pins the module to 0.2.x: from 0.3
 resources to `azapi_resource` with `moved` blocks that change a resource's type, which Turf
 refuses.
 
-`up` stops at its approval point with the plan; `apply` with its `plan_digest` applies it. Add or
+`plan` stops at the approval point with the plan; `apply` with its `plan_digest` applies it. Add or
 drop a region in `var.resource_groups` and only that instance is created/deleted; the others
 stay `noop`.
 
@@ -61,4 +62,4 @@ Shrinking and removing are edits to the files, followed by another `up`:
   }
   ```
 
-- **Tear down everything, keep the configuration** — `destroy({})`, then `apply` its plan.
+- **Tear down everything, keep the configuration** — `destroy({})`, then `plan` and `apply` its plan.

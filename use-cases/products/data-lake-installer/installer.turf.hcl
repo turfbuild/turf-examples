@@ -1,8 +1,9 @@
 # The installer's own steps: what the product wants checked, said and asked
 # around its reference architecture, as Turf actions. tofu and terraform
 # ignore this file by its name; Turf lays it over lake.tf at every plan, and
-# these steps stop the apply even when it runs unattended (auto_approve) — an
-# installer that runs by itself, governed by what its author wrote here.
+# these steps stop the apply even when it runs unattended (the agent approving
+# its own plan, or a planfile applied elsewhere) — an installer that runs by
+# itself, governed by what its author wrote here.
 #
 # A turf_action is the built-in action the agent driving Turf carries out
 # itself: the apply stops at awaiting_actions with the prompt and inputs, the

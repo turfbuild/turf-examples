@@ -34,9 +34,10 @@ do not preload it.
 2. Write the tags into each resource's block in its `.tf` file — the `tags` map
    (or the provider's equivalent container, below). In a configuration the user
    wrote, edit their files only with their go-ahead.
-3. `up` and review the vended plan. A first-time tag addition shows as `~`
-   (in-place update); a brand-new resource shows as `+`. If a plan was already
-   paused at its approval point, this `up` supersedes it.
+3. `up`, then `plan`, and review the vended plan. A first-time tag addition
+   shows as `~` (in-place update); a brand-new resource shows as `+`. If a
+   convergence was already waiting at its plan gate or approval point, this `up`
+   supersedes it.
 4. `apply` with that plan's digest once the diff is clean and the user has
    approved it.
 

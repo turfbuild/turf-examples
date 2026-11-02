@@ -58,7 +58,7 @@ turf -C terraform/language/actions up
 ```
 
 The planned invocations are in the round's plan document (`action_invocations`), and
-`up` summarizes them at the approval point (`plan.invocations`), per resource in the
+`plan` summarizes them at the approval point (`plan.invocations`), per resource in the
 order they run. Approving the plan with `apply` runs each one in that order.
 
 ## Turf's own action: `turf_action`

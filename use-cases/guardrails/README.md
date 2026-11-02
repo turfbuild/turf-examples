@@ -11,14 +11,15 @@ cluster and podinfo in it):
    **commit** of this repository (`git::…//terraform/modules/podinfo?ref=…`),
    so what runs is exactly what was reviewed, and an upgrade is a ref bump —
    a diff to read.
-3. **Every plan is checked against policy before it is approved.** The plan
-   waits at its approval point (`plan.uri`, OpenTofu's JSON plan, which `show`
-   reads) and nothing applies until its digest is named, so a policy tool reads
-   the plan that gets approved. `policies/readable_pet_names.rego` is the rule.
+3. **Every plan is checked against policy before it is approved.** `plan`
+   leaves each round's plan waiting at its approval point (`plan.uri`,
+   OpenTofu's JSON plan, which `show` reads) and nothing applies until its
+   digest is named, so a policy tool reads the plan that gets approved.
+   `policies/readable_pet_names.rego` is the rule.
 
 And `guardrails.turf.hcl` makes the first and the third a step of the apply
-itself, so a run that skips the approval pause (`auto_approve`) cannot skip
-them.
+itself, so a run nobody reviews (the agent approving its own plan, or a planfile
+applied elsewhere) cannot skip them.
 
 ## What this demonstrates
 
@@ -33,11 +34,12 @@ them.
   to move it; the next plan is the diff. (`oci://` module sources work the same
   way, anonymous pulls.) The configuration directory itself is still local —
   a remote *root* is not something Turf does yet.
-- **Policy at the approval point.** `up` with the default `length = 1`:
-  `opa eval -i <file> -d policies/ 'data.terraform.deny'` on `show`'s document
-  written to a file (or `conftest`, or the OPA MCP server) returns a denial — do not apply; `cancel`. `up({ var:
-  { length: 2 } })` returns none — approve by the digest of the plan that
-  was checked. A plan that changed since is refused.
+- **Policy at the approval point.** `up` with the default `length = 1`, then
+  `plan`: `opa eval -i <file> -d policies/ 'data.terraform.deny'` on `show`'s
+  document written to a file (or `conftest`, or the OPA MCP server) returns a
+  denial — decline it (`apply({ convergence_id, decline: true, reason })`). `up({ var:
+  { length: 2 } })`, then `plan`, returns none — approve by the digest of the
+  plan that was checked. A plan that changed since is refused.
 - **The guardrails ride with the configuration.** `guardrails.turf.hcl` — tofu
   and terraform ignore it by its name; Turf lays it over `main.tf` at every
   plan — binds two `turf_action`s `before_create` on the first resource the

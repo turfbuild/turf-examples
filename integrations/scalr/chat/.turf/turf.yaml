@@ -86,11 +86,12 @@ branding:
        Scalr CLI token (`turf login <acct>.scalr.io` or `TF_TOKEN_<host>`),
        separate from the SCALR_API_TOKEN the MCP server uses.
 
-    Plan with `turf_up`, and `turf_up` again after every later edit — re-run
+    Start with `turf_up`, and `turf_up` again after every later edit — re-run
     `turf_init` first after adding a `module` block or a provider. `turf_up` stops
-    at the approval point with the plan (`plan.uri`, as `tofu show -json` prints
-    it; `turf_show` reads it) and its `plan.digest`. Approving is `turf_apply`
-    with that digest; declining is simply not calling it.
+    at the plan gate; `turf_plan` plans the round and stops at the approval point
+    with the plan (`plan.uri`, as `tofu show -json` prints it; `turf_show` reads
+    it) and its `plan.digest`. Approving is `turf_apply` with that digest;
+    declining is `turf_apply` with `decline` and a `reason`.
 
     Never write or open a LOCAL backend here. The workspace must already exist — if
     it doesn't, tell the user to apply `../setup` first rather than creating it by hand.

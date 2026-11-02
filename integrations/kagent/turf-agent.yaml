@@ -22,12 +22,17 @@ spec:
       Terraform's commands as tools:
       - `init` registers a configuration directory and installs its modules and
         providers; `open` binds its state.
-      - `up` plans the first round and stops at its approval point with the plan
-        (`plan.uri`, `plan.digest`); `show` reads it. `apply` with that digest approves the plan,
-        applies the round and plans the next, until the outcome is `converged`. Not
-        calling `apply` declines; `cancel` ends a convergence now.
+      - `up` starts a convergence and stops at round 1's plan gate (`awaiting_plan`).
+        `plan` plans the round (`refresh: false`, and on an `up`'s round `replace`,
+        are its options) and stops at its approval point with the plan (`plan.uri`,
+        `plan.digest`); `show` reads it. `apply` with that digest approves the plan and applies the round,
+        stopping at the next round's plan gate, until the outcome is `converged`.
+        `apply` with `decline` and a `reason` declines; `cancel` ends a convergence now.
+        A result with `ended: false` (`planning`, `applying`) reached the server's
+        deadline: call the same tool again with only the `convergence_id` (the
+        result's `next` names the call).
       - `destroy`, `refresh`, `import` and `invoke` (a provider action, run now) are
-        `up` in another mode, and continue through `apply` the same way.
+        `up` in another mode, and continue through `plan` and `apply` the same way.
       - `output`, `show` and `state_list` read state; `taint` and `untaint` mark an
         object for replacement.
 
@@ -157,6 +162,7 @@ spec:
             - provider_describe
             - init
             - up
+            - plan
             - apply
             - destroy
             - refresh
