@@ -2,7 +2,7 @@
 
 A namespace and a ConfigMap, written through a local module by the Kubernetes
 provider using the service account of the pod it runs in. It is small on purpose:
-this is the configuration the kagent integration runs, published as a
+this is the configuration [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) runs, published as a
 [configuration image](../../../README.md#configuration-images) and mounted
 read-only where Turf reads it.
 
@@ -15,7 +15,7 @@ read-only where Turf reads it.
 
 ## Running it
 
-In a pod (the kagent integration), nothing needs setting: the provider finds the
+In a pod (as in turf-kagent), nothing needs setting: the provider finds the
 cluster through the pod's service account. From a checkout on a workstation, point
 it at a kubeconfig:
 
@@ -31,7 +31,7 @@ opens every workspace on the Kubernetes backend:
 open({
   workspace_name: "greeting", workspace_alias: "greeting",
   backend_type: "kubernetes",
-  backend_config: { secret_suffix: "turf", namespace: "kagent", in_cluster_config: true }
+  backend_config: { secret_suffix: "turf", namespace: "turf", in_cluster_config: true }
 })
 ```
 

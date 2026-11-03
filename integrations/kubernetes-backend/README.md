@@ -79,5 +79,6 @@ To run Turf *inside* the cluster, the MCP server's pod uses its ServiceAccount t
 for the backend, which needs a Role granting access to `secrets` and `leases`, and
 the engine's pod uses its own for the providers it runs. That operational setup —
 ServiceAccounts, RBAC, and deployment manifests — lives in
-[`integrations/kagent/`](../kagent/) (see `turf-rbac.yaml`), which deploys the Turf
-MCP server, its engine and restate-server in-cluster via the kagent operator.
+[turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) (see
+`manifests/turf/mcp-server.yaml` and `engine.yaml`), which deploys the Turf MCP server,
+its engine and restate-server in-cluster beside kagent.
