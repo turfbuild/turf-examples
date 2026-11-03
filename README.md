@@ -44,8 +44,8 @@ use-cases/        End-to-end stacks for a real domain, composed from local modul
                     Scheduler + GPU Operator on kind, waits as kubewait actions
 
 integrations/     How to drive turf-mcp-server from different agent runtimes
-  kagent/             Kubernetes manifests: MCPServer, Agent, RBAC, ModelConfig; the
-                      configuration mounted from a configuration image
+  kagent/             Points to turfbuild/turf-kagent: Turf in kagent 1.0, the
+                      engine on Knative, state in the cluster
   turf-cli/           Configuring the standalone Turf CLI (.turf/): user skills
                       + model config (turf.yaml — first-available, named, local)
   kubernetes-backend/ Store Turf state in-cluster via the kubernetes state backend
@@ -101,7 +101,7 @@ examples here go from nothing to a running stack in one convergence. `up` with
 a planfile, which `apply` can apply later, from another server if you like.
 
 **A remote engine.** `TURF_RESTATE_URL` points the CLI or the server at an engine
-running elsewhere, such as in a cluster ([`integrations/kagent/`](integrations/kagent/)),
+running elsewhere, such as in a cluster ([turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent)),
 instead of the local service.
 
 **What the providers see.** Provider plugins run inside the engine, not in your shell,
@@ -213,7 +213,7 @@ Kubernetes cluster + kubeconfig.
 A configuration can also ship as a versioned OCI image: the configuration directory
 at the root of an otherwise empty image. Mounted read-only where Turf runs (a
 Kubernetes [image volume](https://kubernetes.io/docs/tasks/configure-pod-container/image-volumes/),
-as the kagent integration does), it is exactly the configuration that was tagged, and
+as [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) does), it is exactly the configuration that was tagged, and
 nothing needs to be shared between the pods that read it.
 
 Pushing a tag `terraform/<path>/vX.Y.Z` publishes `terraform/<path>` as
@@ -318,141 +318,12 @@ reverse. See
 
 ## Integrations
 
-### `integrations/kagent/` — Kubernetes deployment via kagent
+### `integrations/kagent/` — Turf in kagent
 
-Manifests for deploying Turf and an infrastructure agent in-cluster via the
-[kagent](https://github.com/kagent-dev/kagent) operator. In a cluster Turf runs as
-three parts, each its own Deployment: the MCP server the agent talks to, the engine
-that plans and applies (and runs the provider plugins), two replicas of it, and the
-restate-server the engine runs on. The server finds the engine through `TURF_RESTATE_URL`.
-
-| File                      | Purpose                                                              |
-|---------------------------|---------------------------------------------------------------------|
-| `turf-mcpserver.yaml`     | `MCPServer` — runs `turf-mcp-server` (HTTP), pointed at the engine with `TURF_RESTATE_URL`; the configuration image at `/turf/config` |
-| `turf-engine.yaml`        | `Deployment` + `Service` — `turf-engine`, from the same image, registered with restate-server; the same configuration image at the same path |
-| `turf-cli-config.yaml`    | `ConfigMap` — the OpenTofu CLI configuration every pod reads (`TF_CLI_CONFIG_FILE`): where providers come from |
-| `restate.yaml`            | `StatefulSet` + `Service` — restate-server from Restate's own image, its data on a volume |
-| `turf-agent.yaml`         | `Agent` — the infrastructure agent (system prompt, tools, A2A skills)|
-| `turf-rbac.yaml`          | `ClusterRoleBinding` (cluster-admin, for the Kubernetes state backend and in-cluster providers)|
-| `turf-model-config.yaml`  | Model provider configuration                                        |
-| `opentofu-mcpserver.yaml` | Companion OpenTofu registry `RemoteMCPServer` (provider/module docs)|
-| `networkpolicy.yaml`      | `NetworkPolicy` — who may reach restate-server, the engine and the MCP server |
-
-**The configuration is an image.** The engine reads the configuration directory
-itself, at the path the server names, so the server's pod and every engine pod
-mount the same [configuration image](#configuration-images) — `kubernetes/in-cluster`
-here — at `/turf/config`, read-only, as a Kubernetes image volume (Kubernetes 1.36 or
-later, where image volumes are on by default; kind v0.32's node image is 1.36).
-Nothing is shared between the pods and no volume claim is needed:
-
-- **Modules install in every pod, each in its own `emptyDir`.** The engine installs
-  under its own data directory, `--data-dir=/turf/data`, one directory per workspace
-  (`/turf/data/<lineage>/modules`); nothing is sent to it and nothing is written into
-  the configuration. `TF_DATA_DIR=/turf/data` on the server is where its own `init`
-  installs, as it is for tofu. The provider cache and the server's scratch directory
-  are each pod's own `emptyDir`s too. Being absolute, the server's is one data
-  directory for every configuration the server holds, and the server refuses to
-  `init` a second one on it (a relative one would land inside the read-only image):
-  one configuration image per server and its engine.
-- **Two engine replicas.** They are one restate deployment, so a round's steps land
-  on either. Each installs the modules a round planned into its own data directory
-  before reading them (turf-engine D85). Pin module sources to one revision (a git
-  `ref`, an exact registry version): a source that moves between two replicas'
-  fetches fails the round.
-- **The same path in every pod.** The engine reads the configuration at the path
-  the server names, so no `--workdir` mapping is set; pods mounting the image at
-  different places would name their directories with `--workdir` on every pod.
-- **State is remote**: the agent opens every workspace on the Kubernetes backend,
-  because no statefile can be written beside a read-only configuration. Atlantis
-  draws the same line: it does not support local state, having no permanent
-  storage of its own.
-- **A change is a new image version.** Tag a new version, change `reference` in both
-  manifests (or pin a digest), and roll the pods; the agent plans what the new
-  version declares. The engine's replicas roll together (`strategy: Recreate`).
-  Before moving to a new minor Turf release, finish or cancel open convergences.
-- **An engine restart empties its `/turf/data`.** It is a cache: the replica installs
-  the modules again the next time a round's step lands on it, and a round waiting for
-  its approval across the restart applies what was planned, stale only if a module
-  source moved since.
-
-To run your own configuration, publish it as a configuration image and put its
-reference in both manifests' `configuration` volume. The manifests name Turf 1.3.0,
-and the agent's instructions and `toolNames` follow its loop (`up`, `plan`, `apply`),
-which needs a 1.3 server. The engine's `--data-dir` and a read-only configuration came
-in 1.1.0, and more than one engine replica in 1.2.0.
-
-**Providers come from where `turf-cli-config.yaml` says.** It is OpenTofu's CLI
-configuration, mounted on every pod at `/turf/cli` and named by `TF_CLI_CONFIG_FILE`,
-and its `provider_installation` block works as it does for `tofu`. The server's `init`
-installs and locks from it, and the engine installs from it and checks what `init`
-locked, so it is one ConfigMap for both. As shipped it is `direct {}`, the registry.
-For a cluster that reaches no registry, put a mirror in it, as its comments show:
-
-- a `filesystem_mirror` on a read-only volume mounted at the same path in every pod,
-  such as an image volume holding what `tofu providers mirror` writes, whose archives
-  verify a lock file written from the registry, as the committed one is;
-- a `network_mirror` (https only), or an `oci_mirror` on a registry of your own.
-
-The provider cache stays each pod's own `emptyDir`, never a volume they share: every
-engine replica installs from the mirror into its own. Every pod reads the file once, at
-start, so roll them all after changing it. A file in error stops them from starting, where
-`tofu` would warn and carry on. A mirror needs Turf 1.2.0 or later: earlier releases
-read this file for registry credentials alone.
-
-Provider credentials belong on the engine, where the plugins run; the state
-backend's belong on the server.
-
-The kagent agent has no file tools, so it **operates** existing configurations — plan,
-apply, destroy, import, and actions — but does not author them; writing `.tf` needs a
-client with file tools (the Turf CLI, Claude Code).
-
-**Who can reach Turf.** restate-server has no authentication of its own. The MCP
-server can require a bearer token from Turf 1.3 (`TURF_MCP_AUTH_TOKEN`), but this
-example leaves it off: kagent 0.10.3 sends no headers when its controller lists an
-`MCPServer`'s tools. kagent 1.0 replaces `MCPServer` with `RemoteMCPServer`, whose
-`headersFrom` can send it. So the stack is closed by two things:
-
-- **Request identity.** restate-server signs every request it sends the engine, and
-  the engine serves nothing else. The key lives in a Secret restate-server and every
-  engine pod need, so create it once **before** `kubectl apply` (until it exists,
-  none of them starts). The engine,
-  from the same image, makes the key and prints its public half:
-
-  ```sh
-  docker run --rm --user "$(id -u)" -v "$PWD:/k" ghcr.io/turfbuild/turf-mcp-server:<release> \
-    turf-engine --identity-keygen /k/identity.pem > public-key
-  kubectl -n kagent create secret generic turf-engine-identity \
-    --from-file=identity.pem --from-file=public-key
-  rm identity.pem
-  ```
-
-  restate-server mounts `identity.pem`; the engine is given only `public-key`. The
-  engine has checked signatures, and `--identity-keygen` has existed, since Turf 1.0:
-  an image older than that accepts the Secret and ignores it, leaving the network
-  policy below as the only control.
-- **`networkpolicy.yaml`**: restate-server's ingress only from the MCP server, its
-  admin API only from the engine, the engine only from restate-server, and the MCP
-  server only from the agent and kagent's controller. Policies are enforced by the
-  cluster's network plugin — on AKS, a network policy engine chosen when the cluster
-  is created (`--network-policy azure|calico|cilium`); Calico and Cilium elsewhere, and
-  kind's own plugin (kind v0.32) — and a plugin that does not enforce them accepts them
-  silently, so check with a throwaway pod that restate's ports time out:
-
-  ```sh
-  kubectl -n kagent run probe --rm -i --restart=Never --image=curlimages/curl -- \
-    curl -sS --max-time 5 http://restate.kagent.svc:8080/restate/health   # must time out
-  ```
-
-  `kubectl port-forward` still reaches restate's admin API for an operator: it enters
-  the pod through the kubelet.
-
-```sh
-kubectl apply -f integrations/kagent/
-```
-
-The container image is published with each Turf release as
-`ghcr.io/turfbuild/turf-mcp-server:<release>`; it carries both the server and
-`turf-engine`. Keep the server's and the engine's tags equal.
+Moved to its own repository, [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent):
+Turf with kagent 1.0, the agent in a sandbox, the engine as a Knative service under the Restate
+operator, state in Kubernetes Secrets, and a person approving every apply. The agent operates
+the `kubernetes-in-cluster` configuration image published from this repository.
 
 ### `integrations/turf-cli/` — Turf CLI skill discovery
 
@@ -470,7 +341,7 @@ a Coordination Lease, rather than a local file. Backend auth comes from the
 environment (`KUBE_CONFIG_PATH`, `KUBE_IN_CLUSTER_CONFIG`), independent of the
 `kubernetes` provider's own auth. Needs an existing cluster and a `turf-state`
 namespace. For the in-cluster (turf-in-a-pod) RBAC that this backend requires when
-Turf runs *inside* the cluster, see `integrations/kagent/`. See
+Turf runs *inside* the cluster, see [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent). See
 `integrations/kubernetes-backend/README.md`.
 
 ### `integrations/scalr/` — Turf tailored for Scalr
