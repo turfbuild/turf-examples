@@ -17,7 +17,7 @@ terraform/        Standard Terraform/HCL configurations
     hpa-walkthrough/  php-apache + HorizontalPodAutoscaler on an existing cluster
     node-maintenance/  a set of nodes held in maintenance, the runbook's steps
                     as actions (kubectl + kubewait + the agent)
-    in-cluster/     a namespace and a ConfigMap from the pod's service account;
+    in-cluster/     a namespace, a ConfigMap and a Job from the pod's service account;
                     published as a configuration image
   aws/
     lambda-fleet/   a fleet of Lambda functions, patched in place by one variable
@@ -195,7 +195,7 @@ ignore and Turf lays over the configuration at every plan.
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
 | `kubernetes/node-maintenance`  | hashicorp/kubernetes, hashicorp/local, turfbuild/kubewait | ⎈ | nodes in maintenance as a set, every step of the runbook an action — cordon, drain, confirm, repair, re-certify, uncordon; Terraform 1.16+ runs the kubectl half, Turf the whole runbook |
-| `kubernetes/in-cluster`        | hashicorp/kubernetes          | ⎈ | a namespace and a ConfigMap through a local module, from the pod's own service account; published as a [configuration image](#configuration-images) |
+| `kubernetes/in-cluster`        | hashicorp/kubernetes          | ⎈ | a namespace, a ConfigMap and a Job through a local module, from the pod's own service account, with a turf action that waits for the Job; published as a [configuration image](#configuration-images) |
 | `aws/lambda-fleet`             | hashicorp/aws, hashicorp/archive | ☁️ AWS | fleet of Lambdas patched in place (`count`)        |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |

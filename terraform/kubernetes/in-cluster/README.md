@@ -1,7 +1,8 @@
 # In-cluster greeting
 
-A namespace and a ConfigMap, written through a local module by the Kubernetes
-provider using the service account of the pod it runs in. It is small on purpose:
+A namespace, a ConfigMap and a Job that prints it, written through a local
+module by the Kubernetes provider using the service account of the pod it runs
+in, with a turf action that waits for the Job. It is small on purpose:
 this is the configuration [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) runs, published as a
 [configuration image](../../../README.md#configuration-images) and mounted
 read-only where Turf reads it.
@@ -12,6 +13,20 @@ read-only where Turf reads it.
   by default).
 - `module.greeting.kubernetes_config_map_v1.greeting` — a ConfigMap named
   `greeting` in it, holding `var.greeting`.
+- `module.greeting.kubernetes_job_v1.greet` — a one-pod Job that prints the
+  greeting from the ConfigMap. The apply does not wait for it: the turf action
+  below does.
+
+## The turf action
+
+`greeting.turf.hcl` declares a `turf_action` bound after the Job's creation: a
+step of the apply that the agent carries out with its own tools instead of a
+provider. The apply pauses there, the agent watches the Job (its status, its
+pod's events and log) and reports that it succeeded, quoting the greeting, or
+that it failed, with the log as the error, which halts the round. tofu and
+terraform ignore the file by its name; Turf lays it over the configuration at
+every plan. With `turf up` and no agent in the loop, the step is asked at the
+approval point like any other.
 
 ## Running it
 
