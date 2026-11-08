@@ -376,9 +376,10 @@ Nothing is shared between the pods and no volume claim is needed:
   source moved since.
 
 To run your own configuration, publish it as a configuration image and put its
-reference in both manifests' `configuration` volume. The manifests name Turf 1.3.0,
+reference in both manifests' `configuration` volume. The manifests name Turf 1.4.0,
 and the agent's instructions and `toolNames` follow its loop (`up`, `plan`, `apply`),
-which needs a 1.3 server. The engine's `--data-dir` and a read-only configuration came
+which needs a 1.3 server or later. The Turf console, new in 1.4, is not deployed here:
+turfbuild/turf-kagent runs it behind its token. The engine's `--data-dir` and a read-only configuration came
 in 1.1.0, and more than one engine replica in 1.2.0.
 
 **Providers come from where `turf-cli-config.yaml` says.** It is OpenTofu's CLI
