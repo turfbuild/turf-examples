@@ -2,6 +2,3 @@
 .turf/*
 !.turf/skills/
 !.turf/turf.yaml
-
-# Built by the archive_file data source at plan time.
-hello-world.zip

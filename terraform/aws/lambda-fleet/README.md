@@ -1,7 +1,9 @@
 # AWS Lambda Fleet
 
 Deploys a fleet of identical AWS Lambda functions behind one shared execution
-role, then patches all of them in place by changing a single variable.
+role, each with a public URL, then patches all of them in place by changing a
+single variable. After every rollout a Turf action has the agent fetch each URL
+and prove the fleet answers with the greeting the configuration declares.
 
 The interesting run is the second one. Most infrastructure work is not standing
 things up — it is changing a lot of things that already exist, at once, without
@@ -13,7 +15,8 @@ exactly *N* update-in-place changes and nothing else.
 - `aws_iam_role.lambda_exec` — one execution role shared by the whole fleet
 - `aws_iam_role_policy_attachment.lambda_policy` — attaches `AWSLambdaBasicExecutionRole`
 - `aws_lambda_function.hello[*]` — `fleet_size` copies of the same handler
-- `data.archive_file.hello` — builds the deployment package from `hello-world/` at plan time
+- `aws_lambda_function_url.public[*]` and `aws_lambda_permission.public[*]` — a public URL per function
+- `terraform_data.rollout` — the release marker the `verify` Turf action runs after
 
 ## Prerequisites
 
@@ -25,7 +28,7 @@ exactly *N* update-in-place changes and nothing else.
    (see [Running the examples](../../../README.md#running-the-examples)). An
    `AWS_PROFILE` exported in your shell does not reach the provider.
 3. Nothing else. There is no S3 bucket, no API Gateway, and no build step: the
-   `.zip` is produced by the `archive_file` data source when you plan.
+   package, `hello-world.zip`, is committed beside the configuration.
 
 ## Usage
 
@@ -33,14 +36,26 @@ exactly *N* update-in-place changes and nothing else.
 turf -C terraform/aws/lambda-fleet up
 ```
 
-Then confirm the functions actually run:
+The apply pauses once, at the `verify` Turf action
+([`verify.turf.hcl`](verify.turf.hcl)): the agent driving Turf fetches every
+function URL, checks each answers 200 with the declared greeting, and reports
+back; a failed check halts the apply. tofu and terraform ignore that file by its
+name.
+
+Confirm it yourself with the `urls` output, or by invoking a function directly:
 
 ```bash
+curl -s "$(turf -C terraform/aws/lambda-fleet output -json urls | jq -r '.[0]')"
+# {"message":"Hello, World!","function":"turf-hello-0"}
+
 aws lambda invoke --function-name turf-hello-0 \
   --payload '{}' --cli-binary-format raw-in-base64-out /tmp/out.json
 cat /tmp/out.json
 # {"statusCode":200,...,"message":"Hello, World!","function":"turf-hello-0"}
 ```
+
+The URLs are public (`authorization_type = "NONE"`): anyone who has one can call
+the function. They answer a greeting and nothing else; `destroy` removes them.
 
 ### Patch the fleet
 
@@ -73,17 +88,35 @@ no-ops. Shrinking destroys the ones above the new count.
 
 ### Change the handler
 
-Edit `hello-world/hello.js` and run `up`. The `archive_file` data source
-rebuilds the package, `source_code_hash` moves with it, and every function
-re-deploys the new code.
+Edit `hello-world/hello.js`, rebuild the package, and run `up`:
+`source_code_hash` moves with the file and every function re-deploys the new
+code.
+
+### The deployment package
+
+`hello-world.zip` is committed, and the configuration only reads it. That is what
+lets it run from a read-only mount (the [examples image](../../../README.md#configuration-images),
+as [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) runs it) and
+on an engine with several replicas, where a file written during the plan may not
+be on the pod that applies. Rebuild it after changing the handler:
+
+```bash
+(cd terraform/aws/lambda-fleet/hello-world && zip -X ../hello-world.zip hello.js)
+```
 
 ## In CI/CD
 
 [turfbuild/turf-agentic-workflows](https://github.com/turfbuild/turf-agentic-workflows)
 runs this example from pull requests, with an agent in GitHub Agentic Workflows planning
 on the pull request and applying to staging, then production, after the merge. Its
-`infra/` is this configuration plus a public URL per function and a `verify` Turf action
-that fetches every one after each rollout.
+`infra/` is this configuration with an S3 backend and an `environment` per stage.
+
+## In a cluster
+
+[turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) runs this example from
+kagent on Kubernetes: the agent in a sandbox with no AWS credential, the engine holding a
+key scoped to the fleet, a person approving every plan, and the agent fetching the URLs
+through an egress policy that names them.
 
 ## Variables
 
@@ -99,6 +132,7 @@ that fetches every one after each rollout.
 
 - `function_names` — names of every function in the fleet
 - `function_arns` — ARNs of every function in the fleet
+- `urls` — public URL of every function in the fleet
 - `role_arn` — ARN of the shared execution role
 - `greeting` — the greeting currently deployed
 

@@ -5,13 +5,13 @@
 # so a re-plan is N update-in-place changes and nothing else — the shape a real
 # fleet spends its life in. Changing var.fleet_size grows or shrinks it.
 
-# The deployment package, built from source at plan time. The zip lands next to
-# this configuration and is regenerated whenever hello-world/ changes, so
-# source_code_hash below moves with the source and the fleet re-deploys.
-data "archive_file" "hello" {
-  type        = "zip"
-  source_dir  = "${path.module}/hello-world"
-  output_path = "${path.module}/hello-world.zip"
+# The deployment package, committed beside the configuration. The configuration
+# only reads it, so it plans the same from a checkout and from a read-only
+# mount (the examples image), and on whichever engine pod a step lands.
+# Rebuild it after changing hello-world/ (README, "The deployment package"):
+# source_code_hash below moves with the file and the fleet re-deploys.
+locals {
+  package = "${path.module}/hello-world.zip"
 }
 
 # One role shared by the whole fleet. Lambda needs only permission to write its
@@ -40,8 +40,8 @@ resource "aws_lambda_function" "hello" {
   function_name = "${var.name_prefix}-${count.index}"
   role          = aws_iam_role.lambda_exec.arn
 
-  filename         = data.archive_file.hello.output_path
-  source_code_hash = data.archive_file.hello.output_base64sha256
+  filename         = local.package
+  source_code_hash = filebase64sha256(local.package)
 
   runtime = var.runtime
   handler = "hello.handler"
@@ -54,4 +54,39 @@ resource "aws_lambda_function" "hello" {
       GREETING = var.greeting
     }
   }
+}
+
+# A public URL per function, so anything that can reach the internet can prove
+# the fleet answers: you with curl, or the agent in the verify action
+# (verify.turf.hcl). No IAM auth on the URL; the permission below is what AWS
+# requires before an unauthenticated URL answers.
+resource "aws_lambda_function_url" "public" {
+  count = var.fleet_size
+
+  function_name      = aws_lambda_function.hello[count.index].function_name
+  authorization_type = "NONE"
+}
+
+resource "aws_lambda_permission" "public" {
+  count = var.fleet_size
+
+  statement_id           = "AllowPublicFunctionUrl"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.hello[count.index].function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
+# The release marker. Its input changes whenever the greeting, the fleet's URLs
+# or the function code change, so the verify action in verify.turf.hcl runs
+# after the first create and after every patch, once for the whole fleet, with
+# the real URLs.
+resource "terraform_data" "rollout" {
+  input = {
+    greeting = var.greeting
+    urls     = aws_lambda_function_url.public[*].function_url
+    code     = filebase64sha256(local.package)
+  }
+
+  depends_on = [aws_lambda_permission.public]
 }

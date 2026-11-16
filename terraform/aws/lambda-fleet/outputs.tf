@@ -8,6 +8,11 @@ output "function_arns" {
   value       = aws_lambda_function.hello[*].arn
 }
 
+output "urls" {
+  description = "Public URL of every function in the fleet."
+  value       = aws_lambda_function_url.public[*].function_url
+}
+
 output "role_arn" {
   description = "ARN of the shared execution role."
   value       = aws_iam_role.lambda_exec.arn

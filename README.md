@@ -195,8 +195,8 @@ ignore and Turf lays over the configuration at every plan.
 | `kubernetes/kind-helm`         | tehcyx/kind, hashicorp/helm (v3+) | ✅ | Helm release on a local kind cluster               |
 | `kubernetes/hpa-walkthrough`   | hashicorp/kubernetes          | ⎈ | HPA walkthrough — `ignore_changes` on replicas     |
 | `kubernetes/node-maintenance`  | hashicorp/kubernetes, hashicorp/local, turfbuild/kubewait | ⎈ | nodes in maintenance as a set, every step of the runbook an action — cordon, drain, confirm, repair, re-certify, uncordon; Terraform 1.16+ runs the kubectl half, Turf the whole runbook |
-| `kubernetes/in-cluster`        | hashicorp/kubernetes          | ⎈ | a namespace, a ConfigMap and a Job through a local module, from the pod's own service account, with a turf action that waits for the Job; published as a [configuration image](#configuration-images) |
-| `aws/lambda-fleet`             | hashicorp/aws, hashicorp/archive | ☁️ AWS | fleet of Lambdas patched in place (`count`)        |
+| `kubernetes/in-cluster`        | hashicorp/kubernetes          | ⎈ | a namespace, a ConfigMap and a Job through a local module, from the pod's own service account, with a turf action that waits for the Job; runs from the [examples image](#configuration-images), and published as an image of its own |
+| `aws/lambda-fleet`             | hashicorp/aws                 | ☁️ AWS | fleet of Lambdas patched in place (`count`), a public URL each, with a turf action that fetches every one; runs from the [examples image](#configuration-images) |
 | `azure/avm-resourcegroup`      | hashicorp/azurerm + AVM module | ☁️ Azure | multi-instance keyed modules (`for_each`/`count`) |
 | `gcp/gke-demo`                 | hashicorp/google              | ☁️ GCP | GKE Autopilot + custom VPC                         |
 | `language/actions`             | hashicorp/tfcoremock, hashicorp/local | ✅ | Terraform Actions (gating invokes)          |
@@ -210,25 +210,33 @@ Kubernetes cluster + kubeconfig.
 
 ## Configuration images
 
-A configuration can also ship as a versioned OCI image: the configuration directory
-at the root of an otherwise empty image. Mounted read-only where Turf runs (a
+Configurations can also ship as a versioned OCI image: files at the root of an
+otherwise empty image. Mounted read-only where Turf runs (a
 Kubernetes [image volume](https://kubernetes.io/docs/tasks/configure-pod-container/image-volumes/),
-as [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) does), it is exactly the configuration that was tagged, and
+as [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent) does), it is exactly what was tagged, and
 nothing needs to be shared between the pods that read it.
 
-Pushing a tag `terraform/<path>/vX.Y.Z` publishes `terraform/<path>` as
-`ghcr.io/turfbuild/turf-examples/<path, slashes as dashes>:X.Y.Z`, for linux/amd64
-and linux/arm64 (`.github/workflows/configuration-image.yml`):
+**The examples image is this whole repository.** Pushing a tag `vX.Y.Z` publishes it as
+`ghcr.io/turfbuild/turf-examples:X.Y.Z`, for linux/amd64 and linux/arm64
+(`.github/workflows/examples-image.yml`). Mount it and give Turf a path inside it:
 
 ```sh
-git tag -s terraform/kubernetes/in-cluster/v1.0.0 -m "kubernetes/in-cluster 1.0.0"
-git push origin terraform/kubernetes/in-cluster/v1.0.0
-# → ghcr.io/turfbuild/turf-examples/kubernetes-in-cluster:1.0.0
+git tag -s v1.0.0 -m "turf-examples 1.0.0"
+git push origin v1.0.0
+# → ghcr.io/turfbuild/turf-examples:1.0.0
+# mounted at /turf/examples: init({ path: "/turf/examples/terraform/aws/lambda-fleet" })
 ```
 
-A configuration published this way:
+One configuration can also be published alone: a tag `terraform/<path>/vX.Y.Z` publishes
+`terraform/<path>` as `ghcr.io/turfbuild/turf-examples/<path, slashes as dashes>:X.Y.Z`
+(`.github/workflows/configuration-image.yml`), as `kubernetes-in-cluster` is.
 
-- **declares no backend**, so whoever runs it names one when it opens a workspace —
+Not every directory in the examples image runs from it. A configuration runs from a
+read-only mount when it:
+
+- **writes nothing beside itself at plan time** (no `archive_file` or `local_file`
+  under `path.module`; `aws/lambda-fleet` commits its package for this reason);
+- **declares no backend**, so whoever runs it names one when it opens a workspace,
   and it must be a remote one, since nothing can write a statefile beside a
   read-only configuration;
 - **commits its lock file** (`.terraform.lock.hcl`, with a `!` exception in
@@ -239,6 +247,9 @@ A configuration published this way:
   tofu -chdir=terraform/kubernetes/in-cluster providers lock \
     -platform=linux_amd64 -platform=linux_arm64 -platform=darwin_arm64 -platform=darwin_amd64
   ```
+
+Today that is `aws/lambda-fleet` and `kubernetes/in-cluster`; another example joins
+by committing its lock file.
 
 Turf plans a read-only configuration: the engine installs modules under a data
 directory of its own (its per-user cache, or the one `turf-engine --data-dir` names;
@@ -323,7 +334,7 @@ reverse. See
 Moved to its own repository, [turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent):
 Turf with kagent 1.0, the agent in a sandbox, the engine as a Knative service under the Restate
 operator, state in Kubernetes Secrets, and a person approving every apply. The agent operates
-the `kubernetes-in-cluster` configuration image published from this repository.
+`terraform/aws/lambda-fleet` from the examples image published from this repository.
 
 ### `integrations/turf-cli/` — Turf CLI skill discovery
 

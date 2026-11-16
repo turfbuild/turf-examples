@@ -1,11 +1,17 @@
 # BuildKit reads <Containerfile>.dockerignore beside the Containerfile, whatever
 # the build context. Working state and anything that may hold a secret stay out
-# of a published configuration.
-.terraform/
-*.tfstate
-*.tfstate.*
-.terraform.tfstate.lock.info
-terraform.tfvars
-*.auto.tfvars
-.envrc.local
-.DS_Store
+# of a published configuration, at any depth: a pattern without **/ matches at
+# the root of the context only.
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform.tfstate.lock.info
+**/terraform.tfvars
+**/*.auto.tfvars
+**/.envrc.local
+**/.DS_Store
+# The examples image takes the repository root as its context.
+.git
+.github
+.claude
+.mcp.json
