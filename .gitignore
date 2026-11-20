@@ -13,6 +13,7 @@ memory.lock
 # complete for every platform it runs on (README, "Configuration images").
 !terraform/kubernetes/in-cluster/.terraform.lock.hcl
 !terraform/aws/lambda-fleet/.terraform.lock.hcl
+!use-cases/datacenter/aicr-workload-cluster/.terraform.lock.hcl
 
 # Real variable values (ship only *.tfvars.example)
 terraform.tfvars
