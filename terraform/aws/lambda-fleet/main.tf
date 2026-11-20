@@ -16,8 +16,14 @@ locals {
 
 # One role shared by the whole fleet. Lambda needs only permission to write its
 # own logs, which is exactly what AWSLambdaBasicExecutionRole grants.
+#
+# The role is rotated without downtime. Its name is generated from a prefix, so
+# two generations can exist at once, and create_before_destroy orders a
+# replacement the way a rotation wants: the new role is created, every function
+# is updated in place to assume it, and only then is the old role deleted. Force
+# one with plan's replace option (README, "Rotating the role").
 resource "aws_iam_role" "lambda_exec" {
-  name = "${var.name_prefix}-exec"
+  name_prefix = "${var.name_prefix}-exec-"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -27,6 +33,10 @@ resource "aws_iam_role" "lambda_exec" {
       Principal = { Service = "lambda.amazonaws.com" }
     }]
   })
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
@@ -77,15 +87,16 @@ resource "aws_lambda_permission" "public" {
   function_url_auth_type = "NONE"
 }
 
-# The release marker. Its input changes whenever the greeting, the fleet's URLs
-# or the function code change, so the verify action in verify.turf.hcl runs
-# after the first create and after every patch, once for the whole fleet, with
-# the real URLs.
+# The release marker. Its input changes whenever the greeting, the fleet's URLs,
+# the function code or the execution role change, so the verify action in
+# verify.turf.hcl runs after the first create, after every patch and after a
+# role rotation, once for the whole fleet, with the real URLs.
 resource "terraform_data" "rollout" {
   input = {
     greeting = var.greeting
     urls     = aws_lambda_function_url.public[*].function_url
     code     = filebase64sha256(local.package)
+    role     = aws_iam_role.lambda_exec.arn
   }
 
   depends_on = [aws_lambda_permission.public]
