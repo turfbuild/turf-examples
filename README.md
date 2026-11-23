@@ -257,6 +257,15 @@ one directory per workspace), and the server's own `init` install goes under its
 `TF_DATA_DIR`. Pin an image by digest in production; the workflow's summary prints
 it.
 
+Each image is signed with cosign, keyless, by the workflow that built it. Verify one
+before you mount it (images published before the signing step carry no signature):
+
+```sh
+cosign verify ghcr.io/turfbuild/turf-examples:<version> \
+  --certificate-identity-regexp '^https://github.com/turfbuild/turf-examples/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
 The first publish of a new name creates a **private** package on GHCR: make it
 public once in the package's settings (the organization must allow public packages),
 or give the pods that mount it an `imagePullSecrets` entry.

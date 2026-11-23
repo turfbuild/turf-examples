@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write # cosign's keyless signature: the workflow's identity, from GitHub's OIDC issuer
 
 jobs:
   publish:
@@ -83,6 +84,17 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.tag.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # Signed by digest, keyless: the signature names this workflow and is
+      # recorded in the public Rekor log. It is stored beside the image, not in
+      # its index, so the index still holds the two platform images only.
+      - name: Sign
+        env:
+          IMAGE: ${{ steps.tag.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
 
       - name: Summary
         env:
