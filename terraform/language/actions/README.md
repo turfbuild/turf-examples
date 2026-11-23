@@ -47,7 +47,8 @@ action "tfcoremock_simple_resource" "gate" {                # the action definit
 ## Prerequisites
 
 - **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`; see
-  [Running the examples](../../../README.md#running-the-examples)) — Turf parses the
+  [Running the examples](../../../README.md#running-the-examples); accept the Turf license
+  once with `turf license accept`) — Turf parses the
   `action` blocks and runs the action invocations.
 - No cloud account, no credentials.
 

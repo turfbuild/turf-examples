@@ -285,7 +285,7 @@ from the server.
 
 ## Prerequisites
 
-- **Turf**, installed and running as
+- **Turf**, installed, its license accepted and its engine running, as
   [Running the examples](../../../README.md#running-the-examples) describes.
   `ansible/ansible` is an action provider that serves plugin protocol 5 only.
 - **An AWS account**, for two `t3.small` instances for a few minutes.

@@ -41,7 +41,7 @@ the commit fails, the run stops rather than leaving downstream changes half-appl
 
 ## Prerequisites
 
-- **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`).
+- **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`), with the Turf license [accepted once](../../../README.md#running-the-examples) (`turf license accept`).
 - No cloud account, no credentials.
 
 ## Usage

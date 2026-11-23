@@ -24,7 +24,7 @@ apply: **[turf.build/demo/scalr](https://turf.build/demo/scalr/)**
 ## Prerequisites
 
 - A Scalr account (`<acct>.scalr.io`) and the Turf CLI (or any MCP client on
-  `turf-mcp-server`).
+  `turf-mcp-server`), with the Turf license [accepted once](../../README.md#running-the-examples) (`turf license accept`).
 - A Scalr token for the **`scalr` provider** (`setup/`): `SCALR_TOKEN` (local runs also
   want `SCALR_ACCOUNT_ID` or the `scalr_account_id` tfvar).
 

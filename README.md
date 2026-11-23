@@ -59,12 +59,22 @@ Every example runs the same way. Turf plans and applies through an engine that r
 on your machine as a Homebrew service, so a rollout keeps going when the client or
 the conversation that started it ends.
 
-**Install Turf and start its service:**
+**Install Turf, accept its license and start its service:**
 
 ```bash
 brew install restatedev/tap/restate-server turfbuild/tap/turf
+turf license accept         # accepts the Turf license terms, once per machine
 brew services start turf    # starts the engine now and at every login
 ```
+
+From release 1.5 Turf is proprietary software under the
+[Turf Community Edition License](https://turf.build/license/v1/), and no Turf binary does
+any work until its terms are accepted. `turf license accept` accepts them and records it in
+`~/.turf/license.json`, which the engine service and the MCP server read: a waiting service
+starts within seconds, and no restart is needed. `TURF_ACCEPT_EULA=yes` in a process's
+environment accepts for that process instead (CI, containers), but it does not reach the
+Homebrew service from your shell. Every way to accept:
+https://turf.build/docs/start/install/#accept-the-license.
 
 **Connect your agent.** One command registers the server with the agents on your machine
 — Claude Code, Claude Desktop, Cursor, Codex, Gemini CLI, VS Code — and writes each config
@@ -404,4 +414,9 @@ email: [the newsletter](https://turf.build/newsletter/). Everything else: https:
 
 ## License
 
-Mozilla Public License 2.0. See [LICENSE](./LICENSE).
+The examples in this repository: Mozilla Public License 2.0. See [LICENSE](./LICENSE).
+
+Turf itself, which runs them, is not covered by that license: from release 1.5 it is
+proprietary software under the [Turf Community Edition License 1.0](https://turf.build/license/v1/),
+free for individuals, education and small businesses within the Community limits.
+Government and larger organizations need a [commercial license](https://turf.build/licensing/).

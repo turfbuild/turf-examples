@@ -241,7 +241,8 @@ cluster no longer lists it.
 - **Terraform 1.16.0 or later, or Turf.** `on_failure` and destroy-event
   triggers first appear in 1.16; `maintenance.turf.hcl` runs on Turf only (the
   Turf CLI or any MCP client pointed at `turf-mcp-server`; see
-  [Running the examples](../../../README.md#running-the-examples)).
+  [Running the examples](../../../README.md#running-the-examples), which includes
+  accepting the Turf license once: `turf license accept`).
 - **An existing cluster with a worker to spare, and a kubeconfig**
   (`~/.kube/config` by default; override with `kubeconfig_path` /
   `kubeconfig_context`, `kind-aicr-1` for the AICR stack's cluster). The

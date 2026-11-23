@@ -72,7 +72,7 @@ Two more things worth knowing:
 
 - Docker (kind runs the cluster as containers)
 - `kind` and `kubectl` on your PATH
-- The Turf CLI, or any MCP client pointed at `turf-mcp-server`
+- The Turf CLI, or any MCP client pointed at `turf-mcp-server`, with the Turf license [accepted once](../../../README.md#running-the-examples) (`turf license accept`)
 
 ## Usage
 

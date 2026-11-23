@@ -26,7 +26,7 @@ declarative config and a runtime controller.
 
 - An **existing Kubernetes cluster** and a kubeconfig (`~/.kube/config` by default;
   override with the `kubeconfig_path` / `kubeconfig_context` variables).
-- The Turf CLI, or any MCP client pointed at `turf-mcp-server`.
+- The Turf CLI, or any MCP client pointed at `turf-mcp-server`, with the Turf license [accepted once](../../../README.md#running-the-examples) (`turf license accept`).
 
 > The manifests apply on any cluster, but the HPA only actually *scales* on a cluster
 > running [metrics-server](https://github.com/kubernetes-sigs/metrics-server). Without
