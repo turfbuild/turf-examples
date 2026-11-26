@@ -87,7 +87,9 @@ npx -y @turfbuild/turf-mcp-server engine status
 npx -y @turfbuild/turf-mcp-server engine stop
 ```
 
-**The Turf CLI comes with Homebrew.** Two examples configure the CLI itself and need it:
+**The Turf CLI comes with Homebrew**, or with the
+[install script](https://turf.build/docs/start/install/). Two examples configure the CLI itself
+and need it:
 [`integrations/turf-cli`](integrations/turf-cli/) and
 [`integrations/scalr/chat`](integrations/scalr/chat/). So does every `turf -C <dir> up` line in
 the other READMEs, which is the CLI's way to run what `/turf:up <dir>` runs from your agent.
@@ -141,7 +143,8 @@ after editing it). Either way, when [mise](https://mise.jdx.dev) is installed, e
 configuration's providers also get that configuration's mise environment: what `mise env`
 prints in its directory, from a committed `mise.toml` and an untracked `mise.local.toml` beside
 it. Run `mise trust` in the directory once. `TURF_MISE=off` turns this off: in the server
-entry's `env`, or in `turf.env` for the service.
+entry's `env` (reconnect the agent, then stop the engine, so the next call starts it with the
+setting), or in `turf.env` for the service.
 
 - **Credentials** for providers come from files (the default profile in
   `~/.aws/config`, `~/.kube/config`, gcloud's application-default credentials, the
