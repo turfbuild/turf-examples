@@ -60,8 +60,10 @@ Your own `/theme` pick still overrides the branded default.
   `~/.terraform.d/credentials.tfrc.json`) or export `TF_TOKEN_<host>` (dots → `_`, dashes →
   `__`). State is written to the `turf-scalr-chat` workspace in Scalr.
 - **Local AWS credentials** — Turf plans locally, so the AWS provider authenticates from
-  your environment, not Scalr. No AWS resources are created — the demo is plan-only for
-  cloud infra; only workspace *state* is stored in Scalr.
+  your environment, not Scalr. The default profile works with nothing set; a variable in
+  your shell, such as `AWS_PROFILE`, reaches the provider when you name it
+  (`export TURF_PROVIDER_ENV=AWS_PROFILE`). No AWS resources are created — the demo is
+  plan-only for cloud infra; only workspace *state* is stored in Scalr.
 
 ## Run it
 

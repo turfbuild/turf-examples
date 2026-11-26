@@ -26,7 +26,8 @@ apply: **[turf.build/demo/scalr](https://turf.build/demo/scalr/)**
 - A Scalr account (`<acct>.scalr.io`) and the Turf CLI (or any MCP client on
   `turf-mcp-server`), with the Turf license [accepted once](../../README.md#running-the-examples) (`turf license accept`).
 - A Scalr token for the **`scalr` provider** (`setup/`): `SCALR_TOKEN` (local runs also
-  want `SCALR_ACCOUNT_ID` or the `scalr_account_id` tfvar).
+  want `SCALR_ACCOUNT_ID` or the `scalr_account_id` tfvar). The provider runs in Turf's
+  engine, so the shell's variables reach it only when `TURF_PROVIDER_ENV` names them.
 
 ## Run order
 
@@ -34,14 +35,14 @@ apply: **[turf.build/demo/scalr](https://turf.build/demo/scalr/)**
 # 1. Provision the Scalr side. Add -var enable_policy_group=true for chat/'s gate.
 export SCALR_TOKEN="…"  SCALR_ACCOUNT_ID="acc-…"
 cd integrations/scalr/setup && cp terraform.tfvars.example terraform.tfvars   # fill in scalr_hostname
-turf -C integrations/scalr/setup up
+TURF_PROVIDER_ENV=SCALR_TOKEN,SCALR_ACCOUNT_ID turf -C integrations/scalr/setup up   # names them for the scalr provider
 
 # 2. The interactive demo — see chat/README.md for the session prompts.
 export SCALR_API_TOKEN="$SCALR_TOKEN"  SCALR_API_URL="https://example.scalr.io"
 turf -C integrations/scalr/chat --allow-path .. up
 ```
 
-Tear down with `turf -C integrations/scalr/setup destroy`.
+Tear down with `TURF_PROVIDER_ENV=SCALR_TOKEN,SCALR_ACCOUNT_ID turf -C integrations/scalr/setup destroy`.
 
 ## References
 
