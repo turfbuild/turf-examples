@@ -134,24 +134,35 @@ running elsewhere, such as in a cluster ([turfbuild/turf-kagent](https://github.
 instead of the local engine.
 
 **What the providers see.** Provider plugins run inside the engine, not in your shell or
-your agent's session. An engine the server started has a small fixed environment: your home
-directory, the `TURF_*` settings, and a `PATH` of Homebrew's and the system's directories. A
-variable in your shell, or in the `env` of the agent's server entry, does not reach a provider.
-The Homebrew service has launchd's environment, with Homebrew's `PATH`, plus what
-`~/.homebrew/services/turf.env` sets (`KEY=value` lines; run `brew services restart turf`
-after editing it). Either way, when [mise](https://mise.jdx.dev) is installed, each
-configuration's providers also get that configuration's mise environment: what `mise env`
-prints in its directory, from a committed `mise.toml` and an untracked `mise.local.toml` beside
-it. Run `mise trust` in the directory once. `TURF_MISE=off` turns this off: in the server
-entry's `env` (reconnect the agent, then stop the engine, so the next call starts it with the
-setting), or in `turf.env` for the service.
+your agent's session. Credentials in their usual files work with nothing set: the default
+profile in `~/.aws/config`, `~/.kube/config`, gcloud's application-default credentials, the
+`az` login. Provider arguments in the HCL (`profile`, `config_path`) win over everything below.
 
-- **Credentials** for providers come from files (the default profile in
-  `~/.aws/config`, `~/.kube/config`, gcloud's application-default credentials, the
-  `az` login), from provider arguments in the HCL (`profile`, `config_path`), or from
-  the configuration's `mise.local.toml`. Anything that is yours rather than the
-  configuration's goes in `turf.env`, which only the Homebrew service reads: run the
-  service for that.
+- **A variable a provider needs:** name it in the agent's server entry. Two lines in its
+  `env`, the variable and `TURF_PROVIDER_ENV` naming it, then restart the agent:
+
+  ```json
+  "env": {
+    "AWS_PROFILE": "prod",
+    "TURF_PROVIDER_ENV": "AWS_PROFILE"
+  }
+  ```
+
+  The server sends the variables you name, with their values, when a run starts, to
+  whichever engine it uses. `PATH` and the engine's own variables are never sent. With the
+  Turf CLI the list goes in the shell: `TURF_PROVIDER_ENV=AWS_PROFILE turf -C <dir> up`.
+- **A configuration's own settings** (a profile or a kubeconfig path that belongs to that
+  directory, the tools its providers run): when [mise](https://mise.jdx.dev) is installed,
+  each configuration's providers also get what `mise env` prints in its directory, from a
+  committed `mise.toml` and an untracked `mise.local.toml` beside it, over the variables you
+  named. Run `mise trust` in the directory once. `TURF_MISE=off` turns this off: in the server
+  entry's `env` (reconnect the agent, then stop the engine, so the next call starts it with
+  the setting), or in `turf.env` for the service.
+- **What the engine itself needs** (a proxy, a `PATH` with extra tools): an engine the server
+  started has a small fixed environment (your home directory, the `TURF_*` settings, and a
+  `PATH` of Homebrew's and the system's directories). For more, run the Homebrew service: it
+  has launchd's environment, with Homebrew's `PATH`, plus what `~/.homebrew/services/turf.env`
+  sets (`KEY=value` lines; run `brew services restart turf` after editing it).
 - **The state backend's credentials and `TF_VAR_*` variables** come from the session:
   the environment you started the CLI or the MCP client in, or the `env` of the agent's
   server entry.

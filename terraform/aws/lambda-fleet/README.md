@@ -21,13 +21,14 @@ exactly *N* update-in-place changes and nothing else.
 ## Prerequisites
 
 1. An AWS account with permission to manage Lambda functions and IAM roles.
-2. Credentials the provider can find in Turf's engine, where it runs, not in your
-   shell: the default profile in `~/.aws/config` (after `aws sso login`), a
-   `profile` argument on the `provider "aws"` block, `AWS_PROFILE` in this
-   directory's `mise.local.toml`, or, when the engine runs as the Homebrew service,
-   `AWS_PROFILE` in `~/.homebrew/services/turf.env`
-   (see [Running the examples](../../../README.md#running-the-examples)). An
-   `AWS_PROFILE` exported in your shell does not reach the provider.
+2. Credentials the provider can reach in Turf's engine, where it runs, not in your
+   shell. The default profile in `~/.aws/config` (after `aws sso login`) works with
+   nothing set. To use another, name it for the provider: `AWS_PROFILE` and
+   `TURF_PROVIDER_ENV=AWS_PROFILE` in the `env` of your agent's entry for Turf, or,
+   with the CLI, `TURF_PROVIDER_ENV=AWS_PROFILE` in the shell that holds
+   `AWS_PROFILE`. A `profile` argument on the `provider "aws"` block and
+   `AWS_PROFILE` in this directory's `mise.local.toml` work too
+   (see [Running the examples](../../../README.md#running-the-examples)).
 3. Nothing else. There is no S3 bucket, no API Gateway, and no build step: the
    package, `hello-world.zip`, is committed beside the configuration.
 
