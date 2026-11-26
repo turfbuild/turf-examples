@@ -36,6 +36,8 @@ use-cases/        End-to-end stacks for a real domain, composed from local modul
                     + ExternalDNS on a kind cluster with no GPU
     aicr-stack/     NVIDIA AI Cluster Runtime — 16 Helm releases generated from
                     one AICR recipe, deployed as the dependency graph it declares
+    aicr-workload-cluster/  the same bundle on a cluster that already exists,
+                    by name, with a question for a person before the GPU Operator
     aicr-eks-certification/  spec: EKS (ported from mchmarny/cluster) + the AICR
                     stack + an NVCRE certification, waits as Terraform actions
     ansible-k3s/    EC2 hosts made a k3s cluster by an Ansible playbook action,
@@ -248,8 +250,9 @@ read-only mount when it:
     -platform=linux_amd64 -platform=linux_arm64 -platform=darwin_arm64 -platform=darwin_amd64
   ```
 
-Today that is `aws/lambda-fleet` and `kubernetes/in-cluster`; another example joins
-by committing its lock file.
+Today that is `aws/lambda-fleet`, `kubernetes/in-cluster` and
+`use-cases/datacenter/aicr-workload-cluster`; another example joins by committing its lock
+file.
 
 Turf plans a read-only configuration: the engine installs modules under a data
 directory of its own (its per-user cache, or the one `turf-engine --data-dir` names;
@@ -280,6 +283,7 @@ than a single-idea example. Drive them the same way (`/turf:up <dir>`, or `turf 
 |--------------------------|------------------------------------------|--------|--------------------------------------------------------------|
 | `datacenter/ngc-stack`   | tehcyx/kind, hashicorp/helm (v3+), hashicorp/null | ✅ | NVIDIA NGC operators on a GPU-less cluster — four charts, four modules, zero credentials |
 | `datacenter/aicr-stack`  | tehcyx/kind, hashicorp/helm (v3+), built-in `terraform_data` | ✅ | The same idea generated rather than written — 16 releases, 18 `depends_on` edges, from one NVIDIA AICR recipe |
+| `datacenter/aicr-workload-cluster` | hashicorp/helm (v3+), built-in `terraform_data` | ⎈ | The AICR bundle installed on a cluster that already exists, named by a variable, its kubeconfig a file where the engine runs; a turf action asks a person before the GPU Operator; runs from the [examples image](#configuration-images) |
 | `datacenter/aicr-eks-certification` | hashicorp/aws, hashicorp/kubernetes, hashicorp/helm (v3+) | 📐 | Target-state spec: a real GPU cluster, its stack and its NVCRE certification as one graph; the waits are a specified action |
 | `datacenter/ansible-k3s` | hashicorp/aws, ansible/ansible, hashicorp/kubernetes | ☁️ AWS | Hosts by Terraform, k3s by Ansible, a custom resource by Terraform again — one graph, three rounds on Turf |
 | `datacenter/slinky-stack` | tehcyx/kind, hashicorp/helm (v3+), turfbuild/kubewait | ✅ | A Slurm cluster in a "Run:ai project" with KAI Scheduler as the open Run:ai — `srun` works, the GPU partition pends; two rounds on Turf |

@@ -417,6 +417,18 @@ edit to a folder still plans clean. Change the recipe and regenerate instead.
 **`helm uninstall` leaves CRDs behind**, as always. `destroy` removes the cluster, so
 it does not matter here; it would on a cluster you keep.
 
+**cert-manager's webhook does not start on a node that already holds the images.**
+The recipe's kind overlay gives the webhook `cpu: 50m` and `memory: 40Mi`. On a cluster
+created cold, as this example does, the releases start as their images arrive and the webhook
+gets through. On a node where the images are already present (a cluster installed, destroyed
+and installed again, or one with the images pulled ahead) every release starts at once, the
+webhook exits with code 2 and no logs inside its liveness window, restarts, and never becomes
+ready: the `cert-manager` release sits at `pending-install` until Helm's timeout, 15 minutes
+later, and everything behind it waits. With `cpu: 500m` and `memory: 128Mi` it is ready in
+under half a minute. `bundle/003-cert-manager/values.yaml` carries that change, by hand and
+marked in the file: it is the one place this bundle is not as generated, so `checksums.txt`
+no longer matches that file. The remedy that lasts is in the recipe's overlay.
+
 ## Certification and handover
 
 `aicr.turf.hcl` adds the two steps a person or an agent performs around the

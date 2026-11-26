@@ -12,7 +12,7 @@ exactly *N* update-in-place changes and nothing else.
 
 ## Resources Created
 
-- `aws_iam_role.lambda_exec` — one execution role shared by the whole fleet
+- `aws_iam_role.lambda_exec` — one execution role shared by the whole fleet, its name generated from `name_prefix` so it can be rotated
 - `aws_iam_role_policy_attachment.lambda_policy` — attaches `AWSLambdaBasicExecutionRole`
 - `aws_lambda_function.hello[*]` — `fleet_size` copies of the same handler
 - `aws_lambda_function_url.public[*]` and `aws_lambda_permission.public[*]` — a public URL per function
@@ -104,6 +104,40 @@ be on the pod that applies. Rebuild it after changing the handler:
 (cd terraform/aws/lambda-fleet/hello-world && zip -X ../hello-world.zip hello.js)
 ```
 
+## Rotating the role
+
+Replacing a resource though nothing in the configuration changed is `plan`'s
+`replace` option, given at the round's plan gate (`tofu plan -replace`):
+
+```text
+up({ var: { … } })
+plan({ convergence_id: "<from up>", replace: ["aws_iam_role.lambda_exec"] })
+```
+
+The plan shows both of Terraform's replacement orders at once:
+
+- **the role is create-before-destroy**: its name is generated from a prefix and
+  its `lifecycle` says `create_before_destroy`, so the new role is created
+  first, every function is updated in place to assume it, and the old role is
+  deleted last. The fleet answers the whole time, at the same URLs.
+- **the policy attachment is destroy-then-create**, the default: the old one is
+  detached before the new one is attached.
+
+The role's ARN is part of `terraform_data.rollout`'s input, so the `verify`
+action runs after a rotation and proves every function still answers.
+
+Replacing a function is destroy-then-create, since two functions cannot share a
+name. Name its URL and permission with it: AWS deletes both with the function,
+and nothing in their arguments changes to say so.
+
+```text
+plan({ convergence_id: "<from up>", replace: [
+  "aws_lambda_function.hello[0]",
+  "aws_lambda_function_url.public[0]",
+  "aws_lambda_permission.public[0]",
+] })
+```
+
 ## In CI/CD
 
 [turfbuild/turf-agentic-workflows](https://github.com/turfbuild/turf-agentic-workflows)
@@ -131,9 +165,10 @@ through an egress policy that names them.
 ## Outputs
 
 - `function_names` — names of every function in the fleet
-- `function_arns` — ARNs of every function in the fleet
+- `function_arns` — ARNs of every function in the fleet (sensitive: an ARN carries the account id)
 - `urls` — public URL of every function in the fleet
-- `role_arn` — ARN of the shared execution role
+- `role_arn` — ARN of the shared execution role (sensitive)
+- `role_name` — name of the shared execution role; it changes when the role is rotated
 - `greeting` — the greeting currently deployed
 
 ## Cost

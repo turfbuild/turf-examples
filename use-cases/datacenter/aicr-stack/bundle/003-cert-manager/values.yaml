@@ -30,12 +30,20 @@ startupapicheck:
 tolerations:
   - operator: Exists
 webhook:
+  # NOT AS GENERATED: the one hand edit in this bundle, so checksums.txt no
+  # longer matches this file. The recipe's kind overlay gives the webhook
+  # cpu 50m / memory 40Mi. On a node that already holds the images, every
+  # release starts at once and the webhook never gets through its liveness
+  # window (exit 2, no logs): the release sits at pending-install until
+  # Helm's timeout. On a cluster created cold, as ../../main.tf does, it
+  # passes. Goes away when the recipe's overlay is raised and the bundle
+  # regenerated (README, "The honest failure list").
   resources:
     limits:
-      cpu: 50m
-      memory: 40Mi
+      cpu: 500m
+      memory: 128Mi
     requests:
       cpu: 50m
-      memory: 40Mi
+      memory: 64Mi
   tolerations:
     - operator: Exists
