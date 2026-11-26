@@ -317,10 +317,12 @@ from the server.
 - **Without mise**, build the venv by hand (`python3 -m venv .venv`, then
   `.venv/bin/pip install -r requirements.txt` and
   `.venv/bin/ansible-galaxy collection install -r requirements.yml -p collections`),
-  and give the engine both in `~/.homebrew/services/turf.env`: `AWS_PROFILE`, and
+  run the engine as the Homebrew service (`brew services start turf`), and give it
+  both in `~/.homebrew/services/turf.env`: `AWS_PROFILE`, and
   a `PATH` with this directory's `.venv/bin` first. A `PATH` there replaces the
   service's, so follow it with Homebrew's `bin` and the system directories. Then
-  `brew services restart turf`.
+  `brew services restart turf`. An engine the server started has a fixed `PATH`,
+  so without mise this example needs the service.
 - **Against a remote engine** (`TURF_RESTATE_URL`), the engine's image carries
   mise and Python, and the configuration's trust is the engine's
   `MISE_TRUSTED_CONFIG_PATHS`. The engine never installs anything, so run

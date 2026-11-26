@@ -7,8 +7,9 @@ it into native keyed addresses — `module.resource_group["eastus"]`, `module.re
 
 > Requires Azure credentials for the `azurerm` provider, so this is a showcase rather than a
 > CI-runnable config. The provider runs in Turf's engine and reads them from its environment:
-> the `az` login, or `ARM_*` variables in `turf.env` or the configuration's `mise.local.toml`
-> (see [Running the examples](../../../README.md#running-the-examples)).
+> the `az` login, or `ARM_*` variables in the configuration's `mise.local.toml` (or in
+> `turf.env`, when the engine runs as the Homebrew service; see
+> [Running the examples](../../../README.md#running-the-examples)).
 
 ## Plan it (`up`, `plan`)
 

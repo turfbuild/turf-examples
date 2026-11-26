@@ -265,7 +265,7 @@ What it takes to run this end to end:
 
 AWS credentials come from Turf's engine, where the providers run: the default
 profile, a `profile` argument on the provider, `AWS_PROFILE` in this directory's
-`mise.local.toml`, or `turf.env` (see
+`mise.local.toml`, or, when the engine runs as the Homebrew service, `turf.env` (see
 [Running the examples](../../../README.md#running-the-examples)).
 
 Beyond Turf:

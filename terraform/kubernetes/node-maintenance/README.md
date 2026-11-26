@@ -249,7 +249,7 @@ cluster no longer lists it.
   providers and `kubectl` all use it. With one worker beside a kind control
   plane every workload is on that worker and a drain has nowhere to move it.
 - **`kubectl` on the `PATH`** of the process running Terraform, or of the Turf
-  engine (the Homebrew service's, with Homebrew's `PATH`): `local_command`
+  engine (Homebrew's and the system's directories): `local_command`
   runs it there, not in your shell.
 
 ## Usage
