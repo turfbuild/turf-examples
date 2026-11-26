@@ -55,36 +55,55 @@ integrations/     How to drive turf-mcp-server from different agent runtimes
 
 ## Running the examples
 
-Every example runs the same way. Turf plans and applies through an engine that runs
-on your machine as a Homebrew service, so a rollout keeps going when the client or
-the conversation that started it ends.
+Every example runs the same way. Turf plans and applies through an engine that runs on your
+machine: the server starts it when a tool first needs it, and it keeps running, so a rollout
+keeps going when the client or the conversation that started it ends.
 
-**Install Turf, accept its license and start its service:**
+**Add Turf to your agent and accept its license:**
 
 ```bash
-brew install restatedev/tap/restate-server turfbuild/tap/turf
-turf license accept         # accepts the Turf license terms, once per machine
-brew services start turf    # starts the engine now and at every login
+npx add-mcp@2 @turfbuild/turf-mcp-server --name turf -g
+# the first start downloads Turf: about a minute
+npx -y @turfbuild/turf-mcp-server license accept
 ```
+
+The first line registers Turf's MCP server with the agents on your machine (Claude Code,
+Claude Desktop, Cursor, Codex, Gemini CLI, VS Code) and lets you pick. It needs Node 18 or
+later, on macOS or Linux, arm64 or x64. In Claude Code and Claude Desktop, Turf runs on your
+Claude subscription, no model API key.
 
 From release 1.5 Turf is proprietary software under the
 [Turf Community Edition License](https://turf.build/license/v1/), and no Turf binary does
-any work until its terms are accepted. `turf license accept` accepts them and records it in
-`~/.turf/license.json`, which the engine service and the MCP server read: a waiting service
-starts within seconds, and no restart is needed. `TURF_ACCEPT_EULA=yes` in a process's
-environment accepts for that process instead (CI, containers), but it does not reach the
-Homebrew service from your shell. Every way to accept:
+any work until its terms are accepted. The second line accepts them and records it in
+`~/.turf/license.json`, which the MCP server and the engine read: no restart is needed.
+`TURF_ACCEPT_EULA=yes` in a process's environment accepts for that process instead (CI,
+containers), but it does not reach the Homebrew service from your shell. Every way to accept:
 https://turf.build/docs/start/install/#accept-the-license.
 
-**Connect your agent.** One command registers the server with the agents on your machine
-— Claude Code, Claude Desktop, Cursor, Codex, Gemini CLI, VS Code — and writes each config
-with the server's absolute path (Node 18+; the agent's own command does the same, e.g.
-`claude mcp add turf --scope user -- turf-mcp-server`). In Claude Code and Claude Desktop,
-Turf runs on your Claude subscription, no model API key.
+The engine outlives your agent. Two commands manage it:
 
 ```bash
-npx add-mcp@2 "$(command -v turf-mcp-server)" --name turf -g
+npx -y @turfbuild/turf-mcp-server engine status
+npx -y @turfbuild/turf-mcp-server engine stop
 ```
+
+**The Turf CLI comes with Homebrew**, or with the
+[install script](https://turf.build/docs/start/install/). Two examples configure the CLI itself
+and need it:
+[`integrations/turf-cli`](integrations/turf-cli/) and
+[`integrations/scalr/chat`](integrations/scalr/chat/). So does every `turf -C <dir> up` line in
+the other READMEs, which is the CLI's way to run what `/turf:up <dir>` runs from your agent.
+
+```bash
+brew install restatedev/tap/restate-server turfbuild/tap/turf
+turf license accept
+npx add-mcp@2 "$(command -v turf-mcp-server)" --name turf -g
+brew services start turf        # optional: the engine at every login
+```
+
+With Homebrew the engine commands are `turf-mcp-server engine status` and
+`turf-mcp-server engine stop`. The service is the same engine, started at login, and it takes
+over one a server started.
 
 **Run an example** from your agent — in Claude Code, opened at this repo's root — or from the
 Turf CLI, which brings its own model and needs an API key:
@@ -112,26 +131,44 @@ a planfile, which `apply` can apply later, from another server if you like.
 
 **A remote engine.** `TURF_RESTATE_URL` points the CLI or the server at an engine
 running elsewhere, such as in a cluster ([turfbuild/turf-kagent](https://github.com/turfbuild/turf-kagent)),
-instead of the local service.
+instead of the local engine.
 
-**What the providers see.** Provider plugins run inside the engine, not in your shell,
-so they get the service's environment: launchd's, with Homebrew's `PATH`, plus what
-`~/.homebrew/services/turf.env` sets (`KEY=value` lines; run `brew services restart turf`
-after editing it). When [mise](https://mise.jdx.dev) is installed, each configuration's
-providers also get that configuration's mise environment: what `mise env` prints in its
-directory, from a committed `mise.toml` and an untracked `mise.local.toml` beside it.
-Run `mise trust` in the directory once. `TURF_MISE=off` in `turf.env` turns this off.
+**What the providers see.** Provider plugins run inside the engine, not in your shell or
+your agent's session. Credentials in their usual files work with nothing set: the default
+profile in `~/.aws/config`, `~/.kube/config`, gcloud's application-default credentials, the
+`az` login. Provider arguments in the HCL (`profile`, `config_path`) win over everything below.
 
-- **Credentials** for providers come from files (the default profile in
-  `~/.aws/config`, `~/.kube/config`, gcloud's application-default credentials, the
-  `az` login), from provider arguments in the HCL (`profile`, `config_path`), or from
-  the configuration's `mise.local.toml`. Anything that is yours rather than the
-  configuration's goes in `turf.env`.
+- **A variable a provider needs:** name it in the agent's server entry. Two lines in its
+  `env`, the variable and `TURF_PROVIDER_ENV` naming it, then restart the agent:
+
+  ```json
+  "env": {
+    "AWS_PROFILE": "prod",
+    "TURF_PROVIDER_ENV": "AWS_PROFILE"
+  }
+  ```
+
+  The server sends the variables you name, with their values, when a run starts, to
+  whichever engine it uses. `PATH` and the engine's own variables are never sent. With the
+  Turf CLI the list goes in the shell: `TURF_PROVIDER_ENV=AWS_PROFILE turf -C <dir> up`.
+- **A configuration's own settings** (a profile or a kubeconfig path that belongs to that
+  directory, the tools its providers run): when [mise](https://mise.jdx.dev) is installed,
+  each configuration's providers also get what `mise env` prints in its directory, from a
+  committed `mise.toml` and an untracked `mise.local.toml` beside it, over the variables you
+  named. Run `mise trust` in the directory once. `TURF_MISE=off` turns this off: in the server
+  entry's `env` (reconnect the agent, then stop the engine, so the next call starts it with
+  the setting), or in `turf.env` for the service.
+- **What the engine itself needs** (a proxy, a `PATH` with extra tools): an engine the server
+  started has a small fixed environment (your home directory, the `TURF_*` settings, and a
+  `PATH` of Homebrew's and the system's directories). For more, run the Homebrew service: it
+  has launchd's environment, with Homebrew's `PATH`, plus what `~/.homebrew/services/turf.env`
+  sets (`KEY=value` lines; run `brew services restart turf` after editing it).
 - **The state backend's credentials and `TF_VAR_*` variables** come from the session:
-  the environment you started the CLI or the MCP client in.
+  the environment you started the CLI or the MCP client in, or the `env` of the agent's
+  server entry.
 
 **Where providers come from.** The registry, unless OpenTofu's CLI configuration says
-otherwise: the service and the server read it as `tofu` does, from `~/.tofurc` (with
+otherwise: the engine and the server read it as `tofu` does, from `~/.tofurc` (with
 `~/.terraform.d/*.tfrc`) or the one file `TF_CLI_CONFIG_FILE` names. A
 `provider_installation` block there serves providers from a mirror:
 
@@ -139,7 +176,7 @@ otherwise: the service and the server read it as `tofu` does, from `~/.tofurc` (
 # ~/.tofurc
 provider_installation {
   filesystem_mirror {
-    path    = "/Users/you/provider-mirror"   # absolute: the service has no working directory of yours
+    path    = "/Users/you/provider-mirror"   # absolute: the engine has no working directory of yours
     include = ["registry.opentofu.org/hashicorp/*"]
   }
   direct {
@@ -148,14 +185,16 @@ provider_installation {
 }
 ```
 
-The service and the server each read it once, at start, and must find the same block,
-since the engine checks what `init` locked. So after an edit, run `brew services restart turf`
-and restart your agent's connection to the server. `TF_CLI_CONFIG_FILE` in `turf.env` and in
-the agent's server entry works too, but it replaces your whole CLI configuration for
-those two processes, `tofu login` credentials included. A configuration in error, such
-as a file that does not parse or a mirror without its `path`, stops the service and the
-server at start, where `tofu` would warn and carry on: `brew services list` shows the
-service in error, and its log says why. This needs a Turf release later than 1.0.1, which
+The engine and the server each read it once, at start, and must find the same block,
+since the engine checks what `init` locked. So after an edit, stop the engine (`engine stop`
+above, and the next call starts it again; `brew services restart turf` for the service)
+and restart your agent's connection to the server. `TF_CLI_CONFIG_FILE` in the agent's
+server entry works too (and in `turf.env`, for the service), but it replaces your whole CLI
+configuration for those two processes, `tofu login` credentials included. A configuration
+in error, such as a file that does not parse or a mirror without its `path`, stops the
+engine and the server at start, where `tofu` would warn and carry on: `engine status` and
+`~/.turf/engine/supervisor.log` say why (for the service, `brew services list` shows it in
+error, and its log says why). This needs a Turf release later than 1.0.1, which
 reads the file for registry credentials alone.
 
 **A provider you are building.** `dev_overrides` points Turf at a local build, as it
@@ -181,8 +220,8 @@ provider_installation {
 Restart both, as above. `init` installs and locks the published version, as `tofu init`
 does, and its entry for the provider warns that the override is in effect. Every plan
 and apply then launches your build instead, unversioned and unchecked against the lock
-file. After each rebuild, run `brew services restart turf`: the engine keeps a provider
-it has started. Remove the entry when you are done, and restart both. The lock file still holds the
+file. After each rebuild, stop the engine (or run `brew services restart turf`): it keeps
+a provider it has started. Remove the entry when you are done, and restart both. The lock file still holds the
 published version, so there is nothing to undo, unlike kubewait's own `make mirror`,
 which serves each rebuild as a new checksum the lock file must record.
 
