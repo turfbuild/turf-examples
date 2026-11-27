@@ -49,7 +49,8 @@ it is.
 ## Prerequisites
 
 - **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`; see
-  [Running the examples](../../../README.md#running-the-examples)). No cloud
+  [Running the examples](../../../README.md#running-the-examples); accept the Turf license
+  once with `turf license accept`). No cloud
   account, no credentials.
 
 ## Usage

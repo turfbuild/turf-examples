@@ -241,14 +241,15 @@ cluster no longer lists it.
 - **Terraform 1.16.0 or later, or Turf.** `on_failure` and destroy-event
   triggers first appear in 1.16; `maintenance.turf.hcl` runs on Turf only (the
   Turf CLI or any MCP client pointed at `turf-mcp-server`; see
-  [Running the examples](../../../README.md#running-the-examples)).
+  [Running the examples](../../../README.md#running-the-examples), which includes
+  accepting the Turf license once: `turf license accept`).
 - **An existing cluster with a worker to spare, and a kubeconfig**
   (`~/.kube/config` by default; override with `kubeconfig_path` /
   `kubeconfig_context`, `kind-aicr-1` for the AICR stack's cluster). The
   providers and `kubectl` all use it. With one worker beside a kind control
   plane every workload is on that worker and a drain has nowhere to move it.
 - **`kubectl` on the `PATH`** of the process running Terraform, or of the Turf
-  engine (the Homebrew service's, with Homebrew's `PATH`): `local_command`
+  engine (Homebrew's and the system's directories): `local_command`
   runs it there, not in your shell.
 
 ## Usage

@@ -51,8 +51,8 @@ ends a run with its plan kept as a planfile, is a different thing.)
 
 - **Turf** (the Turf CLI or any MCP client pointed at `turf-mcp-server`; see
   [Running the examples](../../../README.md#running-the-examples)).
-- Nothing else for the plan. An AWS account and credentials in the engine's
-  environment for an apply (`plan_only = false`).
+- Nothing else for the plan. An AWS account and credentials the providers can
+  reach for an apply (`plan_only = false`).
 
 Resources rather than the registry's VPC module, on purpose: `invoke` evaluates
 the whole configuration against the state, and a module's count-indexed

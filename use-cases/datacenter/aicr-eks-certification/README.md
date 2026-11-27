@@ -263,9 +263,10 @@ What it takes to run this end to end:
 | the same prior-state pin for destroy-event actions | built |
 | deferral: unknown provider config; CRD kind not served | built |
 
-AWS credentials come from Turf's engine, where the providers run: the default
-profile, a `profile` argument on the provider, `AWS_PROFILE` in this directory's
-`mise.local.toml`, or `turf.env` (see
+AWS credentials are the ones the providers can reach in Turf's engine, where they
+run: the default profile, an `AWS_PROFILE` your agent's entry for Turf names
+(`TURF_PROVIDER_ENV=AWS_PROFILE`), a `profile` argument on the provider, or
+`AWS_PROFILE` in this directory's `mise.local.toml` (see
 [Running the examples](../../../README.md#running-the-examples)).
 
 Beyond Turf:
